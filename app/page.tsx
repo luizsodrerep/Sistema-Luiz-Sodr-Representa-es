@@ -41,7 +41,7 @@ export default function HomePage() {
         </div>
 
         {/* Menu principal com todos os botões em uma linha */}
-        <div className="flex flex-wrap justify-center gap-2 w-full max-w-6xl">
+        <div className="flex justify-center gap-2 w-full max-w-6xl">
           {[
             { name: "Home", icon: <Home className="h-4 w-4" />, href: "/" },
             { name: "Dashboard", icon: <BarChart3 className="h-4 w-4" />, href: "/dashboard" },
@@ -59,7 +59,7 @@ export default function HomePage() {
             <Button
               key={i}
               variant="secondary"
-              className="flex items-center justify-center h-10 w-[110px] bg-white/90 hover:bg-white text-primary hover:text-primary"
+              className="flex items-center justify-center h-10 w-[125px] bg-white/90 hover:bg-white text-primary hover:text-primary"
               onClick={() => router.push(item.href)}
             >
               {item.icon}
@@ -151,9 +151,9 @@ export default function HomePage() {
                       <div className="flex items-center justify-between text-xxxs text-muted-foreground">
                         <span>Vendas: {rep.vendas}</span>
                       </div>
-                      <div className="h-1 w-full rounded-full bg-muted">
+                      {/* <div className="h-1 w-full rounded-full bg-muted">
                         <div className="h-1 rounded-full bg-secondary" style={{ width: rep.perc }} />
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                 ))}

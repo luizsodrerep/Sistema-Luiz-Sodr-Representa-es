@@ -1,8 +1,14 @@
-import type React from "react"
-import "@/app/globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@/components/ui/toaster"
-import { AlertReminder } from "@/app/components/alert-reminder"
+import type { Metadata } from 'next'
+import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/toaster'
+import { ClientProviders } from './client-providers'
+import '@/app/globals.css'
+
+export const metadata: Metadata = {
+  title: 'CRM e Sistema de Gestão Comercial',
+  description: 'Sistema completo de CRM e Gestão Comercial',
+  generator: 'v0.dev'
+}
 
 export default function RootLayout({
   children,
@@ -10,33 +16,23 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        <title>CRM e Sistema de Gestão Comercial</title>
-        <meta name="description" content="Sistema completo de CRM e Gestão Comercial" />
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+      <body className="min-h-screen bg-background antialiased">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
           {children}
           <Toaster />
-          <AlertReminder
-            title="Relatório de Comissão"
-            description="Emitir relatório de comissão para Descartáveis Premium"
-            date="Vence hoje às 18:00"
-            type="deadline"
-            onDismiss={() => {}}
-            onPostpone={(minutes) => {}}
-          />
+          <ClientProviders />
         </ThemeProvider>
       </body>
     </html>
   )
 }
-
-
-
-import './globals.css'
-
-export const metadata = {
-      generator: 'v0.dev'
-    };
