@@ -211,7 +211,7 @@ export default function HomePage() {
           {/* Follow-ups */}
           <Card className="card-container">
             <CardHeader className="card-header">
-              <CardTitle className="card-title">Follow-ups</CardTitle>
+              <CardTitle className="card-title">Rotinas</CardTitle>
             </CardHeader>
             <CardContent className="card-content">
               <div className="flex flex-col gap-1">
