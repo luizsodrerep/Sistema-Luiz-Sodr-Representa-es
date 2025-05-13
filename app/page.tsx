@@ -27,6 +27,19 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <Button
+        variant="destructive"
+        size="sm"
+        className="absolute top-4 right-4"
+        onClick={() => {
+          // Opcional: limpar token/localStorage
+          localStorage.removeItem("authToken") // ou o nome da sua chave
+          router.push("/login")
+        }}
+      >
+        Sair
+      </Button>
+
       {/* Header com logotipo reduzido e botões em uma linha */}
       <div className="w-full bg-gradient-to-r from-primary/90 to-primary p-4 flex flex-col items-center justify-center">
         <div className="flex flex-col items-center justify-center mb-4">
@@ -225,9 +238,8 @@ export default function HomePage() {
                     key={i}
                     variant="outline"
                     size="sm"
-                    className={`w-full h-8 text-xxs flex-col items-start justify-start p-1 ${
-                      followup.urgente ? "border-red-400" : ""
-                    }`}
+                    className={`w-full h-8 text-xxs flex-col items-start justify-start p-1 ${followup.urgente ? "border-red-400" : ""
+                      }`}
                   >
                     <p className="font-medium truncate w-full">{followup.nome}</p>
                     <div className="flex justify-between w-full">

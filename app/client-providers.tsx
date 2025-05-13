@@ -1,19 +1,21 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { AlertReminder } from '@/app/components/alert-reminder'
-//import { usePostpone } from '@/hooks/use-postpone'
-//import { useDismiss } from '@/hooks/use-dismiss'
 
 export function ClientProviders() {
+  const pathname = usePathname()
+
   const handlePostpone = (minutes: number) => {
     console.log(`Adiado por ${minutes} minutos`)
-    // Lógica de adiamento aqui
   }
 
   const handleDismiss = () => {
     console.log('Lembrete dispensado')
-    // Lógica de dismiss aqui
   }
+
+  // Não mostrar o AlertReminder na tela de login
+  if (pathname === '/login') return null
 
   return (
     <AlertReminder

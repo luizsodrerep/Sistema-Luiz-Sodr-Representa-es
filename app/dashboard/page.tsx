@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -8,10 +8,35 @@ import { Button } from "@/components/ui/button"
 import { NavigationButtons } from "@/components/navigation-buttons"
 import { BarChart3, LineChart, PieChart, Target, TrendingUp, TrendingDown, Download } from "lucide-react"
 import Link from "next/link"
+import type { User } from '@/app/types/system';
+import { useRouter } from 'next/router';
 
 export default function DashboardPage() {
   const [periodoSelecionado, setPeriodoSelecionado] = useState("month")
   const [anoSelecionado, setAnoSelecionado] = useState("2023")
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    const userData = localStorage.getItem('user');
+
+    if (!token || !userData) {
+      router.push('/login');
+    } else {
+      setUser(JSON.parse(userData));
+      setLoading(false);
+    }
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col">

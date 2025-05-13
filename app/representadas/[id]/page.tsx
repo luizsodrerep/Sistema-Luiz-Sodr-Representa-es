@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import { AlertReminder } from '@/app/components/alert-reminder'
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
