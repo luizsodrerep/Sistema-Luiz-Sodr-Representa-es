@@ -22,7 +22,7 @@ export default function DashboardClient() {
     const userData = localStorage.getItem('user');
 
     if (!token || !userData) {
-      router.push('/login');
+      router.push('/');
     } else {
       setUser(JSON.parse(userData));
       setLoading(false);
@@ -40,7 +40,6 @@ export default function DashboardClient() {
   return (
     <div className="flex flex-col">
       <div className="flex-1 space-y-4 p-8 pt-6">
-        {/* Botões de navegação */}
         <NavigationButtons backLabel="Voltar para Home" />
 
         <div className="flex items-center justify-between space-y-2">

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
 import { BarChart3, Building2, Calendar, Filter, Mail, MessageSquare, Phone, Plus, Search, User } from "lucide-react"
 import Link from "next/link"
+import { NavigationButtons } from "@/components/navigation-buttons"
 
 export default function InteracoesPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -16,6 +17,8 @@ export default function InteracoesPage() {
 
   return (
     <PageLayout title="Interações">
+      <NavigationButtons backLabel="Voltar" backHref="/dashboard" />
+
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className="relative w-64">
