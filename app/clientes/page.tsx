@@ -2,7 +2,8 @@
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { NavigationButtons } from "@/components/navigation-buttons"
+//import { NavigationButtons } from "@/components/navigation-buttons"
+import SidebarLayout from "@/app/components/menu"
 import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
 import { Building2, MapPin, Phone, Plus, Search } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,117 +13,119 @@ export default function ClientesPage() {
   return (
     <div className="flex flex-col">
       <div className="flex-1 space-y-4 p-8 pt-6">
-        <div className="flex items-center justify-between space-y-2">
-          <NavigationButtons backLabel="Voltar" backHref="/dashboard" />
-          <h2 className="text-3xl font-bold tracking-tight">Clientes</h2>
-          <div className="flex items-center space-x-2">
-            {/* Componente de importação/exportação de planilhas */}
-            <SpreadsheetHandler moduleType="clientes" data={clientesData} />
+        <SidebarLayout>
+          <div className="flex items-center justify-between space-y-2">
+            {/* <NavigationButtons backLabel="Voltar" backHref="/dashboard" /> */}
+            <h2 className="text-3xl font-bold tracking-tight">Clientes</h2>
+            <div className="flex items-center space-x-2">
+              {/* Componente de importação/exportação de planilhas */}
+              <SpreadsheetHandler moduleType="clientes" data={clientesData} />
 
-            <Button size="sm" className="h-9 gap-1">
-              <Plus className="h-4 w-4" />
-              <span>Novo Cliente</span>
-            </Button>
-          </div>
-        </div>
-        <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
-          <div className="flex items-center gap-2">
-            <div className="relative w-full md:w-80">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input type="search" placeholder="Buscar clientes..." className="w-full bg-white pl-8 dark:bg-gray-950" />
+              <Button size="sm" className="h-9 gap-1">
+                <Plus className="h-4 w-4" />
+                <span>Novo Cliente</span>
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              Todos
-            </Button>
-            <Button variant="outline" size="sm">
-              Ativos
-            </Button>
-            <Button variant="outline" size="sm">
-              Inativos
-            </Button>
-            <Button variant="outline" size="sm">
-              Potenciais
-            </Button>
+          <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+            <div className="flex items-center gap-2">
+              <div className="relative w-full md:w-80">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input type="search" placeholder="Buscar clientes..." className="w-full bg-white pl-8 dark:bg-gray-950" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm">
+                Todos
+              </Button>
+              <Button variant="outline" size="sm">
+                Ativos
+              </Button>
+              <Button variant="outline" size="sm">
+                Inativos
+              </Button>
+              <Button variant="outline" size="sm">
+                Potenciais
+              </Button>
+            </div>
           </div>
-        </div>
-        <Card>
-          <CardHeader className="p-4">
-            <CardTitle>Lista de Clientes</CardTitle>
-            <CardDescription>Gerencie todos os seus clientes em um só lugar</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Contato</TableHead>
-                  <TableHead>Localização</TableHead>
-                  <TableHead>Última Compra</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clientesData.map((cliente) => (
-                  <TableRow key={cliente.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <div className="rounded-full bg-primary/10 p-2">
-                          <Building2 className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <div>{cliente.nome}</div>
-                          <div className="text-xs text-muted-foreground">{cliente.cnpj}</div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{cliente.categoria}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          <span className="text-sm">{cliente.telefone}</span>
-                        </div>
-                        <span className="text-xs text-muted-foreground">{cliente.responsavel}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        <span className="text-sm">
-                          {cliente.cidade}/{cliente.estado}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{cliente.ultimaCompra}</TableCell>
-                    <TableCell>
-                      <div
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cliente.status === "Ativo"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                          : cliente.status === "Inativo"
-                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                            : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                          }`}
-                      >
-                        {cliente.status}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link href={`/clientes/${cliente.id}`}>
-                        <Button variant="ghost" size="sm">
-                          Ver
-                        </Button>
-                      </Link>
-                    </TableCell>
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle>Lista de Clientes</CardTitle>
+              <CardDescription>Gerencie todos os seus clientes em um só lugar</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Empresa</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Contato</TableHead>
+                    <TableHead>Localização</TableHead>
+                    <TableHead>Última Compra</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {clientesData.map((cliente) => (
+                    <TableRow key={cliente.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <div className="rounded-full bg-primary/10 p-2">
+                            <Building2 className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <div>{cliente.nome}</div>
+                            <div className="text-xs text-muted-foreground">{cliente.cnpj}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{cliente.categoria}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            <span className="text-sm">{cliente.telefone}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{cliente.responsavel}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          <span className="text-sm">
+                            {cliente.cidade}/{cliente.estado}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{cliente.ultimaCompra}</TableCell>
+                      <TableCell>
+                        <div
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cliente.status === "Ativo"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                            : cliente.status === "Inativo"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                            }`}
+                        >
+                          {cliente.status}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link href={`/clientes/${cliente.id}`}>
+                          <Button variant="ghost" size="sm">
+                            Ver
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </SidebarLayout>
       </div>
     </div>
   )

@@ -1,29 +1,27 @@
 "use client"
 
+import Link from "next/link"
+import Image from "next/image"
+import { ChevronDown } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import SidebarLayout from "@/app/components/menu"
+import { useState, useRef, useEffect } from "react"
+import { SocialMediaSummary } from "@/components/social-media-summary"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   ArrowUpRight,
   BarChart3,
   Building2,
-  Calendar,
   CreditCard,
   DollarSign,
   MapPin,
   Users,
   MessageSquare,
   Instagram,
-  Home,
   Wallet,
   FileText,
 } from "lucide-react"
-import Link from "next/link"
-import Image from "next/image"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { SocialMediaSummary } from "@/components/social-media-summary"
-import { useRouter } from "next/navigation"
-import { useState, useRef, useEffect } from "react"
-import { ChevronDown } from "lucide-react"
-import SidebarLayout from "@/app/components/menu"
 
 export default function HomePage() {
   const router = useRouter()
@@ -42,17 +40,17 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      
+
       <div className="w-full h-72 bg-gradient-to-r from-primary/90 to-primary p-4 flex flex-col items-center justify-center">
         <Image
-            src="/images/logo-large.jpeg"
-            alt="Luiz Sodré Representações"
-            width={189}
-            height={94}
-            className="absolute top-6"
-          />
+          src="/images/logo-large.jpeg"
+          alt="Luiz Sodré Representações"
+          width={189}
+          height={94}
+          className="absolute top-6"
+        />
 
-          <h1 className="absolute top-56 text-white text-lg font-bold">Sistema de CRM e Gestão Comercial</h1>
+        <h1 className="absolute top-56 text-white text-lg font-bold">Sistema de CRM e Gestão Comercial</h1>
         <div className="flex flex-col items-center justify-center mb-4">
 
           <SidebarLayout>
@@ -92,9 +90,9 @@ export default function HomePage() {
               )}
 
             </div>
-          </SidebarLayout>          
+          </SidebarLayout>
 
-        </div>      
+        </div>
       </div>
       <div className="flex-1 p-4 bg-gray-50">
         <h2 className="text-lg font-bold text-primary mb-4">Visão Geral</h2>

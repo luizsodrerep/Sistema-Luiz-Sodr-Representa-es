@@ -41,7 +41,7 @@ export default function SidebarToggleLayout({ children }: { children: React.Reac
     <div className="flex min-h-screen">
 
       <Button
-        className="absolute top-4 left-4 z-20 p-2 rounded-md bg-Blue4-800 text-white hover:bg-Blue4-700"
+        className="absolute top-4 left-4 z-20 p-2 rounded-md bg-blue-800 text-white hover:bg-blue-700"
         onClick={() => setIsOpen(!isOpen)}
       >
         <List className="h-6 w-6" />
@@ -58,7 +58,7 @@ export default function SidebarToggleLayout({ children }: { children: React.Reac
             <Button
               key={i}
               variant="ghost"
-              className="flex justify-start items-center gap-2 text-sm hover:bg-Blue4-100"
+              className="flex justify-start items-center gap-2 text-sm hover:bg-blue-100"
               onClick={() => {
                 router.push(item.href)
                 setIsOpen(false)
