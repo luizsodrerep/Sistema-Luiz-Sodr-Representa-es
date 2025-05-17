@@ -1,16 +1,16 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Building2, Calendar, CircleDollarSign, Plus, Search } from "lucide-react"
 import Link from "next/link"
-import { NavigationButtons } from "@/components/navigation-buttons"
+import { useState } from "react"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { ShareButtons } from "@/components/share-buttons"
 import { SalesComparison } from "@/components/sales-comparison"
+import { NavigationButtons } from "@/components/navigation-buttons"
 import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
-import { useState } from "react"
+import { Building2, Calendar, CircleDollarSign, Plus, Search } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export default function VendasPage() {
   const [totalDifference, setTotalDifference] = useState(0)
@@ -183,7 +183,7 @@ export default function VendasPage() {
                           className={`text-xs font-medium ${Number(venda.valorFaturado.replace(".", "").replace(",", ".")) < Number(venda.valor.replace(".", "").replace(",", ".")) ? "text-red-500" : "text-green-500"}`}
                         >
                           {Number(venda.valorFaturado.replace(".", "").replace(",", ".")) <
-                          Number(venda.valor.replace(".", "").replace(",", "."))
+                            Number(venda.valor.replace(".", "").replace(",", "."))
                             ? `-R$ ${(Number(venda.valor.replace(".", "").replace(",", ".")) - Number(venda.valorFaturado.replace(".", "").replace(",", "."))).toFixed(2).replace(".", ",")}`
                             : `+R$ ${(Number(venda.valorFaturado.replace(".", "").replace(",", ".")) - Number(venda.valor.replace(".", "").replace(",", "."))).toFixed(2).replace(".", ",")}`}
                         </div>
@@ -194,15 +194,14 @@ export default function VendasPage() {
                     <TableCell>R$ {venda.comissao}</TableCell>
                     <TableCell>
                       <div
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          venda.status === "Faturado"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                            : venda.status === "Cancelado"
-                              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                              : venda.status === "Pendente"
-                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                                : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-                        }`}
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${venda.status === "Faturado"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                          : venda.status === "Cancelado"
+                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                            : venda.status === "Pendente"
+                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                              : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                          }`}
                       >
                         {venda.status}
                       </div>
@@ -251,30 +250,6 @@ const vendasData = [
     valorFaturado: "4.950,00",
     comissao: "495,00",
     pagamento: "30/60/90 dias",
-    status: "Faturado",
-  },
-  {
-    id: "12346",
-    cliente: "Supermercado Silva",
-    representada: "Embalagens Eco Ltda",
-    representadaId: "2",
-    data: "14/03/2023",
-    valor: "3.800,00",
-    valorFaturado: "3.800,00",
-    comissao: "380,00",
-    pagamento: "30 dias",
-    status: "Faturado",
-  },
-  {
-    id: "12347",
-    cliente: "Confeitaria Doce Sabor",
-    representada: "Papel & Cia",
-    representadaId: "3",
-    data: "12/03/2023",
-    valor: "1.200,00",
-    valorFaturado: "1.150,00",
-    comissao: "115,00",
-    pagamento: "À vista",
     status: "Faturado",
   },
   {
