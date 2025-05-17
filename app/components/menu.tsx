@@ -1,5 +1,8 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 import {
   BarChart3,
   Building2,
@@ -14,9 +17,6 @@ import {
   FileText,
   List,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
 
 export default function SidebarToggleLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -39,9 +39,8 @@ export default function SidebarToggleLayout({ children }: { children: React.Reac
   return (
 
     <div className="flex min-h-screen">
-
       <Button
-        className="absolute top-4 left-4 z-20 p-2 rounded-md bg-blue-800 text-white hover:bg-blue-700"
+        className="absolute top-4 left-4 z-20 p-4 rounded-md bg-blue-800 text-white hover:bg-blue-700"
         onClick={() => setIsOpen(!isOpen)}
       >
         <List className="h-6 w-6" />
@@ -49,10 +48,19 @@ export default function SidebarToggleLayout({ children }: { children: React.Reac
       </Button>
 
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-30 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed top-0 left-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-30 ${isOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
+        <div className="flex justify-end p-6">
+          <Button
+            //variant="ghost"
+            className="absolute top-4 left-4 p-4 text-blue-100 bg-blue-800 "
+            onClick={() => setIsOpen(false)}
+          >
+            <List className="h-6 w-6" />
+          </Button>
+        </div>
+
         <div className="p-4 flex flex-col gap-2">
           {menuItems.map((item, i) => (
             <Button
@@ -68,7 +76,7 @@ export default function SidebarToggleLayout({ children }: { children: React.Reac
               {item.name}
             </Button>
           ))}
-        </div>        
+        </div>
       </aside>
 
       <main className="flex-1 p-6 transition-all duration-300">
