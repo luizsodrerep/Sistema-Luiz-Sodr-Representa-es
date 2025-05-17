@@ -1,15 +1,16 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
-import { PageLayout } from "@/components/page-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar } from "@/components/ui/calendar"
+import { ptBR } from "date-fns/locale"
+import { format, isSameDay } from "date-fns"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar"
+import { PageLayout } from "@/components/page-layout"
 import { NavigationButtons } from "@/components/navigation-buttons"
 import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
-import { format, isSameDay } from "date-fns"
-import { ptBR } from "date-fns/locale"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Building2,
   CalendarIcon,
@@ -22,7 +23,6 @@ import {
   Users,
   Package,
 } from "lucide-react"
-import Link from "next/link"
 
 export default function AgendaPage() {
   const [date, setDate] = useState<Date>(new Date())
@@ -172,17 +172,17 @@ export default function AgendaPage() {
                 onMonthChange={setMonth}
                 locale={ptBR}
                 className="rounded-md border"
-                components={{
-                  Day: ({ day, displayValue }) => {
-                    const hasEvent = hasEventOnDay(day)
-                    return (
-                      <div className="relative">
-                        {hasEvent && <div className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-primary" />}
-                        {displayValue}
-                      </div>
-                    )
-                  },
-                }}
+                // components={{
+                //   Day: ({ day, displayValue }) => {
+                //     const hasEvent = hasEventOnDay(day)
+                //     return (
+                //       <div className="relative">
+                //         {hasEvent && <div className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-primary" />}
+                //         {displayValue}
+                //       </div>
+                //     )
+                //   },
+                // }}
               />
             </CardContent>
           </Card>
@@ -250,15 +250,14 @@ export default function AgendaPage() {
                   .map((evento) => (
                     <div key={evento.id} className="flex items-start gap-3 pb-3 border-b last:border-0">
                       <div
-                        className={`p-2 rounded-md ${
-                          evento.tipo === "visita"
+                        className={`p-2 rounded-md ${evento.tipo === "visita"
                             ? "bg-blue-100 text-blue-700"
                             : evento.tipo === "ligacao"
                               ? "bg-green-100 text-green-700"
                               : evento.tipo === "reuniao"
                                 ? "bg-purple-100 text-purple-700"
                                 : "bg-orange-100 text-orange-700"
-                        }`}
+                          }`}
                       >
                         {evento.tipo === "visita" && <User className="h-5 w-5" />}
                         {evento.tipo === "ligacao" && <Phone className="h-5 w-5" />}

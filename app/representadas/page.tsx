@@ -1,16 +1,16 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { NavigationButtons } from "@/components/navigation-buttons"
+import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2, Edit, Plus, Search, Target, Trash, TrendingUp } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import Link from "next/link"
-import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
 
 export default function RepresentadasPage() {
   const [anoSelecionado, setAnoSelecionado] = useState("2023")
@@ -109,11 +109,10 @@ export default function RepresentadasPage() {
                         <TableCell>{representada.email}</TableCell>
                         <TableCell>
                           <div
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                              representada.status === "Ativa"
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${representada.status === "Ativa"
                                 ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                                 : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                            }`}
+                              }`}
                           >
                             {representada.status}
                           </div>

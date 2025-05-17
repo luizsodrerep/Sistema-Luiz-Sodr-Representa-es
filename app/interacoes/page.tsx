@@ -1,15 +1,15 @@
 "use client"
 
-import { useState } from "react"
-import { PageLayout } from "@/components/page-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
-import { BarChart3, Building2, Calendar, Filter, Mail, MessageSquare, Phone, Plus, Search, User } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { PageLayout } from "@/components/page-layout"
 import { NavigationButtons } from "@/components/navigation-buttons"
+import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { BarChart3, Building2, Calendar, Filter, Mail, MessageSquare, Phone, Plus, Search, User } from "lucide-react"
 
 export default function InteracoesPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -137,13 +137,12 @@ export default function InteracoesPage() {
                       </div>
                       <div>
                         <span
-                          className={`px-1.5 py-0.5 rounded-full text-[8px] ${
-                            interacao.status === "Concluído"
+                          className={`px-1.5 py-0.5 rounded-full text-[8px] ${interacao.status === "Concluído"
                               ? "bg-green-100 text-green-800"
                               : interacao.status === "Aguardando Retorno"
                                 ? "bg-yellow-100 text-yellow-800"
                                 : "bg-blue-100 text-blue-800"
-                          }`}
+                            }`}
                         >
                           {interacao.status}
                         </span>

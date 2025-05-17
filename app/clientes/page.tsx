@@ -1,18 +1,19 @@
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Building2, MapPin, Phone, Plus, Search } from "lucide-react"
+
 import Link from "next/link"
-import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { NavigationButtons } from "@/components/navigation-buttons"
+import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
+import { Building2, MapPin, Phone, Plus, Search } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export default function ClientesPage() {
-  return (    
+  return (
     <div className="flex flex-col">
       <div className="flex-1 space-y-4 p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
-                <NavigationButtons backLabel="Voltar" backHref="/dashboard" />
+          <NavigationButtons backLabel="Voltar" backHref="/dashboard" />
           <h2 className="text-3xl font-bold tracking-tight">Clientes</h2>
           <div className="flex items-center space-x-2">
             {/* Componente de importação/exportação de planilhas */}
@@ -99,13 +100,12 @@ export default function ClientesPage() {
                     <TableCell>{cliente.ultimaCompra}</TableCell>
                     <TableCell>
                       <div
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          cliente.status === "Ativo"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                            : cliente.status === "Inativo"
-                              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                        }`}
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cliente.status === "Ativo"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                          : cliente.status === "Inativo"
+                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                            : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                          }`}
                       >
                         {cliente.status}
                       </div>

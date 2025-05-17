@@ -1,22 +1,23 @@
 "use client"
 
+import Link from "next/link"
 import type React from "react"
-
 import { useState } from "react"
-import { PageLayout } from "@/components/page-layout"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { cn } from "@/lib/utils"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
-import Link from "next/link"
+import { Calendar } from "@/components/ui/calendar"
+import { PageLayout } from "@/components/page-layout"
+import { NavigationButtons } from "@/components/navigation-buttons"
+import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   AlertCircle,
   ArrowUpCircle,
@@ -39,8 +40,6 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react"
-import { NavigationButtons } from "@/components/navigation-buttons"
-import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
 
 export default function ContabilidadePage() {
   const [date, setDate] = useState<Date | undefined>(new Date())
@@ -442,8 +441,7 @@ export default function ContabilidadePage() {
             {tiposImpostos.slice(0, 5).map((imposto) => (
               <div key={imposto.id} className="flex items-center gap-2">
                 <div
-                  className={`h-2 w-2 rounded-full ${
-                    imposto.id === "ISS"
+                  className={`h-2 w-2 rounded-full ${imposto.id === "ISS"
                       ? "bg-blue-500"
                       : imposto.id === "PIS"
                         ? "bg-green-500"
@@ -452,7 +450,7 @@ export default function ContabilidadePage() {
                           : imposto.id === "IRPJ"
                             ? "bg-red-500"
                             : "bg-yellow-500"
-                  }`}
+                    }`}
                 ></div>
                 <span className="text-xs text-muted-foreground">
                   {imposto.nome}: R$ {imposto.valor.toFixed(2)}
@@ -797,8 +795,7 @@ export default function ContabilidadePage() {
                   {tiposImpostos.map((imposto) => (
                     <div key={imposto.id} className="flex items-center">
                       <div
-                        className={`h-2 w-2 rounded-full ${
-                          imposto.id === "ISS"
+                        className={`h-2 w-2 rounded-full ${imposto.id === "ISS"
                             ? "bg-blue-500"
                             : imposto.id === "PIS"
                               ? "bg-green-500"
@@ -809,7 +806,7 @@ export default function ContabilidadePage() {
                                   : imposto.id === "CSLL"
                                     ? "bg-yellow-500"
                                     : "bg-gray-500"
-                        } mr-2`}
+                          } mr-2`}
                       />
                       <div className="flex-1 text-sm">
                         {imposto.nome} ({imposto.aliquota})

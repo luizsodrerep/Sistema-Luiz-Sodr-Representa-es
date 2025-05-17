@@ -1,15 +1,24 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
-import { PageLayout } from "@/components/page-layout"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { toast } from "@/components/ui/use-toast"
+import { Calendar } from "@/components/ui/calendar"
+import { PageLayout } from "@/components/page-layout"
+import { NavigationButtons } from "@/components/navigation-buttons"
+import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -19,13 +28,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { format } from "date-fns"
-import { ptBR } from "date-fns/locale"
-import { cn } from "@/lib/utils"
-import { toast } from "@/components/ui/use-toast"
-import Link from "next/link"
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -46,8 +48,6 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react"
-import { NavigationButtons } from "@/components/navigation-buttons"
-import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
 
 export default function FinanceiroPage() {
   const [date, setDate] = useState<Date | undefined>(new Date())
@@ -92,28 +92,6 @@ export default function FinanceiroPage() {
     },
     {
       id: 3,
-      descricao: "Comissão Papel & Cia",
-      cliente: "Papel & Cia",
-      valor: 4500.0,
-      vencimento: "2023-04-20",
-      status: "pendente",
-      categoria: "comissao",
-      origem: "vendas",
-      documento: "NF-003",
-    },
-    {
-      id: 4,
-      descricao: "Comissão Plásticos Nobre",
-      cliente: "Plásticos Nobre",
-      valor: 6200.0,
-      vencimento: "2023-03-15",
-      status: "recebido",
-      categoria: "comissao",
-      origem: "vendas",
-      documento: "NF-004",
-    },
-    {
-      id: 5,
       descricao: "Consultoria ABC Ltda",
       cliente: "ABC Consultoria",
       valor: 2500.0,
@@ -124,7 +102,7 @@ export default function FinanceiroPage() {
       documento: "NF-005",
     },
     {
-      id: 6,
+      id: 4,
       descricao: "Treinamento XYZ Corp",
       cliente: "XYZ Corporation",
       valor: 3800.0,

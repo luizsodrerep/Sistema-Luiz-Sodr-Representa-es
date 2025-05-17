@@ -1,15 +1,17 @@
-import { PageLayout } from "@/components/page-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Bell, Cloud, Database, Lock, Shield, User } from "lucide-react"
-import { NavigationButtons } from "@/components/navigation-buttons"
-import { GoogleCalendarIntegration } from "@/components/google-calendar-integration"
+import { PageLayout } from "@/components/page-layout"
 import { ReminderSettings } from "@/components/reminder-settings"
+import { NavigationButtons } from "@/components/navigation-buttons"
+import { Bell, Cloud, Database, Lock, Shield, User } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { GoogleCalendarIntegration } from "@/components/google-calendar-integration"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function ConfiguracoesPage() {
   return (
@@ -544,13 +546,12 @@ export default function ConfiguracoesPage() {
                       <div className="flex items-center">{usuario.cargo}</div>
                       <div className="flex items-center">
                         <span
-                          className={`px-1.5 py-0.5 rounded-full text-[8px] ${
-                            usuario.perfil === "Administrador"
+                          className={`px-1.5 py-0.5 rounded-full text-[8px] ${usuario.perfil === "Administrador"
                               ? "bg-primary/10 text-primary"
                               : usuario.perfil === "Gerente"
                                 ? "bg-secondary/10 text-secondary"
                                 : "bg-muted text-muted-foreground"
-                          }`}
+                            }`}
                         >
                           {usuario.perfil}
                         </span>

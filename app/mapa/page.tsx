@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 import { Building2, MapPin, Search } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function MapaClientesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
@@ -140,11 +140,10 @@ export default function MapaClientesPage() {
                     <div className="flex items-center justify-between">
                       <p className="font-medium">Cliente {i}</p>
                       <div
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          i % 3 === 0
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${i % 3 === 0
                             ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
                             : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                        }`}
+                          }`}
                       >
                         {i % 3 === 0 ? "Potencial" : "Ativo"}
                       </div>
