@@ -133,7 +133,7 @@ export default function DashboardClient() {
                   <span>R$ 152.380,45 / R$ 180.000,00</span>
                 </div>
                 <div className="mt-1 h-2 w-full rounded-full bg-muted">
-                  <div className="h-2 rounded-full bg-primary" style={{ width: "84.7%" }} />
+                  {/* <div className="h-2 rounded-full bg-primary" style={{ width: "84.7%" }} /> */}
                 </div>
               </div>
             </CardContent>
@@ -256,12 +256,12 @@ export default function DashboardClient() {
                         </span>
                       </div>
                       <div className="h-2 w-full rounded-full bg-muted">
-                        <div
+                        {/* <div
                           className={`h-2 rounded-full ${
                             rep.progresso >= 80 ? "bg-green-500" : rep.progresso >= 60 ? "bg-yellow-500" : "bg-red-500"
                           }`}
                           style={{ width: `${rep.progresso}%` }}
-                        />
+                        /> */}
                       </div>
                     </div>
                   ))}
@@ -319,7 +319,7 @@ export default function DashboardClient() {
                           </span>
                         </div>
                         <div className="h-2 w-full rounded-full bg-muted">
-                          <div
+                          {/* <div
                             className={`h-2 rounded-full ${
                               rep.progresso >= 80
                                 ? "bg-green-500"
@@ -328,7 +328,7 @@ export default function DashboardClient() {
                                   : "bg-red-500"
                             }`}
                             style={{ width: `${rep.progresso}%` }}
-                          />
+                          /> */}
                         </div>
                       </div>
 

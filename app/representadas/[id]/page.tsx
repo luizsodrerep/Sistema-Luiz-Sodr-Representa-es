@@ -751,7 +751,7 @@ export default function RepresentadaDetalhesPage({ params }: { params: { id: str
                 <div className="space-y-2">
                   <h3 className="text-sm font-medium">Progresso Anual</h3>
                   <div className="h-2 w-full rounded-full bg-muted">
-                    <div className="h-2 rounded-full bg-primary" style={{ width: "23.9%" }} />
+                    {/* <div className="h-2 rounded-full bg-primary" style={{ width: "23.9%" }} /> */}
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>R$ 229.250,00</span>

@@ -205,10 +205,10 @@ export default function RepresentadasPage() {
                           <span className="text-sm">{representada.percentualMeta}%</span>
                         </div>
                         <div className="h-2 w-full rounded-full bg-muted">
-                          <div
+                          {/* <div
                             className="h-2 rounded-full bg-primary"
                             style={{ width: `${representada.percentualMeta}%` }}
-                          />
+                          /> */}
                         </div>
                       </div>
                     </div>
