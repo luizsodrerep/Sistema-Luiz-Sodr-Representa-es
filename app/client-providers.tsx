@@ -15,16 +15,20 @@ export function ClientProviders() {
   }
 
   // Não mostrar o AlertReminder na tela de login
-  if (pathname === '/login') return null
+  //if (pathname === '/login' || pathname === '/change-password') return null
+
+  if (pathname !== '/') return null
 
   return (
-    <AlertReminder
-      title="Relatório de Comissão"
-      description="Emitir relatório de comissão para Descartáveis Premium"
-      date="Vence hoje às 18:00"
-      type="deadline"
-      onDismiss={handleDismiss}
-      onPostpone={handlePostpone}
-    />
+    <div className="fixed bottom-6 right-6 z-30">
+      <AlertReminder
+        title="Relatório de Comissão"
+        description="Emitir relatório de comissão para Descartáveis Premium"
+        date="Vence hoje às 18:00"
+        type="deadline"
+        onDismiss={handleDismiss}
+        onPostpone={handlePostpone}
+      />
+    </div>
   )
 }

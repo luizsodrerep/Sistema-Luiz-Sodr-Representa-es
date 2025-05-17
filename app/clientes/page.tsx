@@ -5,12 +5,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Building2, MapPin, Phone, Plus, Search } from "lucide-react"
 import Link from "next/link"
 import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
+import { NavigationButtons } from "@/components/navigation-buttons"
 
 export default function ClientesPage() {
-  return (
+  return (    
     <div className="flex flex-col">
       <div className="flex-1 space-y-4 p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
+                <NavigationButtons backLabel="Voltar" backHref="/dashboard" />
           <h2 className="text-3xl font-bold tracking-tight">Clientes</h2>
           <div className="flex items-center space-x-2">
             {/* Componente de importação/exportação de planilhas */}

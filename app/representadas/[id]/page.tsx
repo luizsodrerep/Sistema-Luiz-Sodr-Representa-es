@@ -1,17 +1,20 @@
 "use client"
 
+import Link from "next/link"
 import type React from "react"
-import { AlertReminder } from '@/app/components/alert-reminder'
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { NavigationButtons } from "@/components/navigation-buttons"
+import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
+import { toast } from "@/components/ui/use-toast"
+import { Textarea } from "@/components/ui/textarea"
+import { ContactButton } from "@/components/contact-buttons"
+import { NavigationButtons } from "@/components/navigation-buttons"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   BarChart3,
   Calendar,
@@ -32,10 +35,6 @@ import {
   FileCheck,
   LineChart,
 } from "lucide-react"
-import Link from "next/link"
-import { toast } from "@/components/ui/use-toast"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ContactButton } from "@/components/contact-buttons"
 
 export default function RepresentadaDetalhesPage({ params }: { params: { id: string } }) {
   const [isEditing, setIsEditing] = useState(false)

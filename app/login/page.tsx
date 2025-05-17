@@ -19,6 +19,7 @@ export default function LoginPage() {
     }, [])
 
     const handleLogin = async (e: React.FormEvent) => {
+        
         e.preventDefault();
 
         if (email === 'admin@email.com' && password === 'Syst3m123') {

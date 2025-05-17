@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 
 export default function ChangePasswordPage() {
   const [email, setEmail] = useState('')
-  const [message, setMessage] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -17,9 +16,7 @@ export default function ChangePasswordPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-
-    // Simula envio (poderia ser uma chamada de API)
-    setMessage('Um link de redefinição foi enviado para seu e-mail.')
+    // Aqui pode ir sua lógica de envio real
   }
 
   return (
@@ -41,8 +38,6 @@ export default function ChangePasswordPage() {
               required
             />
           </div>
-
-          {message && <p className="text-green-600 text-xs">{message}</p>}
 
           <div className="flex justify-center gap-2 mt-4">
             <button

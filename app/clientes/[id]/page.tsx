@@ -1,11 +1,22 @@
 "use client"
 
-import type React from "react"
 
+import Link from "next/link"
+import type React from "react"
+import { use } from "react"
+import { cn } from "@/lib/utils"
 import { useState } from "react"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast } from "@/components/ui/use-toast"
+import { ShareButtons } from "@/components/share-buttons"
+import { ContactButton } from "@/components/contact-buttons"
+import { NavigationButtons } from "@/components/navigation-buttons"
+import { ContactButtonsGroup } from "@/components/contact-buttons-group"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Calendar,
   CircleDollarSign,
@@ -21,25 +32,16 @@ import {
   Video,
   Save,
 } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { NavigationButtons } from "@/components/navigation-buttons"
-import { ShareButtons } from "@/components/share-buttons"
-import { toast } from "@/components/ui/use-toast"
-import Link from "next/link"
-import { ContactButton } from "@/components/contact-buttons"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
-import { ContactButtonsGroup } from "@/components/contact-buttons-group"
 
-export default function ClienteDetalhesPage({ params }: { params: { id: string } }) {
+export default function ClienteDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState<any>(null)
+  const { id } = use(params)
 
   // Na implementação real, buscaríamos os dados do cliente com base no ID
   const cliente = {
-    id: params.id,
+    //id: params.id,
     nome: "Distribuidora ABC Ltda",
     nomeFantasia: "ABC Distribuidora",
     cnpj: "12.345.678/0001-90",
@@ -204,20 +206,18 @@ export default function ClienteDetalhesPage({ params }: { params: { id: string }
   return (
     <div className="flex flex-col">
       <div className="flex-1 space-y-4 p-8 pt-6">
-        {/* Botões de navegação */}
-        <NavigationButtons backLabel="Voltar para Clientes" />
+        <NavigationButtons backLabel="Voltar para Clientes" backHref="/clientes" />
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-3xl font-bold tracking-tight">{cliente.nome}</h2>
             <div
-              className={`ml-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                cliente.status === "Ativo"
+              className={`ml-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cliente.status === "Ativo"
                   ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                   : cliente.status === "Inativo"
                     ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
                     : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-              }`}
+                }`}
             >
               {cliente.status === "Inativo" ? `${cliente.status} há ${cliente.diasInativo} dias` : cliente.status}
             </div>
@@ -617,7 +617,7 @@ export default function ClienteDetalhesPage({ params }: { params: { id: string }
                             <ShareButtons
                               fileUrl={`/pedidos/${venda.id}.pdf`}
                               fileName={`Pedido_${venda.id}.pdf`}
-                              clientId={cliente.id}
+                              //clientId={cliente.id}
                               clientName={cliente.nome}
                               orderId={venda.id}
                               orderInfo={`${venda.valor} - ${venda.representada}`}
@@ -888,7 +888,7 @@ export default function ClienteDetalhesPage({ params }: { params: { id: string }
                         <ShareButtons
                           fileUrl={`/pedidos/${venda.id}.pdf`}
                           fileName={`Pedido_${venda.id}.pdf`}
-                          clientId={cliente.id}
+                          //clientId={cliente.id}
                           clientName={cliente.nome}
                           orderId={venda.id}
                           orderInfo={`${venda.valor} - ${venda.representada}`}
