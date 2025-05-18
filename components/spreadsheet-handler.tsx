@@ -3,6 +3,10 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { toast } from "@/components/ui/use-toast"
+import { Progress } from "@/components/ui/progress"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { FileSpreadsheet, Upload, Download, FileUp, FileDown, CheckCircle, AlertCircle } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   Dialog,
@@ -12,10 +16,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Progress } from "@/components/ui/progress"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { FileSpreadsheet, Upload, Download, FileUp, FileDown, CheckCircle, AlertCircle } from "lucide-react"
-import { toast } from "@/components/ui/use-toast"
 
 interface SpreadsheetHandlerProps {
   moduleType: string
@@ -28,7 +28,6 @@ export function SpreadsheetHandler({ moduleType, data }: SpreadsheetHandlerProps
   const [importProgress, setImportProgress] = useState(0)
   const [importStatus, setImportStatus] = useState<"idle" | "processing" | "success" | "error">("idle")
   const [importErrors, setImportErrors] = useState<string[]>([])
-  const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx")
 
   const downloadTemplate = async (format: "xlsx" | "csv") => {
     try {
@@ -135,6 +134,13 @@ export function SpreadsheetHandler({ moduleType, data }: SpreadsheetHandlerProps
     }
   }
 
+  const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx");
+
+  const exportOptions = [
+    { label: "Exportar como XLSX", format: "xlsx" },
+    { label: "Exportar como CSV", format: "csv" },
+  ] as const;
+
   return (
     <div className="flex items-center space-x-2">
       <DropdownMenu>
@@ -167,27 +173,24 @@ export function SpreadsheetHandler({ moduleType, data }: SpreadsheetHandlerProps
             <span>Exportar</span>
           </Button>
         </DropdownMenuTrigger>
+
         <DropdownMenuContent>
-          <DropdownMenuItem
-            onClick={() => {
-              setExportFormat("xlsx")
-              setIsExportDialogOpen(true)
-            }}
-          >
-            <FileDown className="mr-2 h-4 w-4" />
-            <span>Exportar como XLSX</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              setExportFormat("csv")
-              setIsExportDialogOpen(true)
-            }}
-          >
-            <FileDown className="mr-2 h-4 w-4" />
-            <span>Exportar como CSV</span>
-          </DropdownMenuItem>
+          {exportOptions.map(({ label, format }) => (
+            <DropdownMenuItem
+              key={format}
+              onClick={() => {
+                setExportFormat(format);
+                setIsExportDialogOpen(true);
+              }}
+              className="flex items-center"
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              <span>{label}</span>
+            </DropdownMenuItem>
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
 
       <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
         <DialogContent className="sm:max-w-md">

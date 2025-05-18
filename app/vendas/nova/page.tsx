@@ -17,7 +17,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function NovaVendaPage() {
+  const [total, setTotal] = useState(0)
+  const [subtotal, setSubtotal] = useState(0)
+  const [comissao, setComissao] = useState(0)
   const [produtos, setProdutos] = useState<any[]>([])
+
   const [formData, setFormData] = useState({
     cliente: "",
     clienteId: "",
@@ -30,10 +34,6 @@ export default function NovaVendaPage() {
     frete: "0",
     desconto: "0",
   })
-
-  const [subtotal, setSubtotal] = useState(0)
-  const [total, setTotal] = useState(0)
-  const [comissao, setComissao] = useState(0)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -130,7 +130,7 @@ export default function NovaVendaPage() {
   return (
     <SidebarLayout>
       <PageLayout title="Nova Venda">
-        <NavigationButtons backLabel="Voltar para Vendas" />
+        <NavigationButtons backLabel="Voltar para Vendas" backHref="/vendas" />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { MapPin, Phone, Mail, Save } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { NavigationButtons } from "@/components/navigation-buttons"
 
 export default function NovoClientePage() {
   const [formData, setFormData] = useState({
@@ -26,7 +27,7 @@ export default function NovoClientePage() {
         <SidebarLayout>
           {/* Botões de navegação */}
           {/* <NavigationButtons backLabel="Voltar para Clientes" /> */}
-
+          <NavigationButtons backLabel="Voltar para Clientes" backHref="/clientes"/>
           <div className="flex items-center justify-between space-y-2">
             <h2 className="text-3xl font-bold tracking-tight">Novo Cliente</h2>
           </div>

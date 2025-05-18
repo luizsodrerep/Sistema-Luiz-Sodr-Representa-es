@@ -1,9 +1,10 @@
 "use client"
 
 
+import { use } from "react"
 import Link from "next/link"
 import type React from "react"
-import { use } from "react"
+import { useRef } from "react";
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -31,6 +32,7 @@ import {
   Image,
   Video,
   Save,
+  Plus,
 } from "lucide-react"
 
 export default function ClienteDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
@@ -186,11 +188,11 @@ export default function ClienteDetalhesPage({ params }: { params: Promise<{ id: 
   }
 
   // Função para lidar com o upload de arquivo
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0])
-    }
-  }
+  // const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (e.target.files && e.target.files[0]) {
+  //     setSelectedFile(e.target.files[0])
+  //   }
+  // }
 
   const handleFileUpload = () => {
     // Aqui seria implementada a lógica para enviar o arquivo para o servidor
@@ -203,6 +205,20 @@ export default function ClienteDetalhesPage({ params }: { params: Promise<{ id: 
     }
   }
 
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleButtonClick = () => {
+    inputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      console.log("Arquivo PDF selecionado:", file.name);
+      // 👉 Aqui você pode fazer upload ou leitura do arquivo
+    }
+  };
+
   return (
     <div className="flex flex-col">
       <div className="flex-1 space-y-4 p-8 pt-6">
@@ -213,10 +229,10 @@ export default function ClienteDetalhesPage({ params }: { params: Promise<{ id: 
             <h2 className="text-3xl font-bold tracking-tight">{cliente.nome}</h2>
             <div
               className={`ml-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cliente.status === "Ativo"
-                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                  : cliente.status === "Inativo"
-                    ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                    : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                : cliente.status === "Inativo"
+                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                  : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
                 }`}
             >
               {cliente.status === "Inativo" ? `${cliente.status} há ${cliente.diasInativo} dias` : cliente.status}
@@ -761,10 +777,12 @@ export default function ClienteDetalhesPage({ params }: { params: Promise<{ id: 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-base">Histórico de Interações</CardTitle>
-                <Button size="sm" className="gap-1">
-                  <MessageSquare className="h-4 w-4" />
-                  <span>Nova Interação</span>
-                </Button>
+                <Link href="/interacoes/nova">
+                  <Button size="sm" className="gap-1">
+                    <Plus className="h-3 w-3" />
+                    Nova Interação
+                  </Button>
+                </Link>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -811,14 +829,34 @@ export default function ClienteDetalhesPage({ params }: { params: Promise<{ id: 
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-base">Histórico de Vendas</CardTitle>
                 <div className="flex gap-2">
-                  <Button size="sm" className="gap-1">
-                    <CircleDollarSign className="h-4 w-4" />
-                    <span>Nova Venda</span>
-                  </Button>
-                  <Button variant="outline" size="sm" className="gap-1">
-                    <Upload className="h-4 w-4" />
-                    <span>Importar PDF</span>
-                  </Button>
+
+                  <Link href="/vendas/nova">
+                    <Button size="sm" className=" gap-1">
+                      <CircleDollarSign className="h-4 w-4" />
+                      <span>Nova Venda</span>
+                    </Button>
+                  </Link>
+
+                  <>
+                    <input
+                      ref={inputRef}
+                      type="file"
+                      accept="application/pdf"
+                      onChange={handleFileChange}
+                      className="hidden"
+                      title="Selecionar PDF"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={handleButtonClick}
+                    >
+                      <Upload className="h-4 w-4" />
+                      <span>Importar PDF</span>
+                    </Button>
+                  </>
+
                 </div>
               </CardHeader>
               <CardContent>
@@ -920,10 +958,23 @@ export default function ClienteDetalhesPage({ params }: { params: Promise<{ id: 
                   <CardTitle>Documentos</CardTitle>
                   <CardDescription>Documentos e arquivos relacionados ao cliente</CardDescription>
                 </div>
-                <Button size="sm" className="gap-1">
-                  <Upload className="h-4 w-4" />
-                  <span>Adicionar Documento</span>
-                </Button>
+
+                <>
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    accept=".pdf, .jpg, .jpeg, .png"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    aria-label="Selecionar documento"
+                  />
+
+                  <Button size="sm" className="gap-1" onClick={handleButtonClick}>
+                    <Upload className="h-4 w-4" />
+                    <span>Adicionar Documento</span>
+                  </Button>
+                </>
+
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

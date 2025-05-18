@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import SidebarLayout from "@/app/components/menu"
 import { ShareButtons } from "@/components/share-buttons"
 import { SalesComparison } from "@/components/sales-comparison"
-import { NavigationButtons } from "@/components/navigation-buttons"
 import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
 import { Building2, Calendar, CircleDollarSign, Plus, Search } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,10 +25,10 @@ export default function VendasPage() {
       venda.id.toLowerCase().includes(termo) ||
       venda.cliente.toLowerCase().includes(termo) ||
       venda.representada.toLowerCase().includes(termo);
-      venda.valor.toLowerCase().includes(termo);      
-      
+    venda.valor.toLowerCase().includes(termo);
+
     const matchStatus =
-      statusFiltro === "Todos" || venda.status === filtroStatus;
+      statusFiltro === "Todos" || venda.status === statusFiltro;
 
     return matchTexto && matchStatus;
   });
@@ -52,7 +51,7 @@ export default function VendasPage() {
               {/* Componente de importação/exportação de planilhas */}
               <SpreadsheetHandler moduleType="vendas" data={vendasData} />
 
-              <Link href="/vendas/novo">
+              <Link href="/vendas/nova">
                 <Button size="sm" className="h-9 gap-1">
                   <Plus className="h-4 w-4" />
                   <span>Nova Venda</span>
