@@ -1,7 +1,6 @@
-// app/pagebase/login.tsx
+
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import Image from 'next/image';
 import type { AuthCredentials, User } from '@/app/types/system';
 
 export default function LoginPage() {

@@ -1,8 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 const publicRoutes = ['/login'];
 

@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button"
 import SidebarLayout from "@/app/components/menu"
 import { Textarea } from "@/components/ui/textarea"
 import { MapPin, Phone, Mail, Save } from "lucide-react"
+import { NavigationButtons } from "@/components/navigation-buttons"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { NavigationButtons } from "@/components/navigation-buttons"
 
 export default function NovoClientePage() {
   const [formData, setFormData] = useState({

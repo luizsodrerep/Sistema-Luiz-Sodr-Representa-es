@@ -1,10 +1,11 @@
+
 "use client"
 
+import { cn } from "@/lib/utils"
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Bell, X, Clock } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 
 interface AlertReminderProps {
   title: string

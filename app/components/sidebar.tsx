@@ -1,4 +1,7 @@
-// Importar os ícones necessários
+
+
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 import {
   BarChart3,
   Building2,
@@ -13,8 +16,6 @@ import {
   Users,
   Wallet,
 } from "lucide-react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
 
 export function Sidebar() {
   return (

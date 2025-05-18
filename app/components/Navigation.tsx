@@ -1,7 +1,8 @@
-// app/components/Navigation.tsx
+
+
 import { useRouter } from 'next/router';
-import type { MenuItem, User } from '@/app/types/system';
 import { useEffect, useState } from 'react';
+import type { MenuItem, User } from '@/app/types/system';
 
 const menuItems: MenuItem[] = [
   { name: 'Dashboard', icon: '📊', href: "/dashboard", permissions: ['all'] },

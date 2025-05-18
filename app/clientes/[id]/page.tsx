@@ -1,5 +1,5 @@
-"use client"
 
+"use client"
 
 import { use } from "react"
 import Link from "next/link"
@@ -971,7 +971,7 @@ export default function ClienteDetalhesPage({ params }: { params: Promise<{ id: 
 
                   <Button size="sm" className="gap-1" onClick={handleButtonClick}>
                     <Upload className="h-4 w-4" />
-                    <span>Adicionar Documento</span>
+                    <span>Adicionar Documentos</span>
                   </Button>
                 </>
 

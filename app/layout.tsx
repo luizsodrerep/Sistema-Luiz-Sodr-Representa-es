@@ -1,11 +1,12 @@
+
+import '@/app/globals.css'
 import type { Metadata } from 'next'
-import { ThemeProvider } from '@/components/theme-provider'
+import { BodyWrapper } from './BodyWrapper'
 import { Toaster } from '@/components/ui/toaster'
 import { ClientProviders } from './client-providers'
-import '@/app/globals.css'
 import { AuthProvider } from '@/app/context/AuthContext'
+import { ThemeProvider } from '@/components/theme-provider'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
-import { BodyWrapper } from './BodyWrapper' // 👈 importa aqui
 
 export const metadata: Metadata = {
   title: 'CRM e Sistema de Gestão Comercial',

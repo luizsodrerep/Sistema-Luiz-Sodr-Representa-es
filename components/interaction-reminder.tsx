@@ -1,17 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { BellRing, CalendarIcon, Check, Clock, MessageSquare, Phone, User } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
-import { cn } from "@/lib/utils"
+import { Calendar } from "@/components/ui/calendar"
+import { Textarea } from "@/components/ui/textarea"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { BellRing, CalendarIcon, Check, Clock, MessageSquare, Phone, User } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface InteractionReminderProps {
   clientId?: string

@@ -1,16 +1,16 @@
 "use client"
 
+import Link from "next/link"
 import type React from "react"
-
 import { useState } from "react"
-import { PageLayout } from "@/components/page-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { PageLayout } from "@/components/page-layout"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   BarChart3,
   Building2,
@@ -31,7 +31,6 @@ import {
   FileText,
   Send,
 } from "lucide-react"
-import Link from "next/link"
 
 export default function InteracoesAIPage() {
   const [searchTerm, setSearchTerm] = useState("")

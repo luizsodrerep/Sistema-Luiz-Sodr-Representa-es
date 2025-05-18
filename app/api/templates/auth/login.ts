@@ -1,8 +1,9 @@
+
 // pages/api/auth/login.ts
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { sign } from 'jsonwebtoken';
 import { compare } from 'bcryptjs';
+import { sign } from 'jsonwebtoken';
 import { User } from '@/app/types/system';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 // Dados mockados - substituir por consulta ao banco de dados
 const mockUsers: User[] = [

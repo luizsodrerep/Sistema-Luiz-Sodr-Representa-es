@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import type { User } from '@/app/types/system';
+import type { User } from '@/app/types/system'
 import { Button } from "@/components/ui/button"
 import { NavigationButtons } from "@/components/navigation-buttons"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"

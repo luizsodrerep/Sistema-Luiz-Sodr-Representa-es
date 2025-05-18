@@ -2,8 +2,11 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname } from "next/navigation"
 import { useState } from "react"
+import { cn } from "@/lib/utils"
+import { usePathname } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import {
   BarChart3,
   Building2,
@@ -16,9 +19,6 @@ import {
   Settings,
   Users,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 export function Sidebar() {
   const pathname = usePathname()

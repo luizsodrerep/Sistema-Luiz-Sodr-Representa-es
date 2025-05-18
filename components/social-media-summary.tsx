@@ -1,8 +1,17 @@
 "use client"
 
-import { Instagram, Linkedin, Facebook, Twitter, TrendingUp, Heart, MessageCircle, Share2 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import {
+  Instagram,
+  Linkedin,
+  Facebook,
+  Twitter,
+  TrendingUp,
+  Heart,
+  MessageCircle,
+  Share2
+} from "lucide-react"
 
 export function SocialMediaSummary() {
   // Dados simulados para o resumo de redes sociais

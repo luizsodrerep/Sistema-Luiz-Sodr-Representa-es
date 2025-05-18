@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { NavigationButtons } from "@/components/navigation-buttons"
+import { Button } from "@/components/ui/button"
 import { Edit, Mail, Phone, Save, User } from "lucide-react"
+import { NavigationButtons } from "@/components/navigation-buttons"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function UsuarioDetalhesPage() {
   const [isEditing, setIsEditing] = useState(false)

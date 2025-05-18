@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, RefreshCw, X } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { Calendar, RefreshCw, X } from "lucide-react"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface GoogleCalendarIntegrationProps {
   userId?: string

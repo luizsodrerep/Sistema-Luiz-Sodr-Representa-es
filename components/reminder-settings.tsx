@@ -1,14 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BellRing, Clock, Save } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
+import { BellRing, Clock, Save } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
 export function ReminderSettings() {
   const [settings, setSettings] = useState({

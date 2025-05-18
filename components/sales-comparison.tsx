@@ -1,14 +1,14 @@
 "use client"
 
+import Link from "next/link"
+import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ArrowDown, ArrowUp, BarChart3, Download, Filter, TrendingDown } from "lucide-react"
-import { cn } from "@/lib/utils"
-import Link from "next/link"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Modificar a interface SalesComparisonProps para incluir uma propriedade para atualizar o dashboard
 interface SalesComparisonProps {

@@ -1,8 +1,8 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Mail, MessageSquare, Phone, ExternalLink, Calendar } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { Mail, MessageSquare, Phone, ExternalLink, Calendar } from "lucide-react"
 
 export type ContactType = "whatsapp" | "email" | "phone" | "map" | "visit"
 
