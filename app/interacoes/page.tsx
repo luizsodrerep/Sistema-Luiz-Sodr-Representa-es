@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import SidebarLayout from "@/app/components/menu"
 import { PageLayout } from "@/components/page-layout"
-import { NavigationButtons } from "@/components/navigation-buttons"
 import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,12 +13,12 @@ import { BarChart3, Building2, Calendar, Filter, Mail, MessageSquare, Phone, Plu
 
 export default function InteracoesPage() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterType, setFilterType] = useState<string>("all")
+  //const [filterType, setFilterType] = useState<string>("all")
 
   return (
     <SidebarLayout>
       <PageLayout title="Interações">
-        <NavigationButtons backLabel="Voltar" backHref="/dashboard" />
+        {/* <NavigationButtons backLabel="Voltar" backHref="/dashboard" /> */}
 
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
@@ -97,70 +96,71 @@ export default function InteracoesPage() {
                     <div className="text-right">Ações</div>
                   </div>
 
-                  {interacoesData
-                    .filter(
-                      (interacao) =>
-                        searchTerm === "" ||
-                        interacao.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        interacao.descricao.toLowerCase().includes(searchTerm.toLowerCase()),
-                    )
-                    .map((interacao, i) => (
-                      <div key={i} className="grid grid-cols-7 text-xxs p-1 border-t">
-                        <div className="flex items-center gap-1">
-                          <Building2 className="h-3 w-3 text-primary" />
-                          <Link href={`/clientes/${interacao.clienteId}`} className="hover:underline">
-                            <span className="truncate">{interacao.cliente}</span>
-                          </Link>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {interacao.tipo === "WhatsApp" && <MessageSquare className="h-3 w-3 text-green-500" />}
-                          {interacao.tipo === "E-mail" && <Mail className="h-3 w-3 text-blue-500" />}
-                          {interacao.tipo === "Visita" && <User className="h-3 w-3 text-orange-500" />}
-                          {interacao.tipo === "Ligação" && <Phone className="h-3 w-3 text-purple-500" />}
-                          <span>{interacao.tipo}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3 text-muted-foreground" />
-                          <span>{interacao.data}</span>
-                        </div>
-                        <div>
-                          <Link href={`/usuarios/${interacao.responsavelId}`} className="hover:underline">
-                            {interacao.responsavel}
-                          </Link>
-                        </div>
-                        <div className="truncate">
-                          <Link
-                            href={`/representadas/${interacao.representadaId}`}
-                            className="hover:underline text-primary"
-                          >
-                            {interacao.representada}
-                          </Link>
-                          : {interacao.descricao}
-                        </div>
-                        <div>
-                          <span
-                            className={`px-1.5 py-0.5 rounded-full text-[8px] ${interacao.status === "Concluído"
-                              ? "bg-green-100 text-green-800"
-                              : interacao.status === "Aguardando Retorno"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-blue-100 text-blue-800"
-                              }`}
-                          >
-                            {interacao.status}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
-                            <MessageSquare className="h-3 w-3" />
-                          </Button>
-                          <Link href={`/interacoes/${i + 1}`}>
+                  {
+                    interacoesData.filter((interacao) => {
+                      const termo = searchTerm.toLowerCase()
+                      return Object.values(interacao).some((valor) =>
+                        String(valor).toLowerCase().includes(termo)
+                      )
+                    })
+
+                      .map((interacao, i) => (
+                        <div key={i} className="grid grid-cols-7 text-xxs p-1 border-t">
+                          <div className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3 text-primary" />
+                            <Link href={`/clientes/${interacao.clienteId}`} className="hover:underline">
+                              <span className="truncate">{interacao.cliente}</span>
+                            </Link>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {interacao.tipo === "WhatsApp" && <MessageSquare className="h-3 w-3 text-green-500" />}
+                            {interacao.tipo === "E-mail" && <Mail className="h-3 w-3 text-blue-500" />}
+                            {interacao.tipo === "Visita" && <User className="h-3 w-3 text-orange-500" />}
+                            {interacao.tipo === "Ligação" && <Phone className="h-3 w-3 text-purple-500" />}
+                            <span>{interacao.tipo}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                            <span>{interacao.data}</span>
+                          </div>
+                          <div>
+                            <Link href={`/usuarios/${interacao.responsavelId}`} className="hover:underline">
+                              {interacao.responsavel}
+                            </Link>
+                          </div>
+                          <div className="truncate">
+                            <Link
+                              href={`/representadas/${interacao.representadaId}`}
+                              className="hover:underline text-primary"
+                            >
+                              {interacao.representada}
+                            </Link>
+                            : {interacao.descricao}
+                          </div>
+                          <div>
+                            <span
+                              className={`px-1.5 py-0.5 rounded-full text-[8px] ${interacao.status === "Concluído"
+                                ? "bg-green-100 text-green-800"
+                                : interacao.status === "Aguardando Retorno"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-blue-100 text-blue-800"
+                                }`}
+                            >
+                              {interacao.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-end gap-1">
                             <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
-                              <Search className="h-3 w-3" />
+                              <MessageSquare className="h-3 w-3" />
                             </Button>
-                          </Link>
+                            <Link href={`/interacoes/${i + 1}`}>
+                              <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
+                                <Search className="h-3 w-3" />
+                              </Button>
+                            </Link>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                 </div>
               </CardContent>
             </Card>

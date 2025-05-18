@@ -5,7 +5,6 @@ import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import SidebarLayout from "@/app/components/menu"
-import { NavigationButtons } from "@/components/navigation-buttons"
 import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2, Edit, Plus, Search, Target, Trash, TrendingUp } from "lucide-react"
@@ -14,7 +13,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function RepresentadasPage() {
-  const [anoSelecionado, setAnoSelecionado] = useState("2023")
+  //const [anoSelecionado, setAnoSelecionado] = useState("2023")
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  const filteredRepresentadas = representadasData.filter((representada) => {
+    const termo = searchTerm.toLowerCase();
+    return (
+      representada.nome.toLowerCase().includes(termo) ||
+      representada.segmento.toLowerCase().includes(termo) ||
+      representada.contato.toLowerCase().includes(termo) ||
+      representada.telefone.toLowerCase().includes(termo) ||
+      representada.email.toLowerCase().includes(termo) ||
+      representada.status.toLowerCase().includes(termo)
+    );
+  });
 
   return (
     <SidebarLayout>
@@ -29,10 +41,12 @@ export default function RepresentadasPage() {
               {/* Componente de importação/exportação de planilhas */}
               <SpreadsheetHandler moduleType="representadas" data={representadasData} />
 
-              <Button size="sm" className="h-9 gap-1">
-                <Plus className="h-4 w-4" />
-                <span>Nova Representada</span>
-              </Button>
+              <Link href="/representadas/nova">
+                <Button size="sm" className="h-9 gap-1">
+                  <Plus className="h-4 w-4" />
+                  <span>Nova Representada</span>
+                </Button>
+              </Link>
             </div>
           </div>
 
@@ -43,12 +57,15 @@ export default function RepresentadasPage() {
                 <Input
                   type="search"
                   placeholder="Buscar representadas..."
-                  className="w-full bg-white pl-8 dark:bg-gray-950"
+                  className="w-full h-8 pl-7 text-xxs"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
+
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={anoSelecionado} onValueChange={setAnoSelecionado}>
+              {/* <Select value={anoSelecionado} onValueChange={setAnoSelecionado}>
                 <SelectTrigger className="w-[120px]">
                   <SelectValue placeholder="Selecione o ano" />
                 </SelectTrigger>
@@ -57,7 +74,7 @@ export default function RepresentadasPage() {
                   <SelectItem value="2024">2024</SelectItem>
                   <SelectItem value="2025">2025</SelectItem>
                 </SelectContent>
-              </Select>
+              </Select> */}
             </div>
           </div>
 
@@ -88,7 +105,7 @@ export default function RepresentadasPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {representadasData.map((representada) => (
+                      {filteredRepresentadas.map((representada) => (
                         <TableRow key={representada.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
@@ -164,9 +181,9 @@ export default function RepresentadasPage() {
 
                         <div className="grid grid-cols-3 gap-4">
                           <Card>
-                            <CardHeader className="p-3">
+                            {/* <CardHeader className="p-3">
                               <CardTitle className="text-sm">Meta Anual ({anoSelecionado})</CardTitle>
-                            </CardHeader>
+                            </CardHeader> */}
                             <CardContent className="p-3 pt-0">
                               <div className="text-xl font-bold">R$ {representada.metaAnual}</div>
                               <div className="flex items-center text-xs">
@@ -364,4 +381,5 @@ const representadasData = [
     ],
   },
 ]
+
 

@@ -40,6 +40,7 @@ export default function RepresentadaDetalhesPage({ params }: { params: { id: str
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState<any>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const { id } = params
 
   // Dados simulados da representada
   const representada = {
@@ -1043,13 +1044,12 @@ export default function RepresentadaDetalhesPage({ params }: { params: { id: str
                       <div>{compromisso.mes}</div>
                       <div>
                         <span
-                          className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                            compromisso.status === "Concluído"
-                              ? "bg-green-100 text-green-800"
-                              : compromisso.status === "Em Andamento"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-yellow-100 text-yellow-800"
-                          }`}
+                          className={`px-1.5 py-0.5 rounded-full text-[10px] ${compromisso.status === "Concluído"
+                            ? "bg-green-100 text-green-800"
+                            : compromisso.status === "Em Andamento"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-yellow-100 text-yellow-800"
+                            }`}
                         >
                           {compromisso.status}
                         </span>
@@ -1186,13 +1186,12 @@ export default function RepresentadaDetalhesPage({ params }: { params: { id: str
                       <div>{venda.comissao}</div>
                       <div>
                         <span
-                          className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                            venda.status === "Faturado"
-                              ? "bg-green-100 text-green-800"
-                              : venda.status === "Pendente"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-800"
-                          }`}
+                          className={`px-1.5 py-0.5 rounded-full text-[10px] ${venda.status === "Faturado"
+                            ? "bg-green-100 text-green-800"
+                            : venda.status === "Pendente"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                            }`}
                         >
                           {venda.status}
                         </span>
@@ -1289,9 +1288,8 @@ export default function RepresentadaDetalhesPage({ params }: { params: { id: str
                       <div>{nf.valor}</div>
                       <div>
                         <span
-                          className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                            nf.status === "Paga" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                          }`}
+                          className={`px-1.5 py-0.5 rounded-full text-[10px] ${nf.status === "Paga" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                            }`}
                         >
                           {nf.status}
                         </span>

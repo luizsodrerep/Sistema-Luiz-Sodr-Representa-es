@@ -1,11 +1,12 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
-import { PageLayout } from "@/components/page-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { PageLayout } from "@/components/page-layout"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   ArrowLeft,
@@ -20,7 +21,6 @@ import {
   Plus,
   User,
 } from "lucide-react"
-import Link from "next/link"
 
 export default function InteracaoDetalhesPage({ params }: { params: { id: string } }) {
   const [novoComentario, setNovoComentario] = useState("")
@@ -411,4 +411,3 @@ export default function InteracaoDetalhesPage({ params }: { params: { id: string
     </PageLayout>
   )
 }
-

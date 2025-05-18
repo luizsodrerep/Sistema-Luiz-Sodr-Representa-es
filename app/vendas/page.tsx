@@ -15,6 +15,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export default function VendasPage() {
   const [totalDifference, setTotalDifference] = useState(0)
+  const [statusFiltro, setStatusFiltro] = useState("Todos")
+  const [filtroStatus, setFiltroStatus] = useState("Todos")
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const vendasFiltradas = vendasData.filter((venda) => {
+    const termo = searchTerm.toLowerCase();
+
+    const matchTexto =
+      venda.id.toLowerCase().includes(termo) ||
+      venda.cliente.toLowerCase().includes(termo) ||
+      venda.representada.toLowerCase().includes(termo);
+      venda.valor.toLowerCase().includes(termo);      
+      
+    const matchStatus =
+      statusFiltro === "Todos" || venda.status === filtroStatus;
+
+    return matchTexto && matchStatus;
+  });
+
 
   // Função para atualizar o montante total de diferenças
   const handleTotalDifferenceChange = (difference: number) => {
@@ -33,10 +52,12 @@ export default function VendasPage() {
               {/* Componente de importação/exportação de planilhas */}
               <SpreadsheetHandler moduleType="vendas" data={vendasData} />
 
-              <Button size="sm" className="h-9 gap-1">
-                <Plus className="h-4 w-4" />
-                <span>Nova Venda</span>
-              </Button>
+              <Link href="/vendas/novo">
+                <Button size="sm" className="h-9 gap-1">
+                  <Plus className="h-4 w-4" />
+                  <span>Nova Venda</span>
+                </Button>
+              </Link>
             </div>
           </div>
 
@@ -99,10 +120,29 @@ export default function VendasPage() {
             <div className="flex items-center gap-2">
               <div className="relative w-full md:w-80">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="search" placeholder="Buscar vendas..." className="w-full bg-white pl-8 dark:bg-gray-950" />
+                <Input
+                  type="search"
+                  placeholder="Buscar vendas..."
+                  className="w-full bg-white pl-8 dark:bg-gray-950"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {["Todos", "Faturado", "Pendente", "Cancelado"].map((status) => (
+                <Button
+                  key={status}
+                  variant={statusFiltro === status ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStatusFiltro(status)}
+                >
+                  {status}
+                </Button>
+              ))}
+            </div>
+
+            {/* <div className="flex items-center gap-2">
               <Button variant="outline" size="sm">
                 Todos
               </Button>
@@ -115,7 +155,7 @@ export default function VendasPage() {
               <Button variant="outline" size="sm">
                 Cancelados
               </Button>
-            </div>
+            </div> */}
           </div>
           <Card>
             <CardHeader className="p-4">
@@ -139,7 +179,7 @@ export default function VendasPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {vendasData.map((venda, i) => (
+                  {vendasFiltradas.map((venda, i) => (
                     <TableRow key={venda.id}>
                       <TableCell className="font-medium">#{venda.id}</TableCell>
                       <TableCell>

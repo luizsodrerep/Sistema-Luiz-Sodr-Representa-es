@@ -1,6 +1,7 @@
 // app/vendas/[id]/page.tsx
-import { NavigationButtons } from "@/components/navigation-buttons"
 import { notFound } from "next/navigation"
+import SidebarLayout from "@/app/components/menu"
+import { NavigationButtons } from "@/components/navigation-buttons"
 
 type Props = {
   params: { id: string }
@@ -21,12 +22,16 @@ export default function VendaPage({ params }: Props) {
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Detalhes da Venda</h1>
-      <NavigationButtons backLabel="Voltar para Vendas" backHref="/vendas" />
-      <p>ID: {venda.id}</p>
-      <p>Data: {venda.data}</p>
-      <p>Valor: {venda.valor}</p>
-    </div>
+    <SidebarLayout>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mt-4">
+          <NavigationButtons backLabel="Voltar para Vendas" backHref="/vendas" />
+        </h1>
+        <h1 className="text-2xl font-bold mt-4">Detalhes da Venda</h1>
+        <p>ID: {venda.id}</p>
+        <p>Data: {venda.data}</p>
+        <p>Valor: {venda.valor}</p>
+      </div>
+    </SidebarLayout>
   )
 }

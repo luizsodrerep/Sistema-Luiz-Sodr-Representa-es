@@ -1,8 +1,9 @@
+"use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-//import { NavigationButtons } from "@/components/navigation-buttons"
 import SidebarLayout from "@/app/components/menu"
 import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
 import { Building2, MapPin, Phone, Plus, Search } from "lucide-react"
@@ -10,45 +11,68 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export default function ClientesPage() {
+  const [filtroStatus, setFiltroStatus] = useState("Todos")
+  const [searchTerm, setSearchTerm] = useState("");
+
+const clientesFiltrados = clientesData.filter((cliente) => {
+  const termo = searchTerm.toLowerCase();
+
+  const matchTexto =
+    cliente.nome.toLowerCase().includes(termo) ||
+    cliente.categoria.toLowerCase().includes(termo) ||
+    cliente.cidade.toLowerCase().includes(termo);
+
+  const matchStatus =
+    filtroStatus === "Todos" || cliente.status === filtroStatus;
+
+  return matchTexto && matchStatus;
+});
+
+
   return (
     <div className="flex flex-col">
       <div className="flex-1 space-y-4 p-8 pt-6">
         <SidebarLayout>
           <div className="flex items-center justify-between space-y-2">
-            {/* <NavigationButtons backLabel="Voltar" backHref="/dashboard" /> */}
             <h2 className="text-3xl font-bold tracking-tight">Clientes</h2>
             <div className="flex items-center space-x-2">
-              {/* Componente de importação/exportação de planilhas */}
               <SpreadsheetHandler moduleType="clientes" data={clientesData} />
-
-              <Button size="sm" className="h-9 gap-1">
-                <Plus className="h-4 w-4" />
-                <span>Novo Cliente</span>
-              </Button>
+              <Link href="/clientes/novo">
+                <Button size="sm" className="h-9 gap-1">
+                  <Plus className="h-4 w-4" />
+                  <span>Novo Cliente</span>
+                </Button>
+              </Link>
             </div>
           </div>
+
           <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
             <div className="flex items-center gap-2">
               <div className="relative w-full md:w-80">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="search" placeholder="Buscar clientes..." className="w-full bg-white pl-8 dark:bg-gray-950" />
+                <Input
+                  type="search"
+                  placeholder="Buscar clientes..."
+                  className="w-full bg-white pl-8 dark:bg-gray-950"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                Todos
-              </Button>
-              <Button variant="outline" size="sm">
-                Ativos
-              </Button>
-              <Button variant="outline" size="sm">
-                Inativos
-              </Button>
-              <Button variant="outline" size="sm">
-                Potenciais
-              </Button>
+              {["Todos", "Ativo", "Inativo", "Potencial"].map((status) => (
+                <Button
+                  key={status}
+                  variant={filtroStatus === status ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFiltroStatus(status)}
+                >
+                  {status}
+                </Button>
+              ))}
             </div>
           </div>
+
           <Card>
             <CardHeader className="p-4">
               <CardTitle>Lista de Clientes</CardTitle>
@@ -68,7 +92,7 @@ export default function ClientesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clientesData.map((cliente) => (
+                  {clientesFiltrados.map((cliente) => (
                     <TableRow key={cliente.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
@@ -103,10 +127,10 @@ export default function ClientesPage() {
                       <TableCell>
                         <div
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cliente.status === "Ativo"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                            : cliente.status === "Inativo"
-                              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                              : cliente.status === "Inativo"
+                                ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
                             }`}
                         >
                           {cliente.status}

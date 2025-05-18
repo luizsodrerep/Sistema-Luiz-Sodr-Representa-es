@@ -27,6 +27,34 @@ export function SalesComparison({
   const [selectedPeriod, setSelectedPeriod] = useState(period)
   const [selectedStatus, setSelectedStatus] = useState("all")
 
+  const now = new Date()
+
+  const isInSelectedPeriod = (saleDateStr: string) => {
+    const [day, month, year] = saleDateStr.split("/").map(Number)
+    const saleDate = new Date(year, month - 1, day)
+
+    switch (selectedPeriod) {
+      case "month":
+        return (
+          saleDate.getMonth() === now.getMonth() &&
+          saleDate.getFullYear() === now.getFullYear()
+        )
+      case "quarter":
+        const currentQuarter = Math.floor(now.getMonth() / 3)
+        const saleQuarter = Math.floor(saleDate.getMonth() / 3)
+        return saleQuarter === currentQuarter && saleDate.getFullYear() === now.getFullYear()
+      case "semester":
+        const currentSemester = Math.floor(now.getMonth() / 6)
+        const saleSemester = Math.floor(saleDate.getMonth() / 6)
+        return saleSemester === currentSemester && saleDate.getFullYear() === now.getFullYear()
+      case "year":
+        return saleDate.getFullYear() === now.getFullYear()
+      default:
+        return true
+    }
+  }
+
+
   // Adicionar um estado para a representada selecionada no filtro
   const [selectedRepresentada, setSelectedRepresentada] = useState<string>("all")
 
@@ -34,7 +62,7 @@ export function SalesComparison({
   const salesData = [
     {
       id: "12345",
-      date: "15/03/2023",
+      date: "15/01/2025",
       client: "Distribuidora ABC Ltda",
       clientId: "abc123",
       representada: "Descartáveis Premium Ltda",
@@ -44,11 +72,11 @@ export function SalesComparison({
       difference: -250.0,
       percentageDifference: -4.81,
       reason: "Ajuste de preço",
-      status: "faturado",
+      status: "pendente",
     },
     {
       id: "12346",
-      date: "14/03/2023",
+      date: "14/02/2025",
       client: "Supermercado Silva",
       clientId: "silva456",
       representada: "Embalagens Eco Ltda",
@@ -58,11 +86,11 @@ export function SalesComparison({
       difference: 0,
       percentageDifference: 0,
       reason: "",
-      status: "faturado",
+      status: "cancelado",
     },
     {
       id: "12347",
-      date: "12/03/2023",
+      date: "12/03/2025",
       client: "Confeitaria Doce Sabor",
       clientId: "doce789",
       representada: "Papel & Cia",
@@ -76,7 +104,7 @@ export function SalesComparison({
     },
     {
       id: "12348",
-      date: "10/03/2023",
+      date: "10/04/2025",
       client: "Atacadão Produtos",
       clientId: "atacadao101",
       representada: "Plásticos Nobre",
@@ -90,7 +118,7 @@ export function SalesComparison({
     },
     {
       id: "12349",
-      date: "08/03/2023",
+      date: "08/05/2025",
       client: "Mercado Central",
       clientId: "central202",
       representada: "Descartáveis Premium Ltda",
@@ -110,8 +138,10 @@ export function SalesComparison({
     if (representadaId && sale.representadaId !== representadaId) return false
     if (selectedStatus !== "all" && sale.status !== selectedStatus) return false
     if (selectedRepresentada !== "all" && sale.representadaId !== selectedRepresentada) return false
+    if (!isInSelectedPeriod(sale.date)) return false
     return true
   })
+
 
   // Calcular totais
   const totals = filteredData.reduce(
