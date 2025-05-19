@@ -1,17 +1,26 @@
-
 import * as XLSX from "xlsx"
 import { NextResponse } from "next/server"
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const module = searchParams.get("module")
   const format = searchParams.get("format") || "xlsx"
 
+  // Se não houver parâmetro "module", retorna os clientes do banco
   if (!module) {
-    return NextResponse.json({ error: "Módulo não especificado" }, { status: 400 })
+    try {
+      const clientes = await prisma.clientes.findMany()
+      return NextResponse.json(clientes)
+    } catch (error) {
+      console.error("Erro ao buscar clientes:", error)
+      return NextResponse.json({ error: "Erro interno" }, { status: 400 })
+    }
   }
 
-  // Definir estrutura de dados para cada módulo
+  // Definir templates de exportação
   const templates: Record<string, any[]> = {
     clientes: [
       {
@@ -109,19 +118,16 @@ export async function GET(request: Request) {
     ],
   }
 
-  // Obter o template para o módulo solicitado
   const templateData = templates[module]
 
   if (!templateData) {
     return NextResponse.json({ error: "Módulo não encontrado" }, { status: 404 })
   }
 
-  // Criar a planilha
   const workbook = XLSX.utils.book_new()
   const worksheet = XLSX.utils.json_to_sheet(templateData)
   XLSX.utils.book_append_sheet(workbook, worksheet, module.charAt(0).toUpperCase() + module.slice(1))
 
-  // Converter para o formato solicitado
   let buffer: Buffer
   let contentType: string
   let filename: string
@@ -137,7 +143,6 @@ export async function GET(request: Request) {
     filename = `template_${module}.xlsx`
   }
 
-  // Configurar os headers para download
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": contentType,
@@ -145,4 +150,3 @@ export async function GET(request: Request) {
     },
   })
 }
-
