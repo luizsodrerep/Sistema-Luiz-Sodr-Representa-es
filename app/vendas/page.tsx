@@ -14,8 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export default function VendasPage() {
   const [totalDifference, setTotalDifference] = useState(0)
-  const [statusFiltro, setStatusFiltro] = useState("Todos")
-  const [filtroStatus, setFiltroStatus] = useState("Todos")
+  const [statusFiltro, setStatusFiltro] = useState("Todos")  
   const [searchTerm, setSearchTerm] = useState("");
 
   const vendasFiltradas = vendasData.filter((venda) => {
