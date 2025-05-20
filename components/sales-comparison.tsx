@@ -63,7 +63,7 @@ export function SalesComparison({
     {
       id: "12345",
       date: "15/01/2025",
-      client: "Distribuidora ABC Ltda",
+      client: "Distribuidora ABBBC Ltda",
       clientId: "abc123",
       representada: "Descartáveis Premium Ltda",
       representadaId: "premium123",

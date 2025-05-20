@@ -44,7 +44,7 @@ export default function ClienteDetalhesPage({ params }: { params: Promise<{ id: 
   // Na implementação real, buscaríamos os dados do cliente com base no ID
   const cliente = {
     //id: params.id,
-    nome: "Distribuidora ABC Ltda",
+    nome: "Distribuidora ABBC Ltda",
     nomeFantasia: "ABC Distribuidora",
     cnpj: "12.345.678/0001-90",
     inscricaoEstadual: "123.456.789.000",

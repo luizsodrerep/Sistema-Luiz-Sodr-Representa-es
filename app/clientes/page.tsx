@@ -47,29 +47,6 @@ export default function ClientesPage() {
     })
     : []
 
-  // const clientesFiltrados = clientes.filter((cliente: any) => {
-  //   const termo = searchTerm.toLowerCase()
-
-  //   const matchTexto =
-  //     cliente.nome.toLowerCase().includes(termo) ||
-  //     cliente.categoria.toLowerCase().includes(termo) ||
-  //     cliente.cidade.toLowerCase().includes(termo)
-
-  //   const matchStatus = filtroStatus === "Todos" || cliente.status === filtroStatus
-
-  //   return matchTexto && matchStatus
-  // })
-
-  // const response = await fetch("/api/clientes")
-  // if (!response.ok) {
-  //   throw new Error("Erro ao buscar clientes")
-  // }
-  // const data = await response.json()
-  // if (!Array.isArray(data)) {
-  //   throw new Error("Formato inválido de dados recebidos")
-  // }
-  // setClientes(data)
-
 
   return (
     <div className="flex flex-col">
