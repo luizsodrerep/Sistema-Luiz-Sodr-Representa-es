@@ -103,9 +103,15 @@ model Vendas {
   id             String        @id @default(uuid())
   data           DateTime
   valor          Float
+  valorFaturado  Float?
+  comissao       Float?
+  status         String?
   representadaId Int
   representada   Representadas @relation(fields: [representadaId], references: [id])
+  clienteId      Int
+  cliente        clientes      @relation(fields: [clienteId], references: [id])
 }
+
 
 model clientes {
   id           Int       @id @default(autoincrement())
@@ -118,4 +124,6 @@ model clientes {
   estado       String?   @db.Char(2)
   ultimaCompra DateTime? @db.Date
   status       String?   @default(dbgenerated("true")) @db.VarChar(10)
+
+  vendas Vendas[] // <- esta linha cria a relação reversa
 }
