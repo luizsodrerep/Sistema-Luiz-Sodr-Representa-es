@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import SidebarLayout from "@/app/components/menu"
@@ -10,37 +10,66 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2, Edit, Plus, Search, Target, Trash, TrendingUp } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+// ✅ Interface com os campos esperados do backend
+interface Representada {
+  id: number
+  nome: string
+  segmento: string
+  cidade: string
+  estado: string
+  contato: string
+  telefone: string
+  email: string
+  status: string
+  metaAnual: string | number
+  vendasRealizadas: string | number
+  percentualMeta: number
+  comissoesGeradas: string | number
+  percentualComissao: number
+}
 
 export default function RepresentadasPage() {
-  //const [anoSelecionado, setAnoSelecionado] = useState("2023")
-  const [searchTerm, setSearchTerm] = useState("");
-  
-  const filteredRepresentadas = representadasData.filter((representada) => {
-    const termo = searchTerm.toLowerCase();
+  const [searchTerm, setSearchTerm] = useState("")
+  const [representadas, setRepresentadas] = useState<Representada[]>([]) // ✅ Estado tipado
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchRepresentadas = async () => {
+      try {
+        const response = await fetch("/api/representadas")
+        const data = await response.json()
+        setRepresentadas(data)
+      } catch (error) {
+        console.error("Erro ao buscar representadas:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchRepresentadas()
+  }, [])
+
+  const filteredRepresentadas = representadas.filter((representada) => {
+    const termo = searchTerm.toLowerCase()
     return (
-      representada.nome.toLowerCase().includes(termo) ||
-      representada.segmento.toLowerCase().includes(termo) ||
-      representada.contato.toLowerCase().includes(termo) ||
-      representada.telefone.toLowerCase().includes(termo) ||
-      representada.email.toLowerCase().includes(termo) ||
-      representada.status.toLowerCase().includes(termo)
-    );
-  });
+      representada.nome?.toLowerCase().includes(termo) ||
+      representada.segmento?.toLowerCase().includes(termo) ||
+      representada.contato?.toLowerCase().includes(termo) ||
+      representada.telefone?.toLowerCase().includes(termo) ||
+      representada.email?.toLowerCase().includes(termo) ||
+      representada.status?.toLowerCase().includes(termo)
+    )
+  })
 
   return (
     <SidebarLayout>
       <div className="flex flex-col">
         <div className="flex-1 space-y-4 p-8 pt-6">
-          {/* Botões de navegação */}
-          {/* <NavigationButtons /> */}
-
           <div className="flex items-center justify-between space-y-2">
             <h2 className="text-3xl font-bold tracking-tight">Representadas</h2>
             <div className="flex items-center space-x-2">
-              {/* Componente de importação/exportação de planilhas */}
-              <SpreadsheetHandler moduleType="representadas" data={representadasData} />
-
+              <SpreadsheetHandler moduleType="representadas" data={representadas} />
               <Link href="/representadas/nova">
                 <Button size="sm" className="h-9 gap-1">
                   <Plus className="h-4 w-4" />
@@ -51,30 +80,15 @@ export default function RepresentadasPage() {
           </div>
 
           <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
-            <div className="flex items-center gap-2">
-              <div className="relative w-full md:w-80">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Buscar representadas..."
-                  className="w-full h-8 pl-7 text-xxs"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* <Select value={anoSelecionado} onValueChange={setAnoSelecionado}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="Selecione o ano" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2023">2023</SelectItem>
-                  <SelectItem value="2024">2024</SelectItem>
-                  <SelectItem value="2025">2025</SelectItem>
-                </SelectContent>
-              </Select> */}
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Buscar representadas..."
+                className="w-full h-8 pl-7 text-xxs"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
 
@@ -92,66 +106,70 @@ export default function RepresentadasPage() {
                   <CardDescription>Empresas representadas e seus contatos</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Empresa</TableHead>
-                        <TableHead>Segmento</TableHead>
-                        <TableHead>Contato</TableHead>
-                        <TableHead>Telefone</TableHead>
-                        <TableHead>E-mail</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredRepresentadas.map((representada) => (
-                        <TableRow key={representada.id}>
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-2">
-                              <div className="rounded-full bg-primary/10 p-2">
-                                <Building2 className="h-4 w-4 text-primary" />
-                              </div>
-                              <div>
-                                <Link href={`/representadas/${representada.id}`} className="hover:underline">
-                                  <div>{representada.nome}</div>
-                                </Link>
-                                <div className="text-xs text-muted-foreground">
-                                  {representada.cidade}/{representada.estado}
+                  {loading ? (
+                    <div className="p-4">Carregando...</div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Empresa</TableHead>
+                          <TableHead>Segmento</TableHead>
+                          <TableHead>Contato</TableHead>
+                          <TableHead>Telefone</TableHead>
+                          <TableHead>E-mail</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredRepresentadas.map((representada) => (
+                          <TableRow key={representada.id}>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-2">
+                                <div className="rounded-full bg-primary/10 p-2">
+                                  <Building2 className="h-4 w-4 text-primary" />
+                                </div>
+                                <div>
+                                  <Link href={`/representadas/${representada.id}`} className="hover:underline">
+                                    <div>{representada.nome}</div>
+                                  </Link>
+                                  <div className="text-xs text-muted-foreground">
+                                    {representada.cidade}/{representada.estado}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>{representada.segmento}</TableCell>
-                          <TableCell>{representada.contato}</TableCell>
-                          <TableCell>{representada.telefone}</TableCell>
-                          <TableCell>{representada.email}</TableCell>
-                          <TableCell>
-                            <div
-                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${representada.status === "Ativa"
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                                : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                                }`}
-                            >
-                              {representada.status}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Link href={`/representadas/${representada.id}`}>
+                            </TableCell>
+                            <TableCell>{representada.segmento}</TableCell>
+                            <TableCell>{representada.contato}</TableCell>
+                            <TableCell>{representada.telefone}</TableCell>
+                            <TableCell>{representada.email}</TableCell>
+                            <TableCell>
+                              <div
+                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${representada.status === "Ativa"
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                                  : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                  }`}
+                              >
+                                {representada.status}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Link href={`/representadas/${representada.id}`}>
+                                  <Button variant="ghost" size="sm">
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </Link>
                                 <Button variant="ghost" size="sm">
-                                  <Edit className="h-4 w-4" />
+                                  <Trash className="h-4 w-4" />
                                 </Button>
-                              </Link>
-                              <Button variant="ghost" size="sm">
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -164,7 +182,7 @@ export default function RepresentadasPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {representadasData.map((representada) => (
+                    {representadas.map((representada) => (
                       <div key={representada.id} className="border rounded-lg p-4 space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -181,11 +199,8 @@ export default function RepresentadasPage() {
 
                         <div className="grid grid-cols-3 gap-4">
                           <Card>
-                            {/* <CardHeader className="p-3">
-                              <CardTitle className="text-sm">Meta Anual ({anoSelecionado})</CardTitle>
-                            </CardHeader> */}
                             <CardContent className="p-3 pt-0">
-                              <div className="text-xl font-bold">R$ {representada.metaAnual}</div>
+                              <div className="text-xl font-bold">R$ {representada.metaAnual || "0,00"}</div>
                               <div className="flex items-center text-xs">
                                 <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
                                 <span className="text-green-500">+5% vs ano anterior</span>
@@ -198,9 +213,9 @@ export default function RepresentadasPage() {
                               <CardTitle className="text-sm">Vendas Realizadas</CardTitle>
                             </CardHeader>
                             <CardContent className="p-3 pt-0">
-                              <div className="text-xl font-bold">R$ {representada.vendasRealizadas}</div>
+                              <div className="text-xl font-bold">R$ {representada.vendasRealizadas || "0,00"}</div>
                               <div className="text-xs text-muted-foreground">
-                                {representada.percentualMeta}% da meta anual
+                                {representada.percentualMeta || 0}% da meta anual
                               </div>
                             </CardContent>
                           </Card>
@@ -210,9 +225,9 @@ export default function RepresentadasPage() {
                               <CardTitle className="text-sm">Comissões Geradas</CardTitle>
                             </CardHeader>
                             <CardContent className="p-3 pt-0">
-                              <div className="text-xl font-bold">R$ {representada.comissoesGeradas}</div>
+                              <div className="text-xl font-bold">R$ {representada.comissoesGeradas || "0,00"}</div>
                               <div className="text-xs text-muted-foreground">
-                                {representada.percentualComissao}% sobre vendas
+                                {representada.percentualComissao || 0}% sobre vendas
                               </div>
                             </CardContent>
                           </Card>
@@ -221,14 +236,9 @@ export default function RepresentadasPage() {
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <h4 className="text-sm font-medium">Progresso Anual</h4>
-                            <span className="text-sm">{representada.percentualMeta}%</span>
+                            <span className="text-sm">{representada.percentualMeta || 0}%</span>
                           </div>
-                          <div className="h-2 w-full rounded-full bg-muted">
-                            {/* <div
-                            className="h-2 rounded-full bg-primary"
-                            style={{ width: `${representada.percentualMeta}%` }}
-                          /> */}
-                          </div>
+                          <div className="h-2 w-full rounded-full bg-muted"></div>
                         </div>
                       </div>
                     ))}
@@ -257,129 +267,3 @@ export default function RepresentadasPage() {
     </SidebarLayout>
   )
 }
-
-const representadasData = [
-  {
-    id: 1,
-    nome: "Descartáveis Premium Ltda",
-    segmento: "Descartáveis",
-    cidade: "São Paulo",
-    estado: "SP",
-    contato: "Carlos Mendes",
-    telefone: "(11) 3456-7890",
-    email: "contato@descartaveispremium.com.br",
-    status: "Ativa",
-    metaAnual: "960.000,00",
-    vendasRealizadas: "680.450,00",
-    percentualMeta: 70.9,
-    comissoesGeradas: "68.045,00",
-    percentualComissao: 10,
-    metasMensais: [
-      { meta: "80.000,00", realizado: "78.500,00" },
-      { meta: "80.000,00", realizado: "82.300,00" },
-      { meta: "80.000,00", realizado: "68.450,00" },
-      { meta: "80.000,00", realizado: null },
-      { meta: "80.000,00", realizado: null },
-      { meta: "80.000,00", realizado: null },
-      { meta: "80.000,00", realizado: null },
-      { meta: "80.000,00", realizado: null },
-      { meta: "80.000,00", realizado: null },
-      { meta: "80.000,00", realizado: null },
-      { meta: "80.000,00", realizado: null },
-      { meta: "80.000,00", realizado: null },
-    ],
-  },
-  {
-    id: 2,
-    nome: "Embalagens Eco Ltda",
-    segmento: "Embalagens Sustentáveis",
-    cidade: "Campinas",
-    estado: "SP",
-    contato: "Ana Oliveira",
-    telefone: "(19) 2345-6789",
-    email: "contato@embalagemeco.com.br",
-    status: "Ativa",
-    metaAnual: "600.000,00",
-    vendasRealizadas: "423.200,00",
-    percentualMeta: 70.5,
-    comissoesGeradas: "42.320,00",
-    percentualComissao: 10,
-    metasMensais: [
-      { meta: "50.000,00", realizado: "48.200,00" },
-      { meta: "50.000,00", realizado: "53.100,00" },
-      { meta: "50.000,00", realizado: "42.320,00" },
-      { meta: "50.000,00", realizado: null },
-      { meta: "50.000,00", realizado: null },
-      { meta: "50.000,00", realizado: null },
-      { meta: "50.000,00", realizado: null },
-      { meta: "50.000,00", realizado: null },
-      { meta: "50.000,00", realizado: null },
-      { meta: "50.000,00", realizado: null },
-      { meta: "50.000,00", realizado: null },
-      { meta: "50.000,00", realizado: null },
-    ],
-  },
-  {
-    id: 3,
-    nome: "Papel & Cia",
-    segmento: "Produtos de Papel",
-    cidade: "Ribeirão Preto",
-    estado: "SP",
-    contato: "Roberto Santos",
-    telefone: "(16) 3456-7890",
-    email: "contato@papelecia.com.br",
-    status: "Ativa",
-    metaAnual: "360.000,00",
-    vendasRealizadas: "287.600,00",
-    percentualMeta: 79.9,
-    comissoesGeradas: "28.760,00",
-    percentualComissao: 10,
-    metasMensais: [
-      { meta: "30.000,00", realizado: "32.100,00" },
-      { meta: "30.000,00", realizado: "29.800,00" },
-      { meta: "30.000,00", realizado: "28.760,00" },
-      { meta: "30.000,00", realizado: null },
-      { meta: "30.000,00", realizado: null },
-      { meta: "30.000,00", realizado: null },
-      { meta: "30.000,00", realizado: null },
-      { meta: "30.000,00", realizado: null },
-      { meta: "30.000,00", realizado: null },
-      { meta: "30.000,00", realizado: null },
-      { meta: "30.000,00", realizado: null },
-      { meta: "30.000,00", realizado: null },
-    ],
-  },
-  {
-    id: 4,
-    nome: "Plásticos Nobre",
-    segmento: "Produtos Plásticos",
-    cidade: "Sorocaba",
-    estado: "SP",
-    contato: "Fernanda Lima",
-    telefone: "(15) 2345-6789",
-    email: "contato@plasticosnobre.com.br",
-    status: "Inativa",
-    metaAnual: "240.000,00",
-    vendasRealizadas: "128.500,00",
-    percentualMeta: 53.5,
-    comissoesGeradas: "12.850,00",
-    percentualComissao: 10,
-    metasMensais: [
-      { meta: "20.000,00", realizado: "18.200,00" },
-      { meta: "20.000,00", realizado: "15.300,00" },
-      { meta: "20.000,00", realizado: "12.850,00" },
-      { meta: "20.000,00", realizado: null },
-      { meta: "20.000,00", realizado: null },
-      { meta: "20.000,00", realizado: null },
-      { meta: "20.000,00", realizado: null },
-      { meta: "20.000,00", realizado: null },
-      { meta: "20.000,00", realizado: null },
-      { meta: "20.000,00", realizado: null },
-      { meta: "20.000,00", realizado: null },
-      { meta: "20.000,00", realizado: null },
-      { meta: "20.000,00", realizado: null },
-    ],
-  },
-]
-
-
