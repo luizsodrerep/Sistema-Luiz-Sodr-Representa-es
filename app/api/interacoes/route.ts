@@ -1,33 +1,35 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server"
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// GET /api/interacoes
 export async function GET() {
-  const interacoes = await prisma.interacoes.findMany({
-    include: {
-      cliente: true,
-      representada: true,
-    },
-    orderBy: { data: 'desc' },
-  });
-  return NextResponse.json(interacoes);
-}
+  try {
+    const interacoes = await prisma.interacoes.findMany({
+      include: {
+        cliente: true,        // ✅ Inclui os dados do cliente
+        representada: true,
+      },
+      orderBy: { data: "desc" },
+    })
 
-// POST /api/interacoes
-export async function POST(req: Request) {
-  const body = await req.json();
-  const interacao = await prisma.interacoes.create({
-    data: {
-      tipo: body.tipo,
-      data: new Date(body.data),
-      descricao: body.descricao,
-      status: body.status,
-      responsavel: body.responsavel,
-      clienteId: parseInt(body.clienteId),
-      representadaId: parseInt(body.representadaId),
-    },
-  });
-  return NextResponse.json(interacao, { status: 201 });
+    const formatted = interacoes.map((i) => ({
+      id: i.id,
+      tipo: i.tipo,
+      dataHora: i.data.toISOString(),
+      descricao: i.descricao,
+      status: i.status,
+      cliente: i.cliente.nome,
+      clienteId: i.clienteId.toString(),
+      representada: i.representada.nome,
+      representadaId: i.representadaId.toString(),
+      responsavel: i.cliente.responsavel ?? "Não informado", // ✅ Pega do cliente
+    }))
+
+
+    return NextResponse.json(formatted)
+  } catch (error) {
+    console.error(error)
+    return new NextResponse("Erro ao buscar interações", { status: 500 })
+  }
 }
