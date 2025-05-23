@@ -216,12 +216,12 @@ export default function HomePage() {
                     Contabilidade
                   </Button>
                 </Link>
-                <Link href="/redes-sociais" className="w-full">
+                {/* <Link href="/redes-sociais" className="w-full">
                   <Button variant="outline" size="sm" className="w-full h-8 text-xxs justify-start">
                     <Instagram className="h-3 w-3 mr-1" />
                     Redes Sociais
                   </Button>
-                </Link>
+                </Link> */}
               </div>
             </CardContent>
           </Card>
@@ -297,11 +297,11 @@ export default function HomePage() {
           </Card>
         </div>
 
-        <div className="grid gap-2 md:grid-cols-4 mt-2">
+        {/* <div className="grid gap-2 md:grid-cols-4 mt-2">
           <Card className="col-span-3 card-container">
-            <CardHeader className="card-header">
+            {/* <CardHeader className="card-header">
               <CardTitle className="card-title">Redes Sociais</CardTitle>
-            </CardHeader>
+            </CardHeader> 
             <CardContent className="card-content">
               <SocialMediaSummary />
             </CardContent>
@@ -334,7 +334,7 @@ export default function HomePage() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </div> */}
       </div>
     </div>
   )

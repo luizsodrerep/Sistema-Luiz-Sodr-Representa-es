@@ -121,6 +121,7 @@ model Representadas {
   interacoes         Interacoes[]
   metasMensais       MetasMensais[]
   vendas             Vendas[]
+  financeiros        Financeiro[]
 }
 
 model Vendas {
@@ -149,4 +150,44 @@ model clientes {
   status       String?      @default(dbgenerated("true")) @db.VarChar(10)
   interacoes   Interacoes[]
   vendas       Vendas[]
+}
+
+model CategoriaFinanceira {
+  id          Int       @id @default(autoincrement())
+  nome        String
+  tipo        TipoCategoria // RECEITA ou DESPESA
+  descricao   String?
+  financeiro  Financeiro[]
+}
+
+model Financeiro {
+  id               Int                   @id @default(autoincrement())
+  representadaId   Int
+  dataLancamento   DateTime
+  dataVencimento   DateTime
+  dataPagamento    DateTime?
+  descricao        String
+  valor            Decimal               @db.Decimal(12, 2)
+  tipo             TipoFinanceiro        // RECEBER ou PAGAR
+  status           StatusFinanceiro      // PENDENTE, PAGO, ATRASADO, CANCELADO
+  categoriaId      Int
+  categoria        CategoriaFinanceira   @relation(fields: [categoriaId], references: [id])
+  representada     Representadas         @relation(fields: [representadaId], references: [id])
+}
+
+enum TipoFinanceiro {
+  RECEBER
+  PAGAR
+}
+
+enum StatusFinanceiro {
+  PENDENTE
+  PAGO
+  ATRASADO
+  CANCELADO
+}
+
+enum TipoCategoria {
+  RECEITA
+  DESPESA
 }
