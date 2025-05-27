@@ -1,8 +1,82 @@
 import * as XLSX from "xlsx"
-import { NextResponse } from "next/server"
-import { PrismaClient } from '@prisma/client'
+import { NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';;
 
 const prisma = new PrismaClient()
+
+// 🟨 POST - Criar um novo cliente
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+
+    const {
+      nome,
+      nomeFantasia,
+      cnpj,
+      inscricaoEstadual,
+      categoria,
+      telefone,
+      whatsapp,
+      email,
+      website,
+      responsavel,
+      cidade,
+      estado,
+      status,
+      ultimaCompra,
+      contato, // opcional
+    } = body;
+
+    if (!nome || !cnpj) {
+      return NextResponse.json(
+        { error: 'Nome e CNPJ são obrigatórios' },
+        { status: 400 }
+      );
+    }
+
+    const cliente = await prisma.clientes.create({
+      data: {
+        nome,
+        nomeFantasia,
+        cnpj,
+        inscricaoEstadual,
+        categoria,
+        telefone,
+        whatsapp,
+        email,
+        website,
+        responsavel,
+        cidade,
+        estado,
+        status,
+        ultimaCompra: ultimaCompra ? new Date(ultimaCompra) : undefined,
+      },
+    });
+
+    let contatoResultado = null;
+
+    if (contato) {
+      contatoResultado = await prisma.contato.create({
+        data: {
+          clienteId: cliente.id,
+          nome: contato.nome,
+          cargo: contato.cargo,
+          telefone: contato.telefone,
+          email: contato.email,
+          representadaId: contato.representadaId ?? null,
+        },
+      });
+    }
+
+    return NextResponse.json({ cliente, contato: contatoResultado });
+  } catch (error) {
+    console.error('Erro ao criar cliente:', error);
+    return NextResponse.json(
+      { error: 'Erro ao criar cliente' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -69,13 +143,4 @@ export async function GET(request: Request) {
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   })
-}
-
-// POST - Criar novo cliente
-export async function POST(req: Request) {
-  const data = await req.json();
-  const cliente = await prisma.clientes.create({
-    data,
-  });
-  return NextResponse.json(cliente);
 }
