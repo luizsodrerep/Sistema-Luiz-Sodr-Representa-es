@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import { useRouter } from 'next/navigation'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import SidebarLayout from "@/app/components/menu"
@@ -15,6 +16,7 @@ export default function ClientesPage() {
   const [filtroStatus, setFiltroStatus] = useState("Todos")
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     const fetchClientes = async () => {
@@ -160,9 +162,7 @@ export default function ClientesPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <Link href={`/clientes/${cliente.id}`}>
-                            <Button variant="ghost" size="sm">
-                              Ver
-                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => router.push(`/clientes/${cliente.id}`)}>Ver</Button>
                           </Link>
                         </TableCell>
                       </TableRow>

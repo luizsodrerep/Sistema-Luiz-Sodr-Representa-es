@@ -7,8 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model CategoriaFinanceira {
+  id          String @id @default(uuid())
+  nome        String
+  tipo        TipoCategoria
+  descricao   String?
+  financeiro  Financeiro[]
+}
+
 model Comissao {
-  id             String  @id @default(uuid())
+  id             String @id @default(uuid())
   representadaId Int
   percentual     String
   pagamento      String
@@ -30,45 +38,85 @@ model Compromisso {
 
 model Contato {
   id             String @id @default(uuid())
-  representadaId Int
+  clienteId      Int
   nome           String
   cargo          String
   telefone       String
   email          String
+  representadaId Int?
+  representada   Representadas? @relation(fields: [representadaId], references: [id])
+  cliente        clientes       @relation(fields: [clienteId], references: [id], name: "ClienteContatos")
+}
+
+model Clientes {
+  id                String @id @default(uuid())
+  nome              String
+  nomeFantasia      String? @db.VarChar(100)
+  cnpj              String  @unique @db.VarChar(18)
+  inscricaoEstadual String? @db.VarChar(20)
+  categoria         String? @db.VarChar(50)
+  telefone          String? @db.VarChar(20)
+  whatsapp          String? @db.VarChar(20)
+  email             String? @db.VarChar(100)
+  website           String? @db.VarChar(100)
+  responsavel       String?
+  cidade            String? @db.VarChar(100)
+  estado            String? @db.Char(2)
+  ultimaCompra      DateTime? @db.Date
+  status            String? @default(dbgenerated("true")) @db.VarChar(10)
+  interacoes        Interacoes[]
+  vendas            Vendas[]
+  contatos          Contato[] @relation("ClienteContatos")
+}
+
+model Financeiro {
+  id               String @id @default(uuid())
+  representadaId   Int
+  dataLancamento   DateTime
+  dataVencimento   DateTime
+  dataPagamento    DateTime?
+  descricao        String
+  valor            Decimal @db.Decimal(12, 2)
+  tipo             TipoFinanceiro
+  status           StatusFinanceiro
+  categoriaId      Int
+  categoria        CategoriaFinanceira @relation(fields: [categoriaId], references: [id])
+  representada     Representadas @relation(fields: [representadaId], references: [id])
 }
 
 model FollowUp {
-  id           String     @id @default(uuid())
+  id           String @id @default(uuid())
   data         DateTime
   descricao    String
   responsavel  String
-  interacaoId  String     @db.Uuid  // <- Corrigir o tipo
+  interacaoId  String @db.Uuid
   interacao    Interacoes @relation(fields: [interacaoId], references: [id], onDelete: Cascade)
 }
 
 model Interacoes {
-  id             String        @id(map: "Interacao_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id             String @id @default(uuid())
   clienteId      Int
   representadaId Int
   tipo           String
-  data           DateTime      @db.Timestamp(6)
+  data           DateTime @db.Timestamp(6)
   responsavel    String
   descricao      String
   status         String
   cliente        clientes      @relation(fields: [clienteId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cliente")
   representada   Representadas @relation(fields: [representadaId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_representada")
-  followUps      FollowUp[] 
+
+  followUps      FollowUp[]
 }
 
 model Metas {
-  id             String @id(map: "Meta_pkey") @default(uuid())
+  id             String @id @default(uuid())
   representadaId Int
   anual          String
   mensal         String
 }
 
 model MetasMensais {
-  id             String        @id @default(uuid())
+  id             String @id @default(uuid())
   mes            String
   meta           String
   realizado      String?
@@ -78,7 +126,7 @@ model MetasMensais {
 }
 
 model NotasFiscais {
-  id             String @id(map: "NotaFiscal_pkey") @default(uuid())
+  id             String @id @default(uuid())
   representadaId Int
   numero         String
   data           String
@@ -104,7 +152,7 @@ model Produto {
 }
 
 model Representadas {
-  id                 Int            @id @default(autoincrement())
+  id                 String @id @default(uuid())
   nome               String
   segmento           String
   cidade             String
@@ -113,19 +161,20 @@ model Representadas {
   telefone           String
   email              String
   status             String
-  metaAnual          Decimal        @db.Decimal(12, 2)
-  vendasRealizadas   Decimal        @db.Decimal(12, 2)
+  metaAnual          Decimal @db.Decimal(12, 2)
+  vendasRealizadas   Decimal @db.Decimal(12, 2)
   percentualMeta     Float
-  comissoesGeradas   Decimal        @db.Decimal(12, 2)
+  comissoesGeradas   Decimal @db.Decimal(12, 2)
   percentualComissao Float
   interacoes         Interacoes[]
   metasMensais       MetasMensais[]
   vendas             Vendas[]
   financeiros        Financeiro[]
+  contatos           Contato[]      
 }
 
 model Vendas {
-  id             String        @id @default(uuid())
+  id             String @id @default(uuid())
   data           DateTime
   valor          Float
   representadaId Int
@@ -133,46 +182,8 @@ model Vendas {
   comissao       Float?
   status         String?
   valorFaturado  Float?
-  cliente        clientes      @relation(fields: [clienteId], references: [id])
+  cliente        clientes @relation(fields: [clienteId], references: [id])
   representada   Representadas @relation(fields: [representadaId], references: [id])
-}
-
-model clientes {
-  id           Int          @id @default(autoincrement())
-  nome         String
-  cnpj         String       @unique @db.VarChar(18)
-  categoria    String?      @db.VarChar(50)
-  telefone     String?      @db.VarChar(20)
-  responsavel  String?
-  cidade       String?      @db.VarChar(100)
-  estado       String?      @db.Char(2)
-  ultimaCompra DateTime?    @db.Date
-  status       String?      @default(dbgenerated("true")) @db.VarChar(10)
-  interacoes   Interacoes[]
-  vendas       Vendas[]
-}
-
-model CategoriaFinanceira {
-  id          Int       @id @default(autoincrement())
-  nome        String
-  tipo        TipoCategoria // RECEITA ou DESPESA
-  descricao   String?
-  financeiro  Financeiro[]
-}
-
-model Financeiro {
-  id               Int                   @id @default(autoincrement())
-  representadaId   Int
-  dataLancamento   DateTime
-  dataVencimento   DateTime
-  dataPagamento    DateTime?
-  descricao        String
-  valor            Decimal               @db.Decimal(12, 2)
-  tipo             TipoFinanceiro        // RECEBER ou PAGAR
-  status           StatusFinanceiro      // PENDENTE, PAGO, ATRASADO, CANCELADO
-  categoriaId      Int
-  categoria        CategoriaFinanceira   @relation(fields: [categoriaId], references: [id])
-  representada     Representadas         @relation(fields: [representadaId], references: [id])
 }
 
 enum TipoFinanceiro {

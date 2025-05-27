@@ -70,3 +70,12 @@ export async function GET(request: Request) {
     },
   })
 }
+
+// POST - Criar novo cliente
+export async function POST(req: Request) {
+  const data = await req.json();
+  const cliente = await prisma.clientes.create({
+    data,
+  });
+  return NextResponse.json(cliente);
+}
