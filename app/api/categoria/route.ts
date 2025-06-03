@@ -6,9 +6,9 @@ const prisma = new PrismaClient();
 
 // GET - Buscar uma categoria pelo ID
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const id = parseInt(params.id)
+  const id = params.id
 
-  if (isNaN(id)) {
+  if ((id)) {
     return NextResponse.json({ error: "ID inválido" }, { status: 400 })
   }
 
@@ -30,9 +30,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
 // PUT - Atualizar uma categoria
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const id = parseInt(params.id)
+  const id = params.id
 
-  if (isNaN(id)) {
+  if ((id)) {
     return NextResponse.json({ error: "ID inválido" }, { status: 400 })
   }
 
@@ -53,9 +53,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
 // DELETE - Deletar uma categoria
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const id = parseInt(params.id)
+  const id = params.id
 
-  if (isNaN(id)) {
+  if ((id)) {
     return NextResponse.json({ error: "ID inválido" }, { status: 400 })
   }
 

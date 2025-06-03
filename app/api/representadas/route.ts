@@ -5,7 +5,7 @@ const prisma = new PrismaClient()
 
 export async function GET() {
   try {
-    const representadas = await prisma.representadas.findMany()
+    const representadas = await prisma.representada.findMany()
     return NextResponse.json(representadas)
   } catch (error) {
     console.error("Erro ao buscar representadas:", error)
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       percentualComissao,
     } = data
 
-    const nova = await prisma.representadas.create({
+    const nova = await prisma.representada.create({
       data: {
         nome,
         segmento,

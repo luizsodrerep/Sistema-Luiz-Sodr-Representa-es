@@ -4,13 +4,13 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
-  const venda = await prisma.vendas.findUnique({ where: { id: params.id } })
+  const venda = await prisma.venda.findUnique({ where: { id: params.id } })
   return NextResponse.json(venda)
 }
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const data = await req.json()
-  const vendaAtualizada = await prisma.vendas.update({
+  const vendaAtualizada = await prisma.venda.update({
     where: { id: params.id },
     data,
   })
@@ -18,6 +18,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function DELETE(_: Request, { params }: { params: { id: string } }) {
-  await prisma.vendas.delete({ where: { id: params.id } })
+  await prisma.venda.delete({ where: { id: params.id } })
   return NextResponse.json({ message: "Comissão deletada com sucesso" })
 }

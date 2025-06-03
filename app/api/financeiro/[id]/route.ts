@@ -5,9 +5,9 @@ const prisma = new PrismaClient();
 
 // GET - Buscar um lançamento financeiro específico
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const id = parseInt(params.id)
+  const id = params.id
 
-  if (isNaN(id)) {
+  if ((id)) {
     return NextResponse.json({ error: "ID inválido" }, { status: 400 })
   }
 
@@ -33,10 +33,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
 // PUT - Atualizar lançamento financeiro
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const id = parseInt(params.id)
+  const id = params.id
   const data = await request.json()
 
-  if (isNaN(id)) {
+  if ((id)) {
     return NextResponse.json({ error: "ID inválido" }, { status: 400 })
   }
 
@@ -55,9 +55,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
 // DELETE - Deletar lançamento financeiro
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const id = parseInt(params.id)
+  const id = params.id
 
-  if (isNaN(id)) {
+  if ((id)) {
     return NextResponse.json({ error: "ID inválido" }, { status: 400 })
   }
 

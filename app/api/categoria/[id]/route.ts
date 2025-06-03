@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 // GET - Buscar categoria por ID
 export async function GET(_: Request, { params }: { params: { id: string } }) {
-  const id = parseInt(params.id)
+  const id = params.id
 
   const categoria = await prisma.categoriaFinanceira.findUnique({
     where: { id },
@@ -20,7 +20,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
 // PUT - Atualizar categoria
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const id = parseInt(params.id)
+  const id = params.id
   const data = await request.json();
   const { nome, tipo } = data;
 
@@ -37,7 +37,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
 // DELETE - Excluir categoria
 export async function DELETE(_: Request, { params }: { params: { id: string } }) {
-  const id = parseInt(params.id)
+  const id = params.id
 
   await prisma.categoriaFinanceira.delete({
     where: { id },

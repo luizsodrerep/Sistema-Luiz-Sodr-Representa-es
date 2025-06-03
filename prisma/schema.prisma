@@ -7,184 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model CategoriaFinanceira {
-  id          String @id @default(uuid())
-  nome        String
-  tipo        TipoCategoria
-  descricao   String?
-  financeiro  Financeiro[]
-}
-
-model Comissao {
-  id             String @id @default(uuid())
-  representadaId Int
-  percentual     String
-  pagamento      String
-  diaPagamento   String
-  banco          String
-  agencia        String
-  conta          String
-  comNF          Boolean
-}
-
-model Compromisso {
-  id             String @id @default(uuid())
-  representadaId Int
-  tipo           String
-  dia            Int
-  mes            String
-  status         String
-}
-
-model Contato {
-  id             String @id @default(uuid())
-  clienteId      Int
-  nome           String
-  cargo          String
-  telefone       String
-  email          String
-  representadaId Int?
-  representada   Representadas? @relation(fields: [representadaId], references: [id])
-  cliente        clientes       @relation(fields: [clienteId], references: [id], name: "ClienteContatos")
-}
-
-model Clientes {
-  id                String @id @default(uuid())
-  nome              String
-  nomeFantasia      String? @db.VarChar(100)
-  cnpj              String  @unique @db.VarChar(18)
-  inscricaoEstadual String? @db.VarChar(20)
-  categoria         String? @db.VarChar(50)
-  telefone          String? @db.VarChar(20)
-  whatsapp          String? @db.VarChar(20)
-  email             String? @db.VarChar(100)
-  website           String? @db.VarChar(100)
-  responsavel       String?
-  cidade            String? @db.VarChar(100)
-  estado            String? @db.Char(2)
-  ultimaCompra      DateTime? @db.Date
-  status            String? @default(dbgenerated("true")) @db.VarChar(10)
-  interacoes        Interacoes[]
-  vendas            Vendas[]
-  contatos          Contato[] @relation("ClienteContatos")
-}
-
-model Financeiro {
-  id               String @id @default(uuid())
-  representadaId   Int
-  dataLancamento   DateTime
-  dataVencimento   DateTime
-  dataPagamento    DateTime?
-  descricao        String
-  valor            Decimal @db.Decimal(12, 2)
-  tipo             TipoFinanceiro
-  status           StatusFinanceiro
-  categoriaId      Int
-  categoria        CategoriaFinanceira @relation(fields: [categoriaId], references: [id])
-  representada     Representadas @relation(fields: [representadaId], references: [id])
-}
-
-model FollowUp {
-  id           String @id @default(uuid())
-  data         DateTime
-  descricao    String
-  responsavel  String
-  interacaoId  String @db.Uuid
-  interacao    Interacoes @relation(fields: [interacaoId], references: [id], onDelete: Cascade)
-}
-
-model Interacoes {
-  id             String @id @default(uuid())
-  clienteId      Int
-  representadaId Int
-  tipo           String
-  data           DateTime @db.Timestamp(6)
-  responsavel    String
-  descricao      String
-  status         String
-  cliente        clientes      @relation(fields: [clienteId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cliente")
-  representada   Representadas @relation(fields: [representadaId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_representada")
-
-  followUps      FollowUp[]
-}
-
-model Metas {
-  id             String @id @default(uuid())
-  representadaId Int
-  anual          String
-  mensal         String
-}
-
-model MetasMensais {
-  id             String @id @default(uuid())
-  mes            String
-  meta           String
-  realizado      String?
-  status         String
-  representadaId Int
-  representada   Representadas @relation(fields: [representadaId], references: [id])
-}
-
-model NotasFiscais {
-  id             String @id @default(uuid())
-  representadaId Int
-  numero         String
-  data           String
-  valor          String
-  status         String
-  arquivo        String
-}
-
-model Prazo {
-  id             String @id @default(uuid())
-  representadaId Int
-  faturamento    String
-  entrega        String
-}
-
-model Produto {
-  id             String @id @default(uuid())
-  representadaId Int
-  codigo         String
-  nome           String
-  preco          String
-  unidade        String
-}
-
-model Representadas {
-  id                 String @id @default(uuid())
-  nome               String
-  segmento           String
-  cidade             String
-  estado             String
-  contato            String
-  telefone           String
-  email              String
-  status             String
-  metaAnual          Decimal @db.Decimal(12, 2)
-  vendasRealizadas   Decimal @db.Decimal(12, 2)
-  percentualMeta     Float
-  comissoesGeradas   Decimal @db.Decimal(12, 2)
-  percentualComissao Float
-  interacoes         Interacoes[]
-  metasMensais       MetasMensais[]
-  vendas             Vendas[]
-  financeiros        Financeiro[]
-  contatos           Contato[]      
-}
-
-model Vendas {
-  id             String @id @default(uuid())
-  data           DateTime
-  valor          Float
-  representadaId Int
-  clienteId      Int
-  comissao       Float?
-  status         String?
-  valorFaturado  Float?
-  cliente        clientes @relation(fields: [clienteId], references: [id])
-  representada   Representadas @relation(fields: [representadaId], references: [id])
-}
+//////////////////////
+// ENUMS
+//////////////////////
 
 enum TipoFinanceiro {
   RECEBER
@@ -201,4 +26,242 @@ enum StatusFinanceiro {
 enum TipoCategoria {
   RECEITA
   DESPESA
+}
+
+enum StatusInteracao {
+  ABERTA
+  CONCLUIDA
+  CANCELADA
+}
+
+enum TipoInteracao {
+  VISITA
+  EMAIL
+  LIGACAO
+  OUTRO
+}
+
+enum StatusVenda {
+  ABERTA
+  CONCLUIDA
+  CANCELADA
+}
+
+//////////////////////
+// MODELS
+//////////////////////
+
+model CategoriaFinanceira {
+  id         String       @id @default(uuid()) @db.Uuid
+  nome       String
+  tipo       TipoCategoria
+  descricao  String?
+
+  financeiro Financeiro[]
+}
+
+model Cliente {
+  id                String    @id @default(uuid()) @db.Uuid
+  nome              String
+  nomeFantasia      String?   @db.VarChar(100)
+  cnpj              String    @unique @db.VarChar(18)
+  inscricaoEstadual String?   @db.VarChar(20)
+  categoria         String?   @db.VarChar(50)
+  telefone          String?   @db.VarChar(20)
+  whatsapp          String?   @db.VarChar(20)
+  email             String?   @db.VarChar(100)
+  website           String?   @db.VarChar(100)
+  responsavel       String?
+  cidade            String?   @db.VarChar(100)
+  estado            String?   @db.Char(2)
+  ultimaCompra      DateTime? @db.Date
+  status            String?   @default("ATIVO") @db.VarChar(10)
+
+  interacoes        Interacao[]
+  vendas            Venda[]
+  contatos          Contato[] @relation("ClienteContatos")
+}
+
+model Representada {
+  id                 String       @id @default(uuid()) @db.Uuid
+  nome               String
+  segmento           String
+  cidade             String
+  estado             String
+  contato            String
+  telefone           String
+  email              String
+  status             String
+  metaAnual          Decimal      @db.Decimal(12, 2)
+  vendasRealizadas   Decimal      @db.Decimal(12, 2)
+  percentualMeta     Float
+  comissoesGeradas   Decimal      @db.Decimal(12, 2)
+  percentualComissao Float
+
+  interacoes         Interacao[]
+  metas              Meta[]
+  metasMensais       MetaMensal[]
+  vendas             Venda[]
+  financeiros        Financeiro[]
+  contatos           Contato[]
+  comissoes          Comissao[]
+  compromissos       Compromisso[]
+  produtos           Produto[]
+  prazos             Prazo[]
+  notasFiscais       NotaFiscal[]
+}
+
+model Contato {
+  id             String       @id @default(uuid()) @db.Uuid
+  clienteId      String       @db.Uuid
+  nome           String
+  cargo          String
+  telefone       String
+  email          String
+  representadaId String?      @db.Uuid
+
+  cliente        Cliente       @relation(fields: [clienteId], references: [id], name: "ClienteContatos")
+  representada   Representada? @relation(fields: [representadaId], references: [id])
+}
+
+model Interacao {
+  id             String        @id @default(uuid()) @db.Uuid
+  clienteId      String        @db.Uuid
+  representadaId String?       @db.Uuid
+  tipo           TipoInteracao
+  data           DateTime
+  responsavel    String?
+  descricao      String?
+  status         StatusInteracao @default(ABERTA)
+
+  cliente        Cliente        @relation(fields: [clienteId], references: [id])
+  representada   Representada?  @relation(fields: [representadaId], references: [id])
+  followUps      FollowUp[]
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt @default(now())
+}
+
+model FollowUp {
+  id           String      @id @default(uuid()) @db.Uuid
+  interacaoId  String      @db.Uuid
+  data         DateTime
+  descricao    String
+  status       String      @default("PENDENTE")
+
+  interacao    Interacao   @relation(fields: [interacaoId], references: [id])
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt @default(now())
+}
+
+model Venda {
+  id             String       @id @default(uuid()) @db.Uuid
+  clienteId      String       @db.Uuid
+  representadaId String?      @db.Uuid
+  data           DateTime
+  valor          Decimal      @db.Decimal(12, 2)
+  status         StatusVenda  @default(ABERTA)
+
+  cliente        Cliente       @relation(fields: [clienteId], references: [id])
+  representada   Representada? @relation(fields: [representadaId], references: [id])
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt @default(now())
+}
+
+model Financeiro {
+  id             String            @id @default(uuid()) @db.Uuid
+  representadaId String            @db.Uuid
+  dataLancamento DateTime
+  dataVencimento DateTime
+  dataPagamento  DateTime?
+  descricao      String
+  valor          Decimal           @db.Decimal(12, 2)
+  tipo           TipoFinanceiro
+  status         StatusFinanceiro
+  categoriaId    String            @db.Uuid
+
+  categoria      CategoriaFinanceira @relation(fields: [categoriaId], references: [id])
+  representada   Representada        @relation(fields: [representadaId], references: [id])
+
+  @@index([categoriaId])
+  @@index([representadaId])
+}
+
+model Meta {
+  id             String       @id @default(uuid()) @db.Uuid
+  representadaId String       @db.Uuid
+  anual          Decimal      @db.Decimal(12, 2)
+  mensal         Decimal      @db.Decimal(12, 2)
+
+  representada   Representada @relation(fields: [representadaId], references: [id])
+}
+
+model MetaMensal {
+  id             String       @id @default(uuid()) @db.Uuid
+  mes            String
+  meta           Decimal      @db.Decimal(12, 2)
+  realizado      Decimal?
+  status         String
+  representadaId String       @db.Uuid
+
+  representada   Representada @relation(fields: [representadaId], references: [id])
+}
+
+model NotaFiscal {
+  id             String       @id @default(uuid()) @db.Uuid
+  representadaId String       @db.Uuid
+  numero         String
+  data           DateTime
+  valor          Decimal      @db.Decimal(12, 2)
+  status         String
+  arquivo        String
+
+  representada   Representada @relation(fields: [representadaId], references: [id])
+}
+
+model Prazo {
+  id             String       @id @default(uuid()) @db.Uuid
+  representadaId String       @db.Uuid
+  faturamento    String
+  entrega        String
+
+  representada   Representada @relation(fields: [representadaId], references: [id])
+}
+
+model Produto {
+  id             String       @id @default(uuid()) @db.Uuid
+  representadaId String       @db.Uuid
+  codigo         String
+  nome           String
+  preco          Decimal      @db.Decimal(12, 2)
+  unidade        String
+
+  representada   Representada @relation(fields: [representadaId], references: [id])
+}
+
+model Compromisso {
+  id             String       @id @default(uuid()) @db.Uuid
+  representadaId String       @db.Uuid
+  tipo           String
+  dia            Int
+  mes            String
+  status         String
+
+  representada   Representada @relation(fields: [representadaId], references: [id])
+}
+
+model Comissao {
+  id             String       @id @default(uuid()) @db.Uuid
+  representadaId String       @db.Uuid
+  percentual     Float
+  pagamento      Decimal      @db.Decimal(12, 2)
+  diaPagamento   String
+  banco          String
+  agencia        String
+  conta          String
+  comNF          Boolean
+
+  representada   Representada @relation(fields: [representadaId], references: [id])
 }

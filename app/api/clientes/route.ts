@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const cliente = await prisma.clientes.create({
+    const cliente = await prisma.cliente.create({
       data: {
         nome,
         nomeFantasia,
@@ -86,7 +86,7 @@ export async function GET(request: Request) {
   // Se não houver parâmetro "module", retorna os clientes do banco
   if (!module) {
     try {
-      const clientes = await prisma.clientes.findMany()
+      const clientes = await prisma.cliente.findMany()
       return NextResponse.json(clientes)
     } catch (error) {
       console.error("Erro ao buscar clientes:", error)

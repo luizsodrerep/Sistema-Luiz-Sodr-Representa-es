@@ -9,13 +9,13 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = Number(params.id);
-    if (isNaN(id)) {
+    const id = (params.id);
+    if ((!id)) {
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
     }
 
-    const cliente = await prisma.clientes.findUnique({
-      where: { id },
+    const cliente = await prisma.cliente.findUnique({
+      where: { id  },
       include: {
         contatos: true,
         interacoes: true,
@@ -46,8 +46,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = Number(params.id);
-    if (isNaN(id)) {
+    const id = (params.id);
+    if ((!id)) {
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
     }
 
@@ -71,7 +71,7 @@ export async function PUT(
       contato,
     } = body;
 
-    const cliente = await prisma.clientes.update({
+    const cliente = await prisma.cliente.update({
       where: { id },
       data: {
         nome,
@@ -149,12 +149,12 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = Number(params.id);
-    if (isNaN(id)) {
+    const id = (params.id);
+    if ((!id)) {
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
     }
 
-    await prisma.clientes.delete({
+    await prisma.cliente.delete({
       where: { id },
     });
 

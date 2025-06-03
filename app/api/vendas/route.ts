@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
   try {
-    const vendas = await prisma.vendas.findMany({
+    const vendas = await prisma.venda.findMany({
       include: {
         cliente: true,
         representada: true,

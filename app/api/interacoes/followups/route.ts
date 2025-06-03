@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 
 export async function GET() {
   try {
-    const followUps = await prisma.FollowUp.findMany({
+    const followUps = await prisma.followUp.findMany({
       include: {
         interacao: {
           select: {

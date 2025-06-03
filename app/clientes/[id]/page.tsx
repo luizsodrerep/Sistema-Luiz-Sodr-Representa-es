@@ -1,32 +1,24 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
-import { useParams } from "next/navigation"
 import { notFound } from "next/navigation"
-import { toast } from "@/components/ui/use-toast"
-
-import { NavigationButtons } from "@/components/navigation-buttons"
-import { Button } from "@/components/ui/button"
+import { useParams } from "next/navigation"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs"
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card"
-import {
-  Edit,
-  Save,
-  Trash,
-  User,
-} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { toast } from "@/components/ui/use-toast"
+import { useEffect, useState, useRef } from "react"
+import { Edit, Save, Trash, User, } from "lucide-react"
+import { NavigationButtons } from "@/components/navigation-buttons"
+import { Tabs, TabsList, TabsTrigger, TabsContent, } from "@/components/ui/tabs"
+import { Card, CardHeader, CardTitle, CardContent, } from "@/components/ui/card"
+
+interface Contato {
+  id: number
+  nome: string
+  cargo: string
+  telefone: string
+  email: string
+}
 
 interface Cliente {
   id: number
@@ -48,11 +40,12 @@ interface Cliente {
   cep: string
   status: string
   diasInativo: number
+  contatos: Contato[]
 }
 
 export default function ClienteDetalhesPage() {
   const params = useParams();
-const id = params.id;
+  const id = params.id;
 
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -135,10 +128,10 @@ const id = params.id;
             <h2 className="text-3xl font-bold tracking-tight">{cliente.nome}</h2>
             <div
               className={`ml-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cliente.status === "Ativo"
-                  ? "bg-green-100 text-green-800"
-                  : cliente.status === "Inativo"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-yellow-100 text-yellow-800"
+                ? "bg-green-100 text-green-800"
+                : cliente.status === "Inativo"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-yellow-100 text-yellow-800"
                 }`}
             >
               {cliente.status === "Inativo"

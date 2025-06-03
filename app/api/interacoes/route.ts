@@ -5,7 +5,7 @@ const prisma = new PrismaClient()
 
 export async function GET() {
   try {
-    const interacoes = await prisma.interacoes.findMany({
+    const interacoes = await prisma.interacao.findMany({
       include: {
         cliente: true,        // ✅ Inclui os dados do cliente
         representada: true,

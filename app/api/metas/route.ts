@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 
 export async function GET() {
   try {
-    const metas = await prisma.metas.findMany()
+    const metas = await prisma.meta.findMany()
     return NextResponse.json(metas)
   } catch (error) {
     return NextResponse.json({ error: "Erro ao buscar metas." }, { status: 500 })
@@ -16,7 +16,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const data = await req.json()
-    const nova = await prisma.metas.create({ data })
+    const nova = await prisma.meta.create({ data })
     return NextResponse.json(nova)
   } catch (error) {
     return NextResponse.json({ error: "Erro ao criar representada." }, { status: 500 })
