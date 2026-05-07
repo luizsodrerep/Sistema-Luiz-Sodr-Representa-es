@@ -7,22 +7,32 @@ datasource db {
 }
 
 model Cliente {
-  id           String      @id @default(cuid())
-  nome         String
-  empresa      String?
+  id           String   @id @default(cuid())
+  razaoSocial  String
+  nomeFantasia String?
+  cnpj         String?
+  inscricaoEstadual String?
+  contato      String?
   cargo        String?
   email        String?
   telefone     String?
+  whatsapp     String?
   endereco     String?
+  bairro       String?
   cidade       String?
   estado       String?
+  cep          String?
+  regiao       String?
+  rota         String?
   categoria    String?
-  status       String      @default("Ativo")
+  status       String   @default("Ativo")
+  aceitaEmail  Boolean  @default(true)
   observacoes  String?
-  criadoEm     DateTime    @default(now())
-  atualizadoEm DateTime    @updatedAt
-  interacoes   Interacao[]
-  vendas       Venda[]
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  interacoes Interacao[]
+  vendas     Venda[]
 }
 
 model Representada {
@@ -40,11 +50,12 @@ model Representada {
   status       String   @default("Ativa")
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
-  vendas       Venda[]
+
+  vendas Venda[]
 }
 
 model Venda {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   data           DateTime
   clienteId      String
   representadaId String
@@ -53,12 +64,13 @@ model Venda {
   valorUnitario  Float?
   valorTotal     Float?
   comissao       Float?
-  status         String       @default("Pendente")
+  status         String   @default("Pendente")
   observacoes    String?
-  criadoEm       DateTime     @default(now())
-  atualizadoEm   DateTime     @updatedAt
-  cliente        Cliente      @relation(fields: [clienteId], references: [id])
-  representada   Representada @relation(fields: [representadaId], references: [id])
+  criadoEm       DateTime @default(now())
+  atualizadoEm   DateTime @updatedAt
+
+  cliente      Cliente      @relation(fields: [clienteId], references: [id])
+  representada Representada @relation(fields: [representadaId], references: [id])
 }
 
 model Interacao {
@@ -72,7 +84,8 @@ model Interacao {
   proximosPasso String?
   criadoEm      DateTime @default(now())
   atualizadoEm  DateTime @updatedAt
-  cliente       Cliente  @relation(fields: [clienteId], references: [id])
+
+  cliente Cliente @relation(fields: [clienteId], references: [id])
 }
 
 model Financeiro {
