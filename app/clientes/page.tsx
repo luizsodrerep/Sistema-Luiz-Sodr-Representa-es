@@ -22,6 +22,14 @@ interface Cliente {
   status: string
 }
 
+const statusCor = (status: string) => {
+  if (status === "Ativo") return { backgroundColor: "#dcfce7", color: "#166534" }
+  if (status === "Inativo") return { backgroundColor: "#fee2e2", color: "#991b1b" }
+  if (status === "Inativo 6 meses") return { backgroundColor: "#ffedd5", color: "#9a3412" }
+  if (status === "Prospect") return { backgroundColor: "#dbeafe", color: "#1e40af" }
+  return { backgroundColor: "#f3f4f6", color: "#374151" }
+}
+
 export default function ClientesPage() {
   const router = useRouter()
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -31,10 +39,7 @@ export default function ClientesPage() {
   useEffect(() => {
     fetch("/api/clientes")
       .then((res) => res.json())
-      .then((data) => {
-        setClientes(data)
-        setLoading(false)
-      })
+      .then((data) => { setClientes(data); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
 
@@ -49,11 +54,10 @@ export default function ClientesPage() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-3xl font-bold tracking-tight">Clientes</h2>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.push("/")}>Início</Button>
+          <Button variant="outline" onClick={() => router.push("/")}>Inicio</Button>
           <Link href="/clientes/novo">
             <Button size="sm" className="gap-1">
-              <Plus className="h-4 w-4" />
-              Novo Cliente
+              <Plus className="h-4 w-4" />Novo Cliente
             </Button>
           </Link>
         </div>
@@ -79,25 +83,21 @@ export default function ClientesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Razão Social</TableHead>
+                <TableHead>Razao Social</TableHead>
                 <TableHead>Nome Fantasia</TableHead>
                 <TableHead>CNPJ</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>Cidade/UF</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Ações</TableHead>
+                <TableHead>Acoes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">Carregando clientes...</TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-8">Carregando clientes...</TableCell></TableRow>
               ) : clientesFiltrados.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">Nenhum cliente encontrado.</TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-8">Nenhum cliente encontrado.</TableCell></TableRow>
               ) : (
                 clientesFiltrados.map((cliente) => (
                   <TableRow key={cliente.id}>
@@ -107,11 +107,14 @@ export default function ClientesPage() {
                     <TableCell>{cliente.telefone || "-"}</TableCell>
                     <TableCell>{cliente.cidade && cliente.estado ? `${cliente.cidade}/${cliente.estado}` : "-"}</TableCell>
                     <TableCell>{cliente.categoria || "-"}</TableCell>
-                    <TableCell>{cliente.status}</TableCell>
+                    <TableCell>
+                      <span style={{ ...statusCor(cliente.status), padding: "2px 10px", borderRadius: "9999px", fontSize: "12px", fontWeight: 600 }}>
+                        {cliente.status}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <Button size="sm" variant="outline" className="gap-1" onClick={() => router.push(`/clientes/${cliente.id}`)}>
-                        <LogIn className="h-3 w-3" />
-                        Entrar
+                        <LogIn className="h-3 w-3" />Entrar
                       </Button>
                     </TableCell>
                   </TableRow>

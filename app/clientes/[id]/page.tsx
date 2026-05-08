@@ -1,10 +1,10 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Pencil } from "lucide-react"
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react"
 
 interface Cliente {
   id: string
@@ -43,6 +43,31 @@ export default function ClientePage() {
       .catch(() => setLoading(false))
   }, [params.id])
 
+  const handleExcluir = async () => {
+    if (!confirm("Tem certeza que deseja excluir este cliente?")) return
+    try {
+      const response = await fetch(`/api/clientes/${params.id}`, { method: "DELETE" })
+      if (response.ok) {
+        alert("Cliente excluido com sucesso!")
+        router.push("/clientes")
+      } else {
+        alert("Erro ao excluir cliente.")
+      }
+    } catch (error) {
+      alert("Erro ao conectar com o servidor.")
+    }
+  }
+
+  const statusCor = (status: string) => {
+    switch (status) {
+      case "Ativo": return "bg-green-100 text-green-800"
+      case "Inativo": return "bg-red-100 text-red-800"
+      case "Inativo 6 meses": return "bg-orange-100 text-orange-800"
+      case "Prospect": return "bg-blue-100 text-blue-800"
+      default: return "bg-gray-100 text-gray-800"
+    }
+  }
+
   if (loading) return <div className="p-8">Carregando...</div>
   if (!cliente) return <div className="p-8">Cliente nao encontrado.</div>
 
@@ -54,10 +79,18 @@ export default function ClientePage() {
             <ArrowLeft className="h-4 w-4 mr-1" />Voltar
           </Button>
           <h2 className="text-3xl font-bold tracking-tight">{cliente.razaoSocial}</h2>
+          <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusCor(cliente.status)}`}>
+            {cliente.status}
+          </span>
         </div>
-        <Button size="sm" className="gap-1" onClick={() => router.push(`/clientes/${cliente.id}/editar`)}>
-          <Pencil className="h-4 w-4" />Editar
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" className="gap-1" onClick={() => router.push(`/clientes/${cliente.id}/editar`)}>
+            <Pencil className="h-4 w-4" />Editar
+          </Button>
+          <Button size="sm" variant="destructive" className="gap-1" onClick={handleExcluir}>
+            <Trash2 className="h-4 w-4" />Excluir
+          </Button>
+        </div>
       </div>
       <div className="space-y-4">
         <Card>
@@ -68,7 +101,9 @@ export default function ClientePage() {
             <div><p className="text-sm text-muted-foreground">CNPJ</p><p className="font-medium">{cliente.cnpj || "-"}</p></div>
             <div><p className="text-sm text-muted-foreground">Inscricao Estadual</p><p className="font-medium">{cliente.inscricaoEstadual || "-"}</p></div>
             <div><p className="text-sm text-muted-foreground">Categoria</p><p className="font-medium">{cliente.categoria || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">Status</p><p className="font-medium">{cliente.status}</p></div>
+            <div><p className="text-sm text-muted-foreground">Status</p>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusCor(cliente.status)}`}>{cliente.status}</span>
+            </div>
           </CardContent>
         </Card>
         <Card>

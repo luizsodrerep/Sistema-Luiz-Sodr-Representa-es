@@ -43,3 +43,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: "Erro ao atualizar cliente" }, { status: 500 })
   }
 }
+
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  try {
+    await prisma.cliente.delete({ where: { id: params.id } })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    return NextResponse.json({ error: "Erro ao excluir cliente" }, { status: 500 })
+  }
+}
