@@ -1,11 +1,11 @@
 ﻿"use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Search, LogIn } from "lucide-react"
+import { Plus, Search, LogIn, Download, Upload, FileSpreadsheet } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -32,16 +32,20 @@ const statusCor = (status: string) => {
 
 export default function ClientesPage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [busca, setBusca] = useState("")
   const [loading, setLoading] = useState(true)
+  const [importando, setImportando] = useState(false)
 
-  useEffect(() => {
+  const carregarClientes = () => {
     fetch("/api/clientes")
       .then((res) => res.json())
       .then((data) => { setClientes(data); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { carregarClientes() }, [])
 
   const clientesFiltrados = clientes.filter((c) =>
     c.razaoSocial.toLowerCase().includes(busca.toLowerCase()) ||
@@ -49,12 +53,53 @@ export default function ClientesPage() {
     (c.cidade && c.cidade.toLowerCase().includes(busca.toLowerCase()))
   )
 
+  const baixarModelo = () => {
+    window.open("/api/clientes/exportar?tipo=modelo", "_blank")
+  }
+
+  const baixarDados = () => {
+    window.open("/api/clientes/exportar?tipo=dados", "_blank")
+  }
+
+  const handleImportar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportando(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const response = await fetch("/api/clientes/importar", { method: "POST", body: formData })
+      const result = await response.json()
+      if (response.ok) {
+        alert(`${result.importados} cliente(s) importado(s) com sucesso!`)
+        carregarClientes()
+      } else {
+        alert("Erro ao importar: " + result.error)
+      }
+    } catch (error) {
+      alert("Erro ao importar arquivo.")
+    } finally {
+      setImportando(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
   return (
     <div className="flex flex-col p-8 pt-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-3xl font-bold tracking-tight">Clientes</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => router.push("/")}>Inicio</Button>
+          <Button variant="outline" size="sm" className="gap-1" onClick={baixarModelo}>
+            <FileSpreadsheet className="h-4 w-4" />Modelo Excel
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1" onClick={baixarDados}>
+            <Download className="h-4 w-4" />Exportar
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1" onClick={() => fileInputRef.current?.click()} disabled={importando}>
+            <Upload className="h-4 w-4" />{importando ? "Importando..." : "Importar"}
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".xlsx" className="hidden" onChange={handleImportar} />
           <Link href="/clientes/novo">
             <Button size="sm" className="gap-1">
               <Plus className="h-4 w-4" />Novo Cliente
@@ -64,20 +109,12 @@ export default function ClientesPage() {
       </div>
       <div className="relative w-full md:w-80 mb-4">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Buscar clientes..."
-          className="pl-8"
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-        />
+        <Input type="search" placeholder="Buscar clientes..." className="pl-8" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </div>
       <Card>
         <CardHeader className="p-4">
           <CardTitle>Lista de Clientes</CardTitle>
-          <CardDescription>
-            {loading ? "Carregando..." : `${clientesFiltrados.length} cliente(s) encontrado(s)`}
-          </CardDescription>
+          <CardDescription>{loading ? "Carregando..." : `${clientesFiltrados.length} cliente(s) encontrado(s)`}</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
