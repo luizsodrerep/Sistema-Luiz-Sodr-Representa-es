@@ -1,73 +1,93 @@
+@"
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Cliente {
-  id           String   @id @default(cuid())
-  razaoSocial  String
-  nomeFantasia String?
-  cnpj         String?
+  id                String   @id @default(cuid())
+  razaoSocial       String
+  nomeFantasia      String?
+  cnpj              String?
   inscricaoEstadual String?
-  contato      String?
-  cargo        String?
-  email        String?
-  telefone     String?
-  whatsapp     String?
-  endereco     String?
-  bairro       String?
-  cidade       String?
-  estado       String?
-  cep          String?
-  regiao       String?
-  rota         String?
-  categoria    String?
-  status       String   @default("Ativo")
-  aceitaEmail  Boolean  @default(true)
-  observacoes  String?
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  contato           String?
+  cargo             String?
+  email             String?
+  telefone          String?
+  whatsapp          String?
+  endereco          String?
+  bairro            String?
+  cidade            String?
+  estado            String?
+  cep               String?
+  regiao            String?
+  rota              String?
+  categoria         String?
+  status            String   @default("Ativo")
+  aceitaEmail       Boolean  @default(true)
+  observacoes       String?
+  criadoEm          DateTime @default(now())
+  atualizadoEm      DateTime @updatedAt
 
   interacoes Interacao[]
   vendas     Venda[]
 }
 
 model Representada {
-  id           String   @id @default(cuid())
-  nome         String
-  cnpj         String?
-  contato      String?
-  email        String?
-  telefone     String?
-  endereco     String?
-  cidade       String?
-  estado       String?
-  produtos     String?
-  comissao     Float?
-  status       String   @default("Ativa")
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  nome               String
+  cnpj               String?
+  contratoAssinado   Boolean  @default(false)
+  emiteNF            Boolean  @default(true)
+  comissao           Float?
+  fechamentoComissao String?
+  pagamentoComissao  String?
+  bancoComissao      String?
+  contatoPrincipal   String?
+  emailPrincipal     String?
+  telefonePrincipal  String?
+  whatsappPrincipal  String?
+  contatoFinanceiro  String?
+  emailFinanceiro    String?
+  telefoneFinanceiro String?
+  contatoLogistica   String?
+  emailLogistica     String?
+  telefoneLogistica  String?
+  endereco           String?
+  cidade             String?
+  estado             String?
+  cep                String?
+  site               String?
+  status             String   @default("Ativa")
+  observacoes        String?
+  criadoEm           DateTime @default(now())
+  atualizadoEm       DateTime @updatedAt
 
   vendas Venda[]
 }
 
 model Venda {
-  id             String   @id @default(cuid())
-  data           DateTime
-  clienteId      String
-  representadaId String
-  produto        String?
-  quantidade     Int?
-  valorUnitario  Float?
-  valorTotal     Float?
-  comissao       Float?
-  status         String   @default("Pendente")
-  observacoes    String?
-  criadoEm       DateTime @default(now())
-  atualizadoEm   DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  data                DateTime
+  clienteId           String
+  representadaId      String
+  numeroPedido        String?
+  produto             String?
+  quantidade          Int?
+  valorTotal          Float?
+  desconto            Float?
+  condicaoPagamento   String?
+  previsaoFaturamento DateTime?
+  comissao            Float?
+  status              String   @default("Pendente")
+  arquivoUrl          String?
+  observacoes         String?
+  criadoEm            DateTime @default(now())
+  atualizadoEm        DateTime @updatedAt
 
   cliente      Cliente      @relation(fields: [clienteId], references: [id])
   representada Representada @relation(fields: [representadaId], references: [id])
@@ -89,14 +109,15 @@ model Interacao {
 }
 
 model Financeiro {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   data         DateTime
   tipo         String
   categoria    String?
   descricao    String?
   valor        Float
-  status       String    @default("Pendente")
+  status       String   @default("Pendente")
   vencimento   DateTime?
-  criadoEm     DateTime  @default(now())
-  atualizadoEm DateTime  @updatedAt
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }
+"@ | Set-Content -LiteralPath "prisma\schema.prisma" -Encoding UTF8
