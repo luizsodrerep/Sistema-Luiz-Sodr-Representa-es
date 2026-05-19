@@ -1,4 +1,5 @@
-generator client {
+﻿const fs = require("fs");
+const schema = `generator client {
   provider = "prisma-client-js"
 }
 
@@ -66,7 +67,6 @@ model Representada {
   atualizadoEm       DateTime @updatedAt
 
   vendas Venda[]
-  faixasComissao ComissaoFaixa[]
 }
 
 model Venda {
@@ -118,16 +118,6 @@ model Financeiro {
   vencimento   DateTime?
   criadoEm     DateTime  @default(now())
   atualizadoEm DateTime  @updatedAt
-}
-
-model ComissaoFaixa {
-  id               String   @id @default(cuid())
-  representadaId   String
-  descontoAte      Float
-  percentualComissao Float
-  ordem            Int
-  criadoEm         DateTime @default(now())
-  atualizadoEm     DateTime @updatedAt
-
-  representada Representada @relation(fields: [representadaId], references: [id])
-}
+}`;
+fs.writeFileSync("prisma/schema.prisma", schema, "utf8");
+console.log("OK");

@@ -3,23 +3,35 @@ import { prisma } from "@/lib/prisma"
 
 export async function GET() {
   try {
-    const representadas = await prisma.representada.findMany({ orderBy: { nome: "asc" } })
+    const representadas = await prisma.representada.findMany({
+      orderBy: { nome: "asc" },
+    })
     return NextResponse.json(representadas)
-  } catch (error) {
-    return NextResponse.json({ error: "Erro ao buscar representadas" }, { status: 500 })
+  } catch (error: any) {
+    console.error("ERRO AO BUSCAR REPRESENTADAS:", error)
+    return NextResponse.json(
+      { error: error.message || "Erro ao buscar representadas" },
+      { status: 500 }
+    )
   }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+
+    console.log("DADOS RECEBIDOS:", body)
+
     const representada = await prisma.representada.create({
       data: {
         nome: body.nome,
         cnpj: body.cnpj || null,
         contratoAssinado: body.contratoAssinado ?? false,
         emiteNF: body.emiteNF ?? true,
-        comissao: body.comissao ? parseFloat(body.comissao) : null,
+        comissao:
+          body.comissao && body.comissao !== ""
+            ? parseFloat(String(body.comissao).replace(",", "."))
+            : null,
         fechamentoComissao: body.fechamentoComissao || null,
         pagamentoComissao: body.pagamentoComissao || null,
         bancoComissao: body.bancoComissao || null,
@@ -40,10 +52,18 @@ export async function POST(request: Request) {
         site: body.site || null,
         status: body.status || "Ativa",
         observacoes: body.observacoes || null,
-      }
+      },
     })
+
     return NextResponse.json(representada, { status: 201 })
-  } catch (error) {
-    return NextResponse.json({ error: "Erro ao criar representada" }, { status: 500 })
+  } catch (error: any) {
+    console.error("ERRO REAL AO SALVAR REPRESENTADA:", error)
+
+    return NextResponse.json(
+      {
+        error: error.message || "Erro ao criar representada",
+      },
+      { status: 500 }
+    )
   }
 }
