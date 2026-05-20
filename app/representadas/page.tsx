@@ -24,12 +24,28 @@ export default function RepresentadasPage() {
   const [representadas, setRepresentadas] = useState<Representada[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetch("/api/representadas")
-      .then((res) => res.json())
-      .then((data) => { setRepresentadas(data); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
+useEffect(() => {
+  fetch("/api/representadas")
+    .then((res) => res.json())
+    .then((data) => {
+      console.log("API retornou:", data)
+
+      if (Array.isArray(data)) {
+        setRepresentadas(data)
+      } else if (Array.isArray(data.representadas)) {
+        setRepresentadas(data.representadas)
+      } else {
+        setRepresentadas([])
+      }
+
+      setLoading(false)
+    })
+    .catch((err) => {
+      console.error(err)
+      setRepresentadas([])
+      setLoading(false)
+    })
+}, [])
 
   return (
     <div className="flex flex-col p-8 pt-6">

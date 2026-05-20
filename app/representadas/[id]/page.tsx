@@ -2,281 +2,245 @@
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Home, Pencil, Trash2, Plus, X } from "lucide-react"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"
 
-interface Faixa {
-  id?: string
-  descontoAte: number
-  percentualComissao: number
-  ordem: number
-}
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+
+import { Plus, LogIn } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface Representada {
   id: string
   nome: string
   cnpj: string | null
+  comissao: number | null
   contratoAssinado: boolean
   emiteNF: boolean
-  comissao: number | null
-  fechamentoComissao: string | null
-  pagamentoComissao: string | null
-  bancoComissao: string | null
-  contatoPrincipal: string | null
-  emailPrincipal: string | null
-  telefonePrincipal: string | null
-  whatsappPrincipal: string | null
-  contatoFinanceiro: string | null
-  emailFinanceiro: string | null
-  telefoneFinanceiro: string | null
-  contatoLogistica: string | null
-  emailLogistica: string | null
-  telefoneLogistica: string | null
-  endereco: string | null
+  status: string
   cidade: string | null
   estado: string | null
-  cep: string | null
-  site: string | null
-  status: string
-  observacoes: string | null
-  faixasComissao: Faixa[]
 }
 
-export default function RepresentadaPage() {
+export default function RepresentadasPage() {
   const router = useRouter()
-  const params = useParams()
-  const [rep, setRep] = useState<Representada | null>(null)
+
+  const [representadas, setRepresentadas] = useState<Representada[]>([])
   const [loading, setLoading] = useState(true)
-  const [faixas, setFaixas] = useState<Faixa[]>([
-  { descontoAte: 0, percentualComissao: 0, ordem: 1 },
-  { descontoAte: 0, percentualComissao: 0, ordem: 2 },
-  { descontoAte: 0, percentualComissao: 0, ordem: 3 },
-])
-  const [salvandoFaixas, setSalvandoFaixas] = useState(false)
-  const [tipoComissao, setTipoComissao] = useState<"fixa" | "variavel">("variavel")
 
   useEffect(() => {
-    fetch(`/api/representadas/${params.id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setRep(data)
-        setFaixas(
-  data.faixasComissao && data.faixasComissao.length > 0
-    ? data.faixasComissao
-    : [
-        { descontoAte: 0, percentualComissao: 0, ordem: 1 },
-        { descontoAte: 0, percentualComissao: 0, ordem: 2 },
-        { descontoAte: 0, percentualComissao: 0, ordem: 3 },
-      ]
-)
+    async function carregarRepresentadas() {
+      try {
+        const res = await fetch("/api/representadas")
+
+        const data = await res.json()
+
+        console.log("API RETORNOU:", data)
+
+        if (Array.isArray(data)) {
+          setRepresentadas(data)
+        } else {
+          console.error("API nao retornou array:", data)
+          setRepresentadas([])
+        }
+      } catch (error) {
+        console.error("ERRO AO CARREGAR REPRESENTADAS:", error)
+        setRepresentadas([])
+      } finally {
         setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [params.id])
+      }
+    }
 
-  const handleExcluir = async () => {
-    if (!confirm("Excluir esta representada?")) return
-    const res = await fetch(`/api/representadas/${params.id}`, { method: "DELETE" })
-    if (res.ok) { alert("Excluida com sucesso!"); router.push("/representadas") }
-    else alert("Erro ao excluir.")
-  }
-
-  const addFaixa = () => {
-    setFaixas([...faixas, { descontoAte: 0, percentualComissao: 0, ordem: faixas.length + 1 }])
-  }
-
-  const removeFaixa = (idx: number) => {
-    setFaixas(faixas.filter((_, i) => i !== idx))
-  }
-
-  const updateFaixa = (idx: number, field: string, value: number) => {
-    const novas = [...faixas]
-    novas[idx] = { ...novas[idx], [field]: value }
-    setFaixas(novas)
-  }
-
-  const salvarFaixas = async () => {
-    setSalvandoFaixas(true)
-    const res = await fetch(`/api/representadas/${params.id}/comissao`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ faixas }),
-    })
-    if (res.ok) alert("Faixas salvas com sucesso!")
-    else alert("Erro ao salvar faixas.")
-    setSalvandoFaixas(false)
-  }
-
-  if (loading) return <div className="p-8">Carregando...</div>
-  if (!rep) return <div className="p-8">Representada nao encontrada.</div>
-
-  const sim = { backgroundColor: "#dcfce7", color: "#166534", padding: "2px 10px", borderRadius: "9999px", fontSize: "12px", fontWeight: 600 as const }
-  const nao = { backgroundColor: "#fee2e2", color: "#991b1b", padding: "2px 10px", borderRadius: "9999px", fontSize: "12px", fontWeight: 600 as const }
+    carregarRepresentadas()
+  }, [])
 
   return (
-    <div className="flex flex-col p-8 pt-6 max-w-4xl mx-auto">
+    <div className="flex flex-col p-8 pt-6">
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => router.push("/representadas")}>
-            <ArrowLeft className="h-4 w-4 mr-1" />Voltar
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => router.push("/")}>
-            <Home className="h-4 w-4 mr-1" />Inicio
-          </Button>
-          <h2 className="text-3xl font-bold tracking-tight">{rep.nome}</h2>
-          <span style={{ backgroundColor: rep.status === "Ativa" ? "#dcfce7" : "#fee2e2", color: rep.status === "Ativa" ? "#166534" : "#991b1b", padding: "2px 10px", borderRadius: "9999px", fontSize: "12px", fontWeight: 600 }}>
-            {rep.status}
-          </span>
-        </div>
+        <h2 className="text-3xl font-bold tracking-tight">
+          Representadas
+        </h2>
+
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => router.push(`/representadas/${rep.id}/editar`)}>
-            <Pencil className="h-4 w-4 mr-1" />Editar
+          <Button
+            variant="outline"
+            onClick={() => router.push("/")}
+          >
+            Inicio
           </Button>
-          <Button size="sm" variant="destructive" onClick={handleExcluir}>
-            <Trash2 className="h-4 w-4 mr-1" />Excluir
+
+          <Button
+            size="sm"
+            className="gap-1"
+            onClick={() => router.push("/representadas/nova")}
+          >
+            <Plus className="h-4 w-4" />
+            Nova Representada
           </Button>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <Card>
-          <CardHeader><CardTitle>Dados Cadastrais</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <div><p className="text-sm text-muted-foreground">Nome</p><p className="font-medium">{rep.nome}</p></div>
-            <div><p className="text-sm text-muted-foreground">CNPJ</p><p className="font-medium">{rep.cnpj || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">Contrato Assinado</p><span style={rep.contratoAssinado ? sim : nao}>{rep.contratoAssinado ? "Sim" : "Nao"}</span></div>
-            <div><p className="text-sm text-muted-foreground">Emite NF</p><span style={rep.emiteNF ? sim : nao}>{rep.emiteNF ? "Sim" : "Nao"}</span></div>
-            <div><p className="text-sm text-muted-foreground">Fechamento Comissao</p><p className="font-medium">{rep.fechamentoComissao || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">Pagamento Comissao</p><p className="font-medium">{rep.pagamentoComissao || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">Banco</p><p className="font-medium">{rep.bancoComissao || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">Site</p><p className="font-medium">{rep.site || "-"}</p></div>
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader className="p-4">
+          <CardTitle>Lista de Representadas</CardTitle>
 
-        <Card>
-  <CardHeader><CardTitle>Politica de Comissao</CardTitle></CardHeader>
-  <CardContent className="space-y-4">
-    <div>
-      <p className="text-sm font-medium mb-2">Tipo de Comissão</p>
-      <select
-        className="w-full border rounded-md p-2"
-        value={tipoComissao}
-        onChange={(e) => setTipoComissao(e.target.value as "fixa" | "variavel")}
-      >
-        <option value="fixa">Comissão Fixa</option>
-        <option value="variavel">Comissão Variável</option>
-      </select>
-    </div>
+          <CardDescription>
+            {loading
+              ? "Carregando..."
+              : `${representadas.length} representada(s)`}
+          </CardDescription>
+        </CardHeader>
 
-    {tipoComissao === "fixa" && (
-      <div>
-        <p className="text-sm font-medium mb-2">Comissão Fixa (%)</p>
-        <Input
-          type="number"
-          step="0.1"
-          placeholder="Ex: 5"
-          value={rep.comissao || ""}
-          onChange={(e) =>
-            setRep({
-              ...rep,
-              comissao: parseFloat(e.target.value) || 0,
-            })
-          }
-        />
-      </div>
-    )}
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>CNPJ</TableHead>
+                <TableHead>Comissao</TableHead>
+                <TableHead>Contrato</TableHead>
+                <TableHead>NF</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Acoes</TableHead>
+              </TableRow>
+            </TableHeader>
 
-    {tipoComissao === "variavel" && (
-      <>
-        <div className="grid grid-cols-3 gap-2 text-sm font-medium text-muted-foreground px-2">
-          <span>Desconto ate (%)</span>
-          <span>Comissao (%)</span>
-          <span></span>
-        </div>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-8"
+                  >
+                    Carregando...
+                  </TableCell>
+                </TableRow>
+              ) : representadas.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-8"
+                  >
+                    Nenhuma representada cadastrada.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                representadas.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">
+                      {r.nome}
+                    </TableCell>
 
-        {faixas.map((f, idx) => (
-          <div key={idx} className="grid grid-cols-3 gap-2 items-center">
-            <Input
-              type="number"
-              step="0.1"
-              value={f.descontoAte}
-              onChange={(e) => updateFaixa(idx, "descontoAte", parseFloat(e.target.value))}
-            />
-            <Input
-              type="number"
-              step="0.1"
-              value={f.percentualComissao}
-              onChange={(e) => updateFaixa(idx, "percentualComissao", parseFloat(e.target.value))}
-            />
-            <Button size="sm" variant="ghost" onClick={() => removeFaixa(idx)}>
-              <X className="h-4 w-4 text-red-500" />
-            </Button>
-          </div>
-        ))}
+                    <TableCell>
+                      {r.cnpj || "-"}
+                    </TableCell>
 
-        <div className="flex gap-2 pt-2">
-          <Button size="sm" variant="outline" onClick={addFaixa}>
-            <Plus className="h-4 w-4 mr-1" />Adicionar Faixa
-          </Button>
+                    <TableCell>
+                      {r.comissao
+                        ? `${r.comissao}%`
+                        : "-"}
+                    </TableCell>
 
-          <Button size="sm" onClick={salvarFaixas} disabled={salvandoFaixas}>
-            {salvandoFaixas ? "Salvando..." : "Salvar Comissoes"}
-          </Button>
-        </div>
-      </>
-    )}
-  </CardContent>
-</Card>
+                    <TableCell>
+                      <span
+                        style={{
+                          backgroundColor: r.contratoAssinado
+                            ? "#dcfce7"
+                            : "#fee2e2",
 
-        <Card>
-          <CardHeader><CardTitle>Contato Principal</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <div><p className="text-sm text-muted-foreground">Nome</p><p className="font-medium">{rep.contatoPrincipal || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">Email</p><p className="font-medium">{rep.emailPrincipal || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium">{rep.telefonePrincipal || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">WhatsApp</p><p className="font-medium">{rep.whatsappPrincipal || "-"}</p></div>
-          </CardContent>
-        </Card>
+                          color: r.contratoAssinado
+                            ? "#166534"
+                            : "#991b1b",
 
-        <Card>
-          <CardHeader><CardTitle>Financeiro</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <div><p className="text-sm text-muted-foreground">Contato</p><p className="font-medium">{rep.contatoFinanceiro || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">Email</p><p className="font-medium">{rep.emailFinanceiro || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium">{rep.telefoneFinanceiro || "-"}</p></div>
-          </CardContent>
-        </Card>
+                          padding: "2px 10px",
+                          borderRadius: "9999px",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {r.contratoAssinado
+                          ? "Sim"
+                          : "Nao"}
+                      </span>
+                    </TableCell>
 
-        <Card>
-          <CardHeader><CardTitle>Logistica</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <div><p className="text-sm text-muted-foreground">Contato</p><p className="font-medium">{rep.contatoLogistica || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">Email</p><p className="font-medium">{rep.emailLogistica || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium">{rep.telefoneLogistica || "-"}</p></div>
-          </CardContent>
-        </Card>
+                    <TableCell>
+                      <span
+                        style={{
+                          backgroundColor: r.emiteNF
+                            ? "#dcfce7"
+                            : "#fee2e2",
 
-        <Card>
-          <CardHeader><CardTitle>Endereco</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <div className="col-span-2"><p className="text-sm text-muted-foreground">Endereco</p><p className="font-medium">{rep.endereco || "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">Cidade/UF</p><p className="font-medium">{rep.cidade && rep.estado ? rep.cidade + "/" + rep.estado : "-"}</p></div>
-            <div><p className="text-sm text-muted-foreground">CEP</p><p className="font-medium">{rep.cep || "-"}</p></div>
-          </CardContent>
-        </Card>
+                          color: r.emiteNF
+                            ? "#166534"
+                            : "#991b1b",
 
-        <Card>
-          <CardHeader><CardTitle>Observacoes</CardTitle></CardHeader>
-          <CardContent><p>{rep.observacoes || "Nenhuma observacao."}</p></CardContent>
-        </Card>
+                          padding: "2px 10px",
+                          borderRadius: "9999px",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {r.emiteNF ? "Sim" : "Nao"}
+                      </span>
+                    </TableCell>
 
-        <Card>
-          <CardHeader><CardTitle>Pedidos desta Representada</CardTitle></CardHeader>
-          <CardContent><p className="text-muted-foreground text-sm">Nenhum pedido registrado ainda.</p></CardContent>
-        </Card>
-      </div>
+                    <TableCell>
+                      <span
+                        style={{
+                          backgroundColor:
+                            r.status === "Ativa"
+                              ? "#dcfce7"
+                              : "#fee2e2",
+
+                          color:
+                            r.status === "Ativa"
+                              ? "#166534"
+                              : "#991b1b",
+
+                          padding: "2px 10px",
+                          borderRadius: "9999px",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {r.status}
+                      </span>
+                    </TableCell>
+
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          router.push(
+                            `/representadas/${r.id}`
+                          )
+                        }
+                      >
+                        <LogIn className="h-3 w-3 mr-1" />
+                        Entrar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }
