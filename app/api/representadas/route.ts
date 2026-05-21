@@ -33,7 +33,7 @@ export async function POST(req: Request) {
         contratoAssinado: body.contratoAssinado || false,
         emiteNF: body.emiteNF || false,
         comissao: body.comissao || null,
-        fechamentoComissao: body.fechamentoComissao || null,
+        comissao: body.comissao ? parseFloat(body.comissao) : null,
         pagamentoComissao: body.pagamentoComissao || null,
         bancoComissao: body.bancoComissao || null,
 
