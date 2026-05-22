@@ -53,15 +53,18 @@ export default function RepresentadaPage() {
   const [salvandoFaixas, setSalvandoFaixas] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/representadas/${params.id}`)
-      .then((res) => res.json())
-      .then((data) => {
+  if (!params.id) return
+  fetch(`/api/representadas/${params.id}`)
+    .then((res) => res.json())
+    .then((data) => {
+      if (data && data.id) {
         setRep(data)
         setFaixas(data.faixasComissao || [])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [params.id])
+      }
+      setLoading(false)
+    })
+    .catch(() => setLoading(false))
+}, [params.id])
 
   const handleExcluir = async () => {
     if (!confirm("Excluir esta representada?")) return
