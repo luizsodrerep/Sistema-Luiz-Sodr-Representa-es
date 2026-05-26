@@ -1,54 +1,42 @@
-const { PrismaClient } = require("@prisma/client")
+require("dotenv").config();
 
-const prisma = new PrismaClient()
+const { PrismaClient } = require("@prisma/client");
+const { PrismaPg } = require("@prisma/adapter-pg");
 
-function gerarCodigo() {
-  const numero = Math.floor(1000 + Math.random() * 9000)
-  return `LSR-${numero}`
-}
+const connectionString = process.env.DATABASE_URL;
 
-async function main() {
+const adapter = new PrismaPg({
+  connectionString,
+});
+
+const prisma = new PrismaClient({
+  adapter,
+});
+
+async function run() {
   const representadas = await prisma.representada.findMany({
     where: {
       codigo: null,
     },
-  })
+  });
 
   for (const rep of representadas) {
-    let codigo
-    let existe = true
-
-    while (existe) {
-      codigo = gerarCodigo()
-
-      const codigoExistente = await prisma.representada.findFirst({
-        where: {
-          codigo,
-        },
-      })
-
-      existe = !!codigoExistente
-    }
-
     await prisma.representada.update({
       where: {
         id: rep.id,
       },
       data: {
-        codigo,
+        codigo: "REP-" + rep.id.substring(0, 6).toUpperCase(),
       },
-    })
-
-    console.log(`Representada ${rep.nome} => ${codigo}`)
+    });
   }
 
-  console.log("FINALIZADO")
+  console.log("Codigos gerados:", representadas.length);
+
+  await prisma.$disconnect();
 }
 
-main()
-  .catch((e) => {
-    console.error(e)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+run().catch(async (e) => {
+  console.error(e);
+  await prisma.$disconnect();
+});

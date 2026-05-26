@@ -4,91 +4,90 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Cliente {
-  id                String   @id @default(cuid())
-  razaoSocial       String
-  nomeFantasia      String?
-  cnpj              String?
-  inscricaoEstadual String?
-  contato           String?
+  id                String      @id @default(cuid())
   cargo             String?
   email             String?
   telefone          String?
-  whatsapp          String?
   endereco          String?
-  bairro            String?
   cidade            String?
   estado            String?
+  categoria         String?
+  status            String      @default("Ativo")
+  observacoes       String?
+  criadoEm          DateTime    @default(now())
+  atualizadoEm      DateTime    @updatedAt
+  aceitaEmail       Boolean     @default(true)
+  bairro            String?
   cep               String?
+  cnpj              String?
+  contato           String?
+  nomeFantasia      String?
+  razaoSocial       String
   regiao            String?
   rota              String?
-  categoria         String?
-  status            String   @default("Ativo")
-  aceitaEmail       Boolean  @default(true)
-  observacoes       String?
-  criadoEm          DateTime @default(now())
-  atualizadoEm      DateTime @updatedAt
-
-  interacoes Interacao[]
-  vendas     Venda[]
+  whatsapp          String?
+  inscricaoEstadual String?
+  interacoes        Interacao[]
+  vendas            Venda[]
 }
 
 model Representada {
   id                 String   @id @default(cuid())
   nome               String
   cnpj               String?
-  contratoAssinado   Boolean  @default(false)
-  emiteNF            Boolean  @default(true)
-  comissao           Float?
-  fechamentoComissao String?
-  pagamentoComissao  String?
-  bancoComissao      String?
-  contatoPrincipal   String?
-  emailPrincipal     String?
-  telefonePrincipal  String?
-  whatsappPrincipal  String?
-  contatoFinanceiro  String?
-  emailFinanceiro    String?
-  telefoneFinanceiro String?
-  contatoLogistica   String?
-  emailLogistica     String?
-  telefoneLogistica  String?
   endereco           String?
   cidade             String?
   estado             String?
-  cep                String?
-  site               String?
+  comissao           Float?
   status             String   @default("Ativa")
-  observacoes        String?
   criadoEm           DateTime @default(now())
   atualizadoEm       DateTime @updatedAt
-
-  vendas Venda[]
+  bancoComissao      String?
+  cep                String?
+  contatoFinanceiro  String?
+  contatoLogistica   String?
+  contatoPrincipal   String?
+  contratoAssinado   Boolean  @default(false)
+  emailFinanceiro    String?
+  emailLogistica     String?
+  emailPrincipal     String?
+  emiteNF            Boolean  @default(true)
+  fechamentoComissao String?
+  observacoes        String?
+  pagamentoComissao  String?
+  site               String?
+  telefoneFinanceiro String?
+  telefoneLogistica  String?
+  telefonePrincipal  String?
+  whatsappPrincipal  String?
+  codigo             String?
+  vendas             Venda[]
 }
 
 model Venda {
-  id                  String    @id @default(cuid())
+  id                  String       @id @default(cuid())
   data                DateTime
   clienteId           String
   representadaId      String
-  numeroPedido        String?
   produto             String?
   quantidade          Int?
   valorTotal          Float?
-  desconto            Float?
-  condicaoPagamento   String?
-  previsaoFaturamento DateTime?
   comissao            Float?
-  status              String    @default("Pendente")
-  arquivoUrl          String?
+  status              String       @default("Pendente")
   observacoes         String?
-  criadoEm            DateTime  @default(now())
-  atualizadoEm        DateTime  @updatedAt
-
-  cliente      Cliente      @relation(fields: [clienteId], references: [id])
-  representada Representada @relation(fields: [representadaId], references: [id])
+  criadoEm            DateTime     @default(now())
+  atualizadoEm        DateTime     @updatedAt
+  arquivoUrl          String?
+  condicaoPagamento   String?
+  desconto            Float?
+  numeroPedido        String?
+  previsaoFaturamento DateTime?
+  cliente             Cliente      @relation(fields: [clienteId], references: [id])
+  representada        Representada @relation(fields: [representadaId], references: [id])
 }
 
 model Interacao {
@@ -102,8 +101,7 @@ model Interacao {
   proximosPasso String?
   criadoEm      DateTime @default(now())
   atualizadoEm  DateTime @updatedAt
-
-  cliente Cliente @relation(fields: [clienteId], references: [id])
+  cliente       Cliente  @relation(fields: [clienteId], references: [id])
 }
 
 model Financeiro {
