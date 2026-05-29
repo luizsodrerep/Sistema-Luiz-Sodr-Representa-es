@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Cliente {
@@ -46,28 +45,28 @@ model Representada {
   status             String   @default("Ativa")
   criadoEm           DateTime @default(now())
   atualizadoEm       DateTime @updatedAt
+
   bancoComissao      String?
   cep                String?
-  contatoFinanceiro  String?
-  contatoLogistica   String?
+
   contatoPrincipal   String?
-  contratoAssinado   Boolean  @default(false)
-  emailFinanceiro    String?
-  emailLogistica     String?
   emailPrincipal     String?
-  emiteNF            Boolean  @default(true)
-  fechamentoComissao String?
-  observacoes        String?
-  pagamentoComissao  String?
-  site               String?
-  telefoneFinanceiro String?
-  telefoneLogistica  String?
   telefonePrincipal  String?
   whatsappPrincipal  String?
+
+  fechamentoComissao String?
+  pagamentoComissao  String?
+
+  observacoes        String?
   codigo             String?
-tipoComissao       String?   @default("fixa")
-faixasComissao     String?
-vendas             Venda[]
+
+  contratoAssinado   Boolean  @default(false)
+  emiteNF            Boolean  @default(true)
+
+  tipoComissao       String?  @default("fixa")
+  faixasComissao     String?
+
+  vendas             Venda[]
 }
 
 model Venda {
@@ -88,6 +87,7 @@ model Venda {
   desconto            Float?
   numeroPedido        String?
   previsaoFaturamento DateTime?
+
   cliente             Cliente      @relation(fields: [clienteId], references: [id])
   representada        Representada @relation(fields: [representadaId], references: [id])
 }
@@ -103,6 +103,7 @@ model Interacao {
   proximosPasso String?
   criadoEm      DateTime @default(now())
   atualizadoEm  DateTime @updatedAt
+
   cliente       Cliente  @relation(fields: [clienteId], references: [id])
 }
 

@@ -2,78 +2,144 @@
 import { prisma } from "@/lib/prisma"
 
 export async function GET() {
-  try {
-    const representadas = await prisma.representada.findMany({
-      orderBy: {
-        nome: "asc",
-      },
-    })
 
-    return NextResponse.json(representadas)
+  try {
+
+    const representadas =
+      await prisma.representada.findMany({
+        orderBy: {
+          nome: "asc",
+        },
+      })
+
+    return NextResponse.json(
+      representadas
+    )
+
   } catch (error) {
-    console.error("ERRO API REPRESENTADAS:", error)
+
+    console.error(
+      "ERRO API REPRESENTADAS:",
+      error
+    )
 
     return NextResponse.json(
       {
-        error: "Erro ao buscar representadas",
+        error:
+          "Erro ao buscar representadas",
       },
       { status: 500 }
     )
+
   }
+
 }
 
-export async function POST(req: Request) {
+export async function POST(
+  req: Request
+) {
+
   try {
+
     const body = await req.json()
 
-    const novaRepresentada = await prisma.representada.create({
-      data: {
-        nome: body.nome,
-        cnpj: body.cnpj || null,
-        contratoAssinado: body.contratoAssinado || false,
-        emiteNF: body.emiteNF || false,
-        
-        comissao: body.comissao ? parseFloat(body.comissao) : null,
-        pagamentoComissao: body.pagamentoComissao || null,
-        bancoComissao: body.bancoComissao || null,
-tipoComissao: body.tipoComissao || "fixa",
-faixasComissao: body.faixasComissao
-  ? JSON.stringify(body.faixasComissao)
-  : null,
+    const novaRepresentada =
+      await prisma.representada.create({
+        data: {
 
-        contatoPrincipal: body.contatoPrincipal || null,
-        emailPrincipal: body.emailPrincipal || null,
-        telefonePrincipal: body.telefonePrincipal || null,
-        whatsappPrincipal: body.whatsappPrincipal || null,
+          nome: body.nome || "",
 
-        contatoFinanceiro: body.contatoFinanceiro || null,
-        emailFinanceiro: body.emailFinanceiro || null,
-        telefoneFinanceiro: body.telefoneFinanceiro || null,
+          codigo:
+            body.codigo ||
+            `REP-${Date.now()}`,
 
-        contatoLogistica: body.contatoLogistica || null,
-        emailLogistica: body.emailLogistica || null,
-        telefoneLogistica: body.telefoneLogistica || null,
+          cnpj:
+            body.cnpj || null,
 
-        endereco: body.endereco || null,
-        cidade: body.cidade || null,
-        estado: body.estado || null,
-        cep: body.cep || null,
+          comissao:
+            body.comissao
+              ? parseFloat(
+                  body.comissao
+                )
+              : null,
 
-        site: body.site || null,
-        status: body.status || "Ativa",
-        observacoes: body.observacoes || null,
-      },
-    })
+          tipoComissao:
+            body.tipoComissao ||
+            "fixa",
 
-    return NextResponse.json(novaRepresentada)
+          faixasComissao:
+            body.tipoComissao ===
+            "variada"
+              ? body.faixasComissao
+              : null,
+
+          fechamentoComissao:
+            body.fechamentoComissao ||
+            null,
+
+          pagamentoComissao:
+            body.pagamentoComissao ||
+            null,
+
+          bancoComissao:
+            body.bancoComissao ||
+            null,
+
+          contatoPrincipal:
+            body.contatoPrincipal ||
+            null,
+
+          emailPrincipal:
+            body.emailPrincipal ||
+            null,
+
+          telefonePrincipal:
+            body.telefonePrincipal ||
+            null,
+
+          whatsappPrincipal:
+            body.whatsappPrincipal ||
+            null,
+
+          endereco:
+            body.endereco || null,
+
+          cidade:
+            body.cidade || null,
+
+          estado:
+            body.estado || null,
+
+          cep:
+            body.cep || null,
+
+          status:
+            body.status || "Ativa",
+
+          observacoes:
+            body.observacoes || null,
+        },
+      })
+
+    return NextResponse.json(
+      novaRepresentada
+    )
+
   } catch (error) {
-    console.error("ERRO AO CRIAR REPRESENTADA:", error)
+
+    console.error(
+      "ERRO AO CRIAR REPRESENTADA:",
+      error
+    )
 
     return NextResponse.json(
       {
-        error: "Erro ao criar representada",
+        error:
+          "Erro ao criar representada",
       },
       { status: 500 }
     )
+
   }
+
 }

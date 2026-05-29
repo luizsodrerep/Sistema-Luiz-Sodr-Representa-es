@@ -23,15 +23,20 @@ export default function NovaRepresentadaPage() {
   ])
 
   const [formData, setFormData] = useState({
-    nome: "",
-    codigo: "",
-    cnpj: "",
 
-    comissao: "",
+  nome: "",
 
-    fechamentoComissao: "",
-    pagamentoComissao: "",
-    bancoComissao: "",
+  codigo: `REP-${Date.now()}`,
+
+  cnpj: "",
+
+  comissao: "",
+
+  fechamentoComissao: "",
+
+  pagamentoComissao: "",
+
+  bancoComissao: "",
 
     contatoPrincipal: "",
     emailPrincipal: "",

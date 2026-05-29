@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
+
 import {
   Card,
   CardContent,
@@ -12,7 +13,9 @@ import {
 } from "@/components/ui/card"
 
 import { Input } from "@/components/ui/input"
+
 import { Label } from "@/components/ui/label"
+
 import { Textarea } from "@/components/ui/textarea"
 
 import {
@@ -37,9 +40,18 @@ export default function EditarRepresentadaPage() {
     useState("fixa")
 
   const [faixas, setFaixas] = useState([
-    { desconto: "", comissao: "" },
-    { desconto: "", comissao: "" },
-    { desconto: "", comissao: "" },
+    {
+      desconto: "",
+      comissao: "",
+    },
+    {
+      desconto: "",
+      comissao: "",
+    },
+    {
+      desconto: "",
+      comissao: "",
+    },
   ])
 
   const [formData, setFormData] = useState({
@@ -85,40 +97,81 @@ export default function EditarRepresentadaPage() {
 
         const data = await response.json()
 
-        setFormData((prev) => ({
-  ...prev,
-  ...data,
-}))
+        setFormData({
+          nome: data.nome || "",
+          codigo: data.codigo || "",
+          cnpj: data.cnpj || "",
 
-setTipoComissao(
-  data.tipoComissao || "fixa"
-)
+          comissao:
+            data.comissao?.toString() || "",
 
-if (data.faixasComissao) {
-  try {
-    setFaixas(
-      JSON.parse(data.faixasComissao)
-    )
-  } catch {
-    console.log("Erro ao carregar faixas")
-  }
-}
+          fechamentoComissao:
+            data.fechamentoComissao || "",
 
-        if (data.tipoComissao) {
-          setTipoComissao(data.tipoComissao)
-        }
+          pagamentoComissao:
+            data.pagamentoComissao || "",
+
+          bancoComissao:
+            data.bancoComissao || "",
+
+          contatoPrincipal:
+            data.contatoPrincipal || "",
+
+          emailPrincipal:
+            data.emailPrincipal || "",
+
+          telefonePrincipal:
+            data.telefonePrincipal || "",
+
+          whatsappPrincipal:
+            data.whatsappPrincipal || "",
+
+          endereco:
+            data.endereco || "",
+
+          cidade:
+            data.cidade || "",
+
+          estado:
+            data.estado || "",
+
+          cep:
+            data.cep || "",
+
+          status:
+            data.status || "Ativa",
+
+          observacoes:
+            data.observacoes || "",
+        })
+
+        setTipoComissao(
+          data.tipoComissao || "fixa"
+        )
 
         if (data.faixasComissao) {
 
           try {
 
-            setFaixas(
-              JSON.parse(data.faixasComissao)
-            )
+            const faixasConvertidas =
+              typeof data.faixasComissao === "string"
+                ? JSON.parse(data.faixasComissao)
+                : data.faixasComissao
+
+            if (
+              Array.isArray(faixasConvertidas)
+            ) {
+
+              setFaixas(faixasConvertidas)
+
+            }
 
           } catch (error) {
 
-            console.error(error)
+            console.error(
+              "Erro ao converter faixas:",
+              error
+            )
 
           }
 
@@ -128,7 +181,9 @@ if (data.faixasComissao) {
 
         console.error(error)
 
-        alert("Erro ao carregar representada")
+        alert(
+          "Erro ao carregar representada"
+        )
 
       }
 
@@ -237,7 +292,9 @@ if (data.faixasComissao) {
         `/representadas/${id}`
       )
 
-    } catch {
+    } catch (error) {
+
+      console.error(error)
 
       alert(
         "Erro ao atualizar representada"
@@ -253,13 +310,12 @@ if (data.faixasComissao) {
 
   return (
 
-    <div className="flex flex-col p-8 pt-6 max-w-5xl mx-auto">
+    <div className="max-w-7xl mx-auto p-6 space-y-6">
 
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-4">
 
         <Button
           variant="outline"
-          size="sm"
           onClick={() =>
             router.push(
               `/representadas/${id}`
@@ -267,13 +323,13 @@ if (data.faixasComissao) {
           }
         >
 
-          <ArrowLeft className="h-4 w-4 mr-1" />
+          <ArrowLeft className="w-4 h-4 mr-2" />
 
           Voltar
 
         </Button>
 
-        <h1 className="text-3xl font-bold">
+        <h1 className="text-4xl font-bold tracking-tight">
 
           Editar Representada
 
@@ -283,27 +339,25 @@ if (data.faixasComissao) {
 
       <form onSubmit={handleSubmit}>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
 
-          <Card>
+          <Card className="shadow-lg rounded-2xl border-0">
 
             <CardHeader>
 
-              <CardTitle>
+              <CardTitle className="text-2xl">
                 Dados Cadastrais
               </CardTitle>
 
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-2 gap-6">
 
                 <div>
 
-                  <Label>
-                    Nome *
-                  </Label>
+                  <Label>Nome *</Label>
 
                   <Input
                     name="nome"
@@ -316,9 +370,7 @@ if (data.faixasComissao) {
 
                 <div>
 
-                  <Label>
-                    CNPJ
-                  </Label>
+                  <Label>CNPJ</Label>
 
                   <Input
                     name="cnpj"
@@ -330,13 +382,11 @@ if (data.faixasComissao) {
 
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-4 gap-4">
 
                 <div>
 
-                  <Label>
-                    Tipo Comissão
-                  </Label>
+                  <Label>Tipo Comissão</Label>
 
                   <select
                     className="w-full border rounded-md h-10 px-3"
@@ -362,9 +412,7 @@ if (data.faixasComissao) {
 
                 <div>
 
-                  <Label>
-                    Fechamento Comissão
-                  </Label>
+                  <Label>Fechamento</Label>
 
                   <Input
                     name="fechamentoComissao"
@@ -378,9 +426,7 @@ if (data.faixasComissao) {
 
                 <div>
 
-                  <Label>
-                    Pagamento Comissão
-                  </Label>
+                  <Label>Pagamento</Label>
 
                   <Input
                     name="pagamentoComissao"
@@ -392,21 +438,19 @@ if (data.faixasComissao) {
 
                 </div>
 
-              </div>
+                <div>
 
-              <div>
+                  <Label>Banco Comissão</Label>
 
-                <Label>
-                  Banco Comissão
-                </Label>
+                  <Input
+                    name="bancoComissao"
+                    value={
+                      formData.bancoComissao
+                    }
+                    onChange={handleChange}
+                  />
 
-                <Input
-                  name="bancoComissao"
-                  value={
-                    formData.bancoComissao
-                  }
-                  onChange={handleChange}
-                />
+                </div>
 
               </div>
 
@@ -414,9 +458,7 @@ if (data.faixasComissao) {
 
                 <div>
 
-                  <Label>
-                    Comissão %
-                  </Label>
+                  <Label>Comissão %</Label>
 
                   <Input
                     name="comissao"
@@ -432,84 +474,86 @@ if (data.faixasComissao) {
 
               {tipoComissao === "variada" && (
 
-                <div className="space-y-3">
+                <div className="space-y-4">
 
-                  <div className="font-medium">
+                  <div className="text-lg font-semibold">
 
                     Faixas de Comissão
 
                   </div>
 
-                  {faixas.map(
-                    (faixa, index) => (
+                  {Array.isArray(faixas) &&
+                    faixas.map(
+                      (faixa, index) => (
 
-                      <div
-                        key={index}
-                        className="grid grid-cols-12 gap-2 items-end"
-                      >
+                        <div
+                          key={index}
+                          className="grid md:grid-cols-12 gap-4 items-end bg-muted/40 p-4 rounded-xl border"
+                        >
 
-                        <div className="col-span-5">
+                          <div className="md:col-span-5">
 
-                          <Label>
-                            % Desconto
-                          </Label>
+                            <Label>
+                              % Desconto
+                            </Label>
 
-                          <Input
-                            value={
-                              faixa.desconto
-                            }
-                            onChange={(e) =>
-                              handleFaixaChange(
-                                index,
-                                "desconto",
-                                e.target.value
-                              )
-                            }
-                          />
+                            <Input
+                              value={
+                                faixa.desconto
+                              }
+                              onChange={(e) =>
+                                handleFaixaChange(
+                                  index,
+                                  "desconto",
+                                  e.target.value
+                                )
+                              }
+                            />
+
+                          </div>
+
+                          <div className="md:col-span-5">
+
+                            <Label>
+                              % Comissão
+                            </Label>
+
+                            <Input
+                              value={
+                                faixa.comissao
+                              }
+                              onChange={(e) =>
+                                handleFaixaChange(
+                                  index,
+                                  "comissao",
+                                  e.target.value
+                                )
+                              }
+                            />
+
+                          </div>
+
+                          <div className="md:col-span-2">
+
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              className="w-full"
+                              onClick={() =>
+                                removerFaixa(index)
+                              }
+                            >
+
+                              <Trash2 className="h-4 w-4" />
+
+                            </Button>
+
+                          </div>
 
                         </div>
 
-                        <div className="col-span-5">
-
-                          <Label>
-                            % Comissão
-                          </Label>
-
-                          <Input
-                            value={
-                              faixa.comissao
-                            }
-                            onChange={(e) =>
-                              handleFaixaChange(
-                                index,
-                                "comissao",
-                                e.target.value
-                              )
-                            }
-                          />
-
-                        </div>
-
-                        <div className="col-span-2">
-
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={() =>
-                              removerFaixa(index)
-                            }
-                          >
-
-                            <Trash2 className="h-4 w-4" />
-
-                          </Button>
-
-                        </div>
-
-                      </div>
-
-                    )
-                  )}
+                      )
+                    )}
 
                   <Button
                     type="button"
@@ -517,7 +561,7 @@ if (data.faixasComissao) {
                     onClick={adicionarFaixa}
                   >
 
-                    <Plus className="h-4 w-4 mr-1" />
+                    <Plus className="h-4 w-4 mr-2" />
 
                     Adicionar Faixa
 
@@ -531,25 +575,23 @@ if (data.faixasComissao) {
 
           </Card>
 
-          <Card>
+          <Card className="shadow-lg rounded-2xl border-0">
 
             <CardHeader>
 
-              <CardTitle>
+              <CardTitle className="text-2xl">
                 Contato Principal
               </CardTitle>
 
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-2 gap-6">
 
                 <div>
 
-                  <Label>
-                    Contato
-                  </Label>
+                  <Label>Contato</Label>
 
                   <Input
                     name="contatoPrincipal"
@@ -563,9 +605,7 @@ if (data.faixasComissao) {
 
                 <div>
 
-                  <Label>
-                    Email
-                  </Label>
+                  <Label>Email</Label>
 
                   <Input
                     name="emailPrincipal"
@@ -579,13 +619,11 @@ if (data.faixasComissao) {
 
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-2 gap-6">
 
                 <div>
 
-                  <Label>
-                    Telefone
-                  </Label>
+                  <Label>Telefone</Label>
 
                   <Input
                     name="telefonePrincipal"
@@ -599,9 +637,7 @@ if (data.faixasComissao) {
 
                 <div>
 
-                  <Label>
-                    WhatsApp
-                  </Label>
+                  <Label>WhatsApp</Label>
 
                   <Input
                     name="whatsappPrincipal"
@@ -619,23 +655,21 @@ if (data.faixasComissao) {
 
           </Card>
 
-          <Card>
+          <Card className="shadow-lg rounded-2xl border-0">
 
             <CardHeader>
 
-              <CardTitle>
+              <CardTitle className="text-2xl">
                 Endereço
               </CardTitle>
 
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
 
               <div>
 
-                <Label>
-                  Endereço
-                </Label>
+                <Label>Endereço</Label>
 
                 <Input
                   name="endereco"
@@ -645,13 +679,11 @@ if (data.faixasComissao) {
 
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-3 gap-6">
 
                 <div>
 
-                  <Label>
-                    Cidade
-                  </Label>
+                  <Label>Cidade</Label>
 
                   <Input
                     name="cidade"
@@ -663,9 +695,7 @@ if (data.faixasComissao) {
 
                 <div>
 
-                  <Label>
-                    UF
-                  </Label>
+                  <Label>UF</Label>
 
                   <Input
                     name="estado"
@@ -677,9 +707,7 @@ if (data.faixasComissao) {
 
                 <div>
 
-                  <Label>
-                    CEP
-                  </Label>
+                  <Label>CEP</Label>
 
                   <Input
                     name="cep"
@@ -695,11 +723,11 @@ if (data.faixasComissao) {
 
           </Card>
 
-          <Card>
+          <Card className="shadow-lg rounded-2xl border-0">
 
             <CardHeader>
 
-              <CardTitle>
+              <CardTitle className="text-2xl">
                 Observações
               </CardTitle>
 
@@ -713,17 +741,18 @@ if (data.faixasComissao) {
                   formData.observacoes
                 }
                 onChange={handleChange}
-                rows={4}
+                rows={5}
               />
 
             </CardContent>
 
           </Card>
 
-          <div className="flex gap-3">
+          <div className="flex gap-4">
 
             <Button
               type="submit"
+              size="lg"
               disabled={loading}
             >
 
@@ -736,6 +765,7 @@ if (data.faixasComissao) {
             <Button
               type="button"
               variant="outline"
+              size="lg"
               onClick={() =>
                 router.push(
                   `/representadas/${id}`

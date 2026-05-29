@@ -2,140 +2,162 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: Request,
+  context: any
 ) {
+
   try {
-    const representada = await prisma.representada.findUnique({
-      where: {
-        id: params.id,
-      },
-    })
+
+    const id = context.params.id
+
+    const representada =
+      await prisma.representada.findUnique({
+        where: {
+          id,
+        },
+      })
 
     if (!representada) {
+
       return NextResponse.json(
-        { error: "Representada não encontrada" },
+        {
+          error:
+            "Representada não encontrada",
+        },
         { status: 404 }
       )
+
     }
 
-    return NextResponse.json(representada)
+    return NextResponse.json(
+      representada
+    )
+
   } catch (error) {
+
     console.error(error)
 
     return NextResponse.json(
-      { error: "Erro ao buscar representada" },
+      {
+        error:
+          "Erro ao buscar representada",
+      },
       { status: 500 }
     )
+
   }
+
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: Request,
+  context: any
 ) {
+
   try {
-    const body = await request.json()
 
-    const representada = await prisma.representada.update({
-      where: {
-        id: params.id,
-      },
+    const id = context.params.id
 
-      data: {
-        nome: body.nome || "",
-        codigo: body.codigo || "",
-        cnpj: body.cnpj || "",
+    const body = await req.json()
 
-        comissao: body.comissao
-          ? Number(body.comissao)
-          : null,
+    const representada =
+      await prisma.representada.update({
+        where: {
+          id,
+        },
 
-        tipoComissao: body.tipoComissao || "fixa",
+        data: {
 
-        faixasComissao:
-          body.faixasComissao || null,
+          nome:
+            body.nome || "",
 
-        fechamentoComissao:
-          body.fechamentoComissao || "",
+          codigo:
+            body.codigo || null,
 
-        pagamentoComissao:
-          body.pagamentoComissao || "",
+          cnpj:
+            body.cnpj || null,
 
-        bancoComissao:
-          body.bancoComissao || "",
+          comissao:
+            body.comissao
+              ? parseFloat(
+                  body.comissao
+                )
+              : null,
 
-        contatoPrincipal:
-          body.contatoPrincipal || "",
+          tipoComissao:
+            body.tipoComissao ||
+            "fixa",
 
-        emailPrincipal:
-          body.emailPrincipal || "",
+          faixasComissao:
+            body.tipoComissao ===
+            "variada"
+              ? body.faixasComissao
+              : null,
 
-        telefonePrincipal:
-          body.telefonePrincipal || "",
+          fechamentoComissao:
+            body.fechamentoComissao ||
+            null,
 
-        whatsappPrincipal:
-          body.whatsappPrincipal || "",
+          pagamentoComissao:
+            body.pagamentoComissao ||
+            null,
 
-        endereco:
-          body.endereco || "",
+          bancoComissao:
+            body.bancoComissao ||
+            null,
 
-        cidade:
-          body.cidade || "",
+          contatoPrincipal:
+            body.contatoPrincipal ||
+            null,
 
-        estado:
-          body.estado || "",
+          emailPrincipal:
+            body.emailPrincipal ||
+            null,
 
-        cep:
-          body.cep || "",
+          telefonePrincipal:
+            body.telefonePrincipal ||
+            null,
 
-        observacoes:
-          body.observacoes || "",
+          whatsappPrincipal:
+            body.whatsappPrincipal ||
+            null,
 
-        status:
-          body.status || "Ativa",
-      },
-    })
+          endereco:
+            body.endereco || null,
 
-    return NextResponse.json(representada)
+          cidade:
+            body.cidade || null,
+
+          estado:
+            body.estado || null,
+
+          cep:
+            body.cep || null,
+
+          status:
+            body.status || "Ativa",
+
+          observacoes:
+            body.observacoes || null,
+        },
+      })
+
+    return NextResponse.json(
+      representada
+    )
+
   } catch (error) {
+
     console.error(error)
 
     return NextResponse.json(
       {
-        error: "Erro ao atualizar representada",
+        error:
+          "Erro ao atualizar representada",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     )
+
   }
-}
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await prisma.representada.delete({
-      where: {
-        id: params.id,
-      },
-    })
-
-    return NextResponse.json({
-      success: true,
-    })
-  } catch (error) {
-    console.error(error)
-
-    return NextResponse.json(
-      {
-        error: "Erro ao excluir representada",
-      },
-      {
-        status: 500,
-      }
-    )
-  }
 }
