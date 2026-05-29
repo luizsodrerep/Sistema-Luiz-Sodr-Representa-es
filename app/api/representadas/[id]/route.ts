@@ -1,163 +1,148 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { NextRequest, NextResponse } from "next/server"
+import { PrismaClient } from "@prisma/client"
+
+const prisma = new PrismaClient()
 
 export async function GET(
-  req: Request,
-  context: any
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-
   try {
+    const { id } = await params
 
-    const id = context.params.id
-
-    const representada =
-      await prisma.representada.findUnique({
-        where: {
-          id,
-        },
-      })
-
-    if (!representada) {
-
+    if (!id) {
       return NextResponse.json(
-        {
-          error:
-            "Representada não encontrada",
-        },
-        { status: 404 }
+        { message: "ID é obrigatório" },
+        { status: 400 }
       )
-
     }
 
-    return NextResponse.json(
-      representada
-    )
+    const representada = await prisma.representada.findUnique({
+      where: { id },
+    })
 
+    if (!representada) {
+      return NextResponse.json(
+        { message: "Representada não encontrada" },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json(representada, { status: 200 })
   } catch (error) {
-
-    console.error(error)
-
+    console.error("Erro ao buscar:", error)
     return NextResponse.json(
-      {
-        error:
-          "Erro ao buscar representada",
-      },
+      { message: "Erro ao buscar representada" },
       { status: 500 }
     )
-
+  } finally {
+    await prisma.$disconnect()
   }
-
 }
 
 export async function PUT(
-  req: Request,
-  context: any
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-
   try {
+    const { id } = await params
 
-    const id = context.params.id
+    if (!id) {
+      return NextResponse.json(
+        { message: "ID é obrigatório" },
+        { status: 400 }
+      )
+    }
 
-    const body = await req.json()
+    const body = await request.json()
 
-    const representada =
-      await prisma.representada.update({
-        where: {
-          id,
-        },
+    // Validações básicas
+    if (!body.nome || !body.emailPrincipal) {
+      return NextResponse.json(
+        { message: "Nome e Email são obrigatórios" },
+        { status: 400 }
+      )
+    }
 
-        data: {
+    // Verifica se existe
+    const existe = await prisma.representada.findUnique({
+      where: { id },
+    })
 
-          nome:
-            body.nome || "",
+    if (!existe) {
+      return NextResponse.json(
+        { message: "Representada não encontrada" },
+        { status: 404 }
+      )
+    }
 
-          codigo:
-            body.codigo || null,
+    // Converte comissao para Float se necessário
+    const dados = {
+      ...body,
+      comissao: body.comissao ? parseFloat(body.comissao) : null,
+    }
 
-          cnpj:
-            body.cnpj || null,
-
-          comissao:
-            body.comissao
-              ? parseFloat(
-                  body.comissao
-                )
-              : null,
-
-          tipoComissao:
-            body.tipoComissao ||
-            "fixa",
-
-          faixasComissao:
-            body.tipoComissao ===
-            "variada"
-              ? body.faixasComissao
-              : null,
-
-          fechamentoComissao:
-            body.fechamentoComissao ||
-            null,
-
-          pagamentoComissao:
-            body.pagamentoComissao ||
-            null,
-
-          bancoComissao:
-            body.bancoComissao ||
-            null,
-
-          contatoPrincipal:
-            body.contatoPrincipal ||
-            null,
-
-          emailPrincipal:
-            body.emailPrincipal ||
-            null,
-
-          telefonePrincipal:
-            body.telefonePrincipal ||
-            null,
-
-          whatsappPrincipal:
-            body.whatsappPrincipal ||
-            null,
-
-          endereco:
-            body.endereco || null,
-
-          cidade:
-            body.cidade || null,
-
-          estado:
-            body.estado || null,
-
-          cep:
-            body.cep || null,
-
-          status:
-            body.status || "Ativa",
-
-          observacoes:
-            body.observacoes || null,
-        },
-      })
+    const representada = await prisma.representada.update({
+      where: { id },
+      data: dados,
+    })
 
     return NextResponse.json(
-      representada
+      { message: "Representada atualizada com sucesso", data: representada },
+      { status: 200 }
     )
-
   } catch (error) {
-
-    console.error(error)
-
+    console.error("Erro ao atualizar:", error)
     return NextResponse.json(
-      {
-        error:
-          "Erro ao atualizar representada",
-      },
+      { message: "Erro ao atualizar representada" },
       { status: 500 }
     )
-
+  } finally {
+    await prisma.$disconnect()
   }
+}
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+
+    if (!id) {
+      return NextResponse.json(
+        { message: "ID é obrigatório" },
+        { status: 400 }
+      )
+    }
+
+    // Verifica se existe
+    const existe = await prisma.representada.findUnique({
+      where: { id },
+    })
+
+    if (!existe) {
+      return NextResponse.json(
+        { message: "Representada não encontrada" },
+        { status: 404 }
+      )
+    }
+
+    await prisma.representada.delete({
+      where: { id },
+    })
+
+    return NextResponse.json(
+      { message: "Representada deletada com sucesso" },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Erro ao deletar:", error)
+    return NextResponse.json(
+      { message: "Erro ao deletar representada" },
+      { status: 500 }
+    )
+  } finally {
+    await prisma.$disconnect()
+  }
 }
