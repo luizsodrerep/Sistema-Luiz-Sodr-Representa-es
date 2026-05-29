@@ -3,27 +3,18 @@ import { prisma } from "@/lib/prisma"
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params
-
     const representada = await prisma.representada.findUnique({
       where: {
-        id,
-      },
-      include: {
-        faixasComissao: {
-          orderBy: {
-            ordem: "asc",
-          },
-        },
+        id: params.id,
       },
     })
 
     if (!representada) {
       return NextResponse.json(
-        { error: "Nao encontrada" },
+        { error: "Representada não encontrada" },
         { status: 404 }
       )
     }
@@ -33,7 +24,7 @@ export async function GET(
     console.error(error)
 
     return NextResponse.json(
-      { error: "Erro interno" },
+      { error: "Erro ao buscar representada" },
       { status: 500 }
     )
   }
@@ -41,52 +32,68 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params
-
     const body = await request.json()
 
     const representada = await prisma.representada.update({
       where: {
-        id,
+        id: params.id,
       },
+
       data: {
-        nome: body.nome,
-        cnpj: body.cnpj,
-        contratoAssinado: body.contratoAssinado,
-        emiteNF: body.emiteNF,
+        nome: body.nome || "",
+        codigo: body.codigo || "",
+        cnpj: body.cnpj || "",
 
         comissao: body.comissao
           ? Number(body.comissao)
           : null,
 
-        fechamentoComissao: body.fechamentoComissao,
-        pagamentoComissao: body.pagamentoComissao,
-        bancoComissao: body.bancoComissao,
+        tipoComissao: body.tipoComissao || "fixa",
 
-        contatoPrincipal: body.contatoPrincipal,
-        emailPrincipal: body.emailPrincipal,
-        telefonePrincipal: body.telefonePrincipal,
-        whatsappPrincipal: body.whatsappPrincipal,
+        faixasComissao:
+          body.faixasComissao || null,
 
-        contatoFinanceiro: body.contatoFinanceiro,
-        emailFinanceiro: body.emailFinanceiro,
-        telefoneFinanceiro: body.telefoneFinanceiro,
+        fechamentoComissao:
+          body.fechamentoComissao || "",
 
-        contatoLogistica: body.contatoLogistica,
-        emailLogistica: body.emailLogistica,
-        telefoneLogistica: body.telefoneLogistica,
+        pagamentoComissao:
+          body.pagamentoComissao || "",
 
-        endereco: body.endereco,
-        cidade: body.cidade,
-        estado: body.estado,
-        cep: body.cep,
-        site: body.site,
+        bancoComissao:
+          body.bancoComissao || "",
 
-        status: body.status,
-        observacoes: body.observacoes,
+        contatoPrincipal:
+          body.contatoPrincipal || "",
+
+        emailPrincipal:
+          body.emailPrincipal || "",
+
+        telefonePrincipal:
+          body.telefonePrincipal || "",
+
+        whatsappPrincipal:
+          body.whatsappPrincipal || "",
+
+        endereco:
+          body.endereco || "",
+
+        cidade:
+          body.cidade || "",
+
+        estado:
+          body.estado || "",
+
+        cep:
+          body.cep || "",
+
+        observacoes:
+          body.observacoes || "",
+
+        status:
+          body.status || "Ativa",
       },
     })
 
@@ -95,22 +102,24 @@ export async function PUT(
     console.error(error)
 
     return NextResponse.json(
-      { error: "Erro ao atualizar representada" },
-      { status: 500 }
+      {
+        error: "Erro ao atualizar representada",
+      },
+      {
+        status: 500,
+      }
     )
   }
 }
 
 export async function DELETE(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params
-
     await prisma.representada.delete({
       where: {
-        id,
+        id: params.id,
       },
     })
 
@@ -121,8 +130,12 @@ export async function DELETE(
     console.error(error)
 
     return NextResponse.json(
-      { error: "Erro ao excluir" },
-      { status: 500 }
+      {
+        error: "Erro ao excluir representada",
+      },
+      {
+        status: 500,
+      }
     )
   }
 }

@@ -65,7 +65,9 @@ model Representada {
   telefonePrincipal  String?
   whatsappPrincipal  String?
   codigo             String?
-  vendas             Venda[]
+tipoComissao       String?   @default("fixa")
+faixasComissao     String?
+vendas             Venda[]
 }
 
 model Venda {

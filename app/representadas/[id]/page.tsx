@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+
 import { useParams, useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -12,87 +13,260 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
+import {
+  ArrowLeft,
+  Pencil,
+} from "lucide-react"
+
 interface Representada {
   id: string
   nome: string
+  codigo: string | null
   cnpj: string | null
+
+  contatoPrincipal: string | null
+  emailPrincipal: string | null
+  telefonePrincipal: string | null
+  whatsappPrincipal: string | null
+
+  endereco: string | null
+  cidade: string | null
+  estado: string | null
+  cep: string | null
+
+  tipoComissao: string | null
+  comissao: string | null
+
+  fechamentoComissao: string | null
+  pagamentoComissao: string | null
+  bancoComissao: string | null
+
+  observacoes: string | null
+
   status: string
 }
 
-export default function Page() {
-  const router = useRouter()
+export default function RepresentadaPage() {
   const params = useParams()
 
-  const id =
-    typeof params.id === "string"
-      ? params.id
-      : params.id?.[0]
+  const router = useRouter()
 
-  const [rep, setRep] = useState<Representada | null>(null)
+  const id = Array.isArray(params.id)
+    ? params.id[0]
+    : params.id
+
   const [loading, setLoading] = useState(true)
+
+  const [representada, setRepresentada] =
+    useState<Representada | null>(null)
 
   useEffect(() => {
     if (!id) return
 
-    async function carregar() {
-      try {
-        const response = await fetch(`/api/representadas/${id}`)
-
-        const data = await response.json()
-
-        setRep(data)
-      } catch (error) {
-        console.error(error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    carregar()
+    carregarRepresentada()
   }, [id])
 
-  if (loading) {
-    return <div className="p-8">Carregando...</div>
+  async function carregarRepresentada() {
+    try {
+      const response = await fetch(
+        `/api/representadas/${id}`
+      )
+
+      if (!response.ok) {
+        throw new Error()
+      }
+
+      const data = await response.json()
+
+      setRepresentada(data)
+    } catch (error) {
+      console.error(error)
+      alert("Erro ao carregar representada")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  if (!rep) {
-    return <div className="p-8">Representada não encontrada</div>
+  if (loading) {
+    return (
+      <div className="p-6">
+        Carregando...
+      </div>
+    )
+  }
+
+  if (!representada) {
+    return (
+      <div className="p-6">
+        Representada não encontrada.
+      </div>
+    )
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="flex gap-2 mb-6">
-        <Button
-          variant="outline"
-          onClick={() => router.push("/representadas")}
-        >
-          Voltar
-        </Button>
+    <div className="p-6 max-w-5xl mx-auto space-y-4">
+
+      <div className="flex items-center justify-between">
+
+        <div className="flex items-center gap-2">
+
+          <Button
+            variant="outline"
+            onClick={() =>
+              router.push("/representadas")
+            }
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Voltar
+          </Button>
+
+          <h1 className="text-2xl font-bold">
+            {representada.nome}
+          </h1>
+
+        </div>
 
         <Button
           onClick={() =>
-            router.push(`/representadas/${rep.id}/editar`)
+            router.push(
+              `/representadas/${representada.id}/editar`
+            )
           }
         >
+          <Pencil className="h-4 w-4 mr-1" />
           Editar
         </Button>
+
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{rep.nome}</CardTitle>
+          <CardTitle>
+            Dados Cadastrais
+          </CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-2">
-          <p>
-            <strong>CNPJ:</strong> {rep.cnpj || "-"}
-          </p>
+        <CardContent className="grid grid-cols-2 gap-4 text-sm">
 
-          <p>
-            <strong>Status:</strong> {rep.status}
-          </p>
+          <div>
+            <strong>Código:</strong><br />
+            {representada.codigo || "-"}
+          </div>
+
+          <div>
+            <strong>CNPJ:</strong><br />
+            {representada.cnpj || "-"}
+          </div>
+
+          <div>
+            <strong>Status:</strong><br />
+            {representada.status}
+          </div>
+
+          <div>
+            <strong>Tipo Comissão:</strong><br />
+            {representada.tipoComissao || "-"}
+          </div>
+
+          <div>
+            <strong>Comissão:</strong><br />
+            {representada.comissao || "-"}
+          </div>
+
+          <div>
+            <strong>Fechamento:</strong><br />
+            {representada.fechamentoComissao || "-"}
+          </div>
+
+          <div>
+            <strong>Pagamento:</strong><br />
+            {representada.pagamentoComissao || "-"}
+          </div>
+
+          <div>
+            <strong>Banco Recebedor:</strong><br />
+            {representada.bancoComissao || "-"}
+          </div>
+
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Contato
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent className="grid grid-cols-2 gap-4 text-sm">
+
+          <div>
+            <strong>Contato:</strong><br />
+            {representada.contatoPrincipal || "-"}
+          </div>
+
+          <div>
+            <strong>Email:</strong><br />
+            {representada.emailPrincipal || "-"}
+          </div>
+
+          <div>
+            <strong>Telefone:</strong><br />
+            {representada.telefonePrincipal || "-"}
+          </div>
+
+          <div>
+            <strong>WhatsApp:</strong><br />
+            {representada.whatsappPrincipal || "-"}
+          </div>
+
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Endereço
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent className="grid grid-cols-2 gap-4 text-sm">
+
+          <div>
+            <strong>Endereço:</strong><br />
+            {representada.endereco || "-"}
+          </div>
+
+          <div>
+            <strong>Cidade:</strong><br />
+            {representada.cidade || "-"}
+          </div>
+
+          <div>
+            <strong>UF:</strong><br />
+            {representada.estado || "-"}
+          </div>
+
+          <div>
+            <strong>CEP:</strong><br />
+            {representada.cep || "-"}
+          </div>
+
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Observações
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent className="text-sm">
+          {representada.observacoes || "-"}
+        </CardContent>
+      </Card>
+
     </div>
   )
 }

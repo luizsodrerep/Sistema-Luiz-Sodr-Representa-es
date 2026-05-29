@@ -32,10 +32,14 @@ export async function POST(req: Request) {
         cnpj: body.cnpj || null,
         contratoAssinado: body.contratoAssinado || false,
         emiteNF: body.emiteNF || false,
-        comissao: body.comissao || null,
+        
         comissao: body.comissao ? parseFloat(body.comissao) : null,
         pagamentoComissao: body.pagamentoComissao || null,
         bancoComissao: body.bancoComissao || null,
+tipoComissao: body.tipoComissao || "fixa",
+faixasComissao: body.faixasComissao
+  ? JSON.stringify(body.faixasComissao)
+  : null,
 
         contatoPrincipal: body.contatoPrincipal || null,
         emailPrincipal: body.emailPrincipal || null,
@@ -60,20 +64,6 @@ export async function POST(req: Request) {
         observacoes: body.observacoes || null,
       },
     })
-    // SALVAR FAIXAS DE COMISSAO
-if (
-  body.faixasComissao &&
-  Array.isArray(body.faixasComissao)
-) {
-  await prisma.comissaoFaixa.createMany({
-    data: body.faixasComissao.map((f: any, idx: number) => ({
-      representadaId: novaRepresentada.id,
-      descontoAte: Number(f.descontoAte),
-      percentualComissao: Number(f.percentualComissao),
-      ordem: idx + 1,
-    })),
-  })
-}
 
     return NextResponse.json(novaRepresentada)
   } catch (error) {

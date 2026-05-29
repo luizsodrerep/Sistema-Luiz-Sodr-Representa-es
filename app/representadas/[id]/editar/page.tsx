@@ -2,50 +2,82 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 
-interface Representada {
-  id: string
-  nome: string
-  cnpj: string | null
-  contatoPrincipal: string | null
-  emailPrincipal: string | null
-  telefonePrincipal: string | null
-  cidade: string | null
-  estado: string | null
-  observacoes: string | null
-}
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+} from "lucide-react"
 
 export default function EditarRepresentadaPage() {
+
   const router = useRouter()
+
   const params = useParams()
 
   const id = Array.isArray(params.id)
     ? params.id[0]
     : params.id
 
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
-  const [formData, setFormData] = useState<Representada>({
-    id: "",
+  const [tipoComissao, setTipoComissao] =
+    useState("fixa")
+
+  const [faixas, setFaixas] = useState([
+    { desconto: "", comissao: "" },
+    { desconto: "", comissao: "" },
+    { desconto: "", comissao: "" },
+  ])
+
+  const [formData, setFormData] = useState({
     nome: "",
+    codigo: "",
     cnpj: "",
+
+    comissao: "",
+
+    fechamentoComissao: "",
+    pagamentoComissao: "",
+    bancoComissao: "",
+
     contatoPrincipal: "",
     emailPrincipal: "",
     telefonePrincipal: "",
+    whatsappPrincipal: "",
+
+    endereco: "",
     cidade: "",
     estado: "",
+    cep: "",
+
+    status: "Ativa",
     observacoes: "",
   })
 
   useEffect(() => {
+
     if (!id) return
 
     async function carregarRepresentada() {
+
       try {
-        const response = await fetch(`/api/representadas/${id}`)
+
+        const response = await fetch(
+          `/api/representadas/${id}`
+        )
 
         if (!response.ok) {
           throw new Error("Erro ao carregar")
@@ -53,142 +85,676 @@ export default function EditarRepresentadaPage() {
 
         const data = await response.json()
 
-        setFormData({
-          id: data.id || "",
-          nome: data.nome || "",
-          cnpj: data.cnpj || "",
-          contatoPrincipal: data.contatoPrincipal || "",
-          emailPrincipal: data.emailPrincipal || "",
-          telefonePrincipal: data.telefonePrincipal || "",
-          cidade: data.cidade || "",
-          estado: data.estado || "",
-          observacoes: data.observacoes || "",
-        })
+        setFormData((prev) => ({
+  ...prev,
+  ...data,
+}))
+
+setTipoComissao(
+  data.tipoComissao || "fixa"
+)
+
+if (data.faixasComissao) {
+  try {
+    setFaixas(
+      JSON.parse(data.faixasComissao)
+    )
+  } catch {
+    console.log("Erro ao carregar faixas")
+  }
+}
+
+        if (data.tipoComissao) {
+          setTipoComissao(data.tipoComissao)
+        }
+
+        if (data.faixasComissao) {
+
+          try {
+
+            setFaixas(
+              JSON.parse(data.faixasComissao)
+            )
+
+          } catch (error) {
+
+            console.error(error)
+
+          }
+
+        }
+
       } catch (error) {
+
         console.error(error)
+
         alert("Erro ao carregar representada")
-      } finally {
-        setLoading(false)
+
       }
+
     }
 
     carregarRepresentada()
+
   }, [id])
 
-  function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement
+    >
+  ) => {
+
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     })
+
   }
 
-  async function handleSalvar() {
-    try {
-      const response = await fetch(`/api/representadas/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
+  const handleFaixaChange = (
+    index: number,
+    campo: string,
+    valor: string
+  ) => {
 
-      if (!response.ok) {
-        throw new Error("Erro ao salvar")
+    const novasFaixas = [...faixas]
+
+    novasFaixas[index] = {
+      ...novasFaixas[index],
+      [campo]: valor,
+    }
+
+    setFaixas(novasFaixas)
+
+  }
+
+  const adicionarFaixa = () => {
+
+    setFaixas([
+      ...faixas,
+      {
+        desconto: "",
+        comissao: "",
+      },
+    ])
+
+  }
+
+  const removerFaixa = (index: number) => {
+
+    const novasFaixas = [...faixas]
+
+    novasFaixas.splice(index, 1)
+
+    setFaixas(novasFaixas)
+
+  }
+
+  const handleSubmit = async (
+    e: React.FormEvent
+  ) => {
+
+    e.preventDefault()
+
+    setLoading(true)
+
+    try {
+
+      const payload = {
+        ...formData,
+
+        tipoComissao,
+
+        faixasComissao:
+          tipoComissao === "variada"
+            ? JSON.stringify(faixas)
+            : null,
       }
 
-      alert("Representada atualizada com sucesso")
+      const response = await fetch(
+        `/api/representadas/${id}`,
+        {
+          method: "PUT",
 
-      router.push(`/representadas/${id}`)
-    } catch (error) {
-      console.error(error)
-      alert("Erro ao salvar representada")
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify(payload),
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error()
+      }
+
+      alert(
+        "Representada atualizada com sucesso"
+      )
+
+      router.push(
+        `/representadas/${id}`
+      )
+
+    } catch {
+
+      alert(
+        "Erro ao atualizar representada"
+      )
+
+    } finally {
+
+      setLoading(false)
+
     }
-  }
 
-  if (loading) {
-    return <div className="p-8">Carregando...</div>
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>Editar Representada</CardTitle>
-        </CardHeader>
 
-        <CardContent className="space-y-4">
-          <Input
-            name="nome"
-            placeholder="Nome"
-            value={formData.nome}
-            onChange={handleChange}
-          />
+    <div className="flex flex-col p-8 pt-6 max-w-5xl mx-auto">
 
-          <Input
-            name="cnpj"
-            placeholder="CNPJ"
-            value={formData.cnpj || ""}
-            onChange={handleChange}
-          />
+      <div className="flex items-center gap-3 mb-6">
 
-          <Input
-            name="contatoPrincipal"
-            placeholder="Contato Principal"
-            value={formData.contatoPrincipal || ""}
-            onChange={handleChange}
-          />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            router.push(
+              `/representadas/${id}`
+            )
+          }
+        >
 
-          <Input
-            name="emailPrincipal"
-            placeholder="Email"
-            value={formData.emailPrincipal || ""}
-            onChange={handleChange}
-          />
+          <ArrowLeft className="h-4 w-4 mr-1" />
 
-          <Input
-            name="telefonePrincipal"
-            placeholder="Telefone"
-            value={formData.telefonePrincipal || ""}
-            onChange={handleChange}
-          />
+          Voltar
 
-          <Input
-            name="cidade"
-            placeholder="Cidade"
-            value={formData.cidade || ""}
-            onChange={handleChange}
-          />
+        </Button>
 
-          <Input
-            name="estado"
-            placeholder="Estado"
-            value={formData.estado || ""}
-            onChange={handleChange}
-          />
+        <h1 className="text-3xl font-bold">
 
-          <Input
-            name="observacoes"
-            placeholder="Observações"
-            value={formData.observacoes || ""}
-            onChange={handleChange}
-          />
+          Editar Representada
 
-          <div className="flex gap-2 pt-4">
-            <Button onClick={handleSalvar}>
-              Salvar
+        </h1>
+
+      </div>
+
+      <form onSubmit={handleSubmit}>
+
+        <div className="space-y-4">
+
+          <Card>
+
+            <CardHeader>
+
+              <CardTitle>
+                Dados Cadastrais
+              </CardTitle>
+
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+
+                  <Label>
+                    Nome *
+                  </Label>
+
+                  <Input
+                    name="nome"
+                    value={formData.nome}
+                    onChange={handleChange}
+                    required
+                  />
+
+                </div>
+
+                <div>
+
+                  <Label>
+                    CNPJ
+                  </Label>
+
+                  <Input
+                    name="cnpj"
+                    value={formData.cnpj}
+                    onChange={handleChange}
+                  />
+
+                </div>
+
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+
+                <div>
+
+                  <Label>
+                    Tipo Comissão
+                  </Label>
+
+                  <select
+                    className="w-full border rounded-md h-10 px-3"
+                    value={tipoComissao}
+                    onChange={(e) =>
+                      setTipoComissao(
+                        e.target.value
+                      )
+                    }
+                  >
+
+                    <option value="fixa">
+                      Fixa
+                    </option>
+
+                    <option value="variada">
+                      Variada
+                    </option>
+
+                  </select>
+
+                </div>
+
+                <div>
+
+                  <Label>
+                    Fechamento Comissão
+                  </Label>
+
+                  <Input
+                    name="fechamentoComissao"
+                    value={
+                      formData.fechamentoComissao
+                    }
+                    onChange={handleChange}
+                  />
+
+                </div>
+
+                <div>
+
+                  <Label>
+                    Pagamento Comissão
+                  </Label>
+
+                  <Input
+                    name="pagamentoComissao"
+                    value={
+                      formData.pagamentoComissao
+                    }
+                    onChange={handleChange}
+                  />
+
+                </div>
+
+              </div>
+
+              <div>
+
+                <Label>
+                  Banco Comissão
+                </Label>
+
+                <Input
+                  name="bancoComissao"
+                  value={
+                    formData.bancoComissao
+                  }
+                  onChange={handleChange}
+                />
+
+              </div>
+
+              {tipoComissao === "fixa" && (
+
+                <div>
+
+                  <Label>
+                    Comissão %
+                  </Label>
+
+                  <Input
+                    name="comissao"
+                    type="number"
+                    step="0.01"
+                    value={formData.comissao}
+                    onChange={handleChange}
+                  />
+
+                </div>
+
+              )}
+
+              {tipoComissao === "variada" && (
+
+                <div className="space-y-3">
+
+                  <div className="font-medium">
+
+                    Faixas de Comissão
+
+                  </div>
+
+                  {faixas.map(
+                    (faixa, index) => (
+
+                      <div
+                        key={index}
+                        className="grid grid-cols-12 gap-2 items-end"
+                      >
+
+                        <div className="col-span-5">
+
+                          <Label>
+                            % Desconto
+                          </Label>
+
+                          <Input
+                            value={
+                              faixa.desconto
+                            }
+                            onChange={(e) =>
+                              handleFaixaChange(
+                                index,
+                                "desconto",
+                                e.target.value
+                              )
+                            }
+                          />
+
+                        </div>
+
+                        <div className="col-span-5">
+
+                          <Label>
+                            % Comissão
+                          </Label>
+
+                          <Input
+                            value={
+                              faixa.comissao
+                            }
+                            onChange={(e) =>
+                              handleFaixaChange(
+                                index,
+                                "comissao",
+                                e.target.value
+                              )
+                            }
+                          />
+
+                        </div>
+
+                        <div className="col-span-2">
+
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() =>
+                              removerFaixa(index)
+                            }
+                          >
+
+                            <Trash2 className="h-4 w-4" />
+
+                          </Button>
+
+                        </div>
+
+                      </div>
+
+                    )
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={adicionarFaixa}
+                  >
+
+                    <Plus className="h-4 w-4 mr-1" />
+
+                    Adicionar Faixa
+
+                  </Button>
+
+                </div>
+
+              )}
+
+            </CardContent>
+
+          </Card>
+
+          <Card>
+
+            <CardHeader>
+
+              <CardTitle>
+                Contato Principal
+              </CardTitle>
+
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+
+                  <Label>
+                    Contato
+                  </Label>
+
+                  <Input
+                    name="contatoPrincipal"
+                    value={
+                      formData.contatoPrincipal
+                    }
+                    onChange={handleChange}
+                  />
+
+                </div>
+
+                <div>
+
+                  <Label>
+                    Email
+                  </Label>
+
+                  <Input
+                    name="emailPrincipal"
+                    value={
+                      formData.emailPrincipal
+                    }
+                    onChange={handleChange}
+                  />
+
+                </div>
+
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+
+                  <Label>
+                    Telefone
+                  </Label>
+
+                  <Input
+                    name="telefonePrincipal"
+                    value={
+                      formData.telefonePrincipal
+                    }
+                    onChange={handleChange}
+                  />
+
+                </div>
+
+                <div>
+
+                  <Label>
+                    WhatsApp
+                  </Label>
+
+                  <Input
+                    name="whatsappPrincipal"
+                    value={
+                      formData.whatsappPrincipal
+                    }
+                    onChange={handleChange}
+                  />
+
+                </div>
+
+              </div>
+
+            </CardContent>
+
+          </Card>
+
+          <Card>
+
+            <CardHeader>
+
+              <CardTitle>
+                Endereço
+              </CardTitle>
+
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+
+              <div>
+
+                <Label>
+                  Endereço
+                </Label>
+
+                <Input
+                  name="endereco"
+                  value={formData.endereco}
+                  onChange={handleChange}
+                />
+
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+
+                <div>
+
+                  <Label>
+                    Cidade
+                  </Label>
+
+                  <Input
+                    name="cidade"
+                    value={formData.cidade}
+                    onChange={handleChange}
+                  />
+
+                </div>
+
+                <div>
+
+                  <Label>
+                    UF
+                  </Label>
+
+                  <Input
+                    name="estado"
+                    value={formData.estado}
+                    onChange={handleChange}
+                  />
+
+                </div>
+
+                <div>
+
+                  <Label>
+                    CEP
+                  </Label>
+
+                  <Input
+                    name="cep"
+                    value={formData.cep}
+                    onChange={handleChange}
+                  />
+
+                </div>
+
+              </div>
+
+            </CardContent>
+
+          </Card>
+
+          <Card>
+
+            <CardHeader>
+
+              <CardTitle>
+                Observações
+              </CardTitle>
+
+            </CardHeader>
+
+            <CardContent>
+
+              <Textarea
+                name="observacoes"
+                value={
+                  formData.observacoes
+                }
+                onChange={handleChange}
+                rows={4}
+              />
+
+            </CardContent>
+
+          </Card>
+
+          <div className="flex gap-3">
+
+            <Button
+              type="submit"
+              disabled={loading}
+            >
+
+              {loading
+                ? "Salvando..."
+                : "Atualizar Representada"}
+
             </Button>
 
             <Button
+              type="button"
               variant="outline"
-              onClick={() => router.push(`/representadas/${id}`)}
+              onClick={() =>
+                router.push(
+                  `/representadas/${id}`
+                )
+              }
             >
+
               Cancelar
+
             </Button>
+
           </div>
-        </CardContent>
-      </Card>
+
+        </div>
+
+      </form>
+
     </div>
+
   )
+
 }
