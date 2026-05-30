@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Building2, Phone, Mail, MapPin, Trash2, Pencil } from "lucide-react"
+import { ArrowLeft, Building2, Trash2, Pencil } from "lucide-react"
 
 export default function RepresentadaPage() {
   const params = useParams()
@@ -52,7 +52,7 @@ export default function RepresentadaPage() {
   }
 
   if (!representada) {
-    return <div className="p-6">Representada nao encontrada</div>
+    return <div className="p-6">Representada não encontrada</div>
   }
 
   let faixas: any[] = []
@@ -126,9 +126,73 @@ export default function RepresentadaPage() {
             </div>
 
             <div className="border-t pt-5">
-              <h3 className="font-semibold text-slate-700 mb-4">Comissao</h3>
+              <h3 className="font-semibold text-slate-700 mb-4">Comissão</h3>
               {representada.tipoComissao === "variada" ? (
                 <div className="space-y-3">
                   {Array.isArray(faixas) && faixas.map((faixa: any, index: number) => (
                     <div key={index} className="grid grid-cols-2 gap-4 bg-slate-50 border rounded-xl px-4 py-3">
                       <div>
+                        <p className="text-xs text-slate-500">Pedido/Valor</p>
+                        <p className="font-medium">{faixa.intervalo || "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Percentual</p>
+                        <p className="font-medium">{faixa.percentual || "-"}%</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-slate-500">Tipo</p>
+                    <p className="font-medium">{representada.tipoComissao || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Percentual</p>
+                    <p className="font-medium">{representada.percentualComissao || "-"}%</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        <div>
+          <Card className="shadow-sm border rounded-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                Contato
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="text-sm text-slate-500">Telefone</p>
+                <p className="font-medium">{representada.telefone || "-"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Email</p>
+                <p className="font-medium">{representada.email || "-"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Endereço</p>
+                <p className="font-medium">{representada.endereco || "-"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Cidade</p>
+                <p className="font-medium">{representada.cidade || "-"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Estado</p>
+                <p className="font-medium">{representada.estado || "-"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">CEP</p>
+                <p className="font-medium">{representada.cep || "-"}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
