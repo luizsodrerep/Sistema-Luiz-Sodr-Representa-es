@@ -11,18 +11,14 @@ import { ArrowLeft, Plus, Trash2 } from "lucide-react"
 
 export default function NovaRepresentadaPage() {
   const router = useRouter()
-
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-
   const [tipoComissao, setTipoComissao] = useState("fixa")
-
   const [faixas, setFaixas] = useState([
     { desconto: "", comissao: "" },
     { desconto: "", comissao: "" },
     { desconto: "", comissao: "" },
   ])
-
   const [formData, setFormData] = useState({
     nome: "",
     codigo: `REP-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -45,67 +41,38 @@ export default function NovaRepresentadaPage() {
 
   function formatarData(valor: string) {
     const numeros = valor.replace(/\D/g, "")
-
-    if (numeros.length <= 2) {
-      return numeros
-    }
-
-    if (numeros.length <= 4) {
-      return `${numeros.slice(0, 2)}/${numeros.slice(2)}`
-    }
-
+    if (numeros.length <= 2) return numeros
+    if (numeros.length <= 4) return `${numeros.slice(0, 2)}/${numeros.slice(2)}`
     return `${numeros.slice(0, 2)}/${numeros.slice(2, 4)}/${numeros.slice(4, 8)}`
   }
 
   function formatarCNPJ(valor: string) {
-    const numeros = valor.replace(/\D/g, "")
-
-    if (numeros.length <= 2) {
-      return numeros
-    }
-
-    if (numeros.length <= 5) {
-      return `${numeros.slice(0, 2)}.${numeros.slice(2)}`
-    }
-
-    if (numeros.length <= 8) {
-      return `${numeros.slice(0, 2)}.${numeros.slice(2, 5)}.${numeros.slice(5)}`
-    }
-
-    return `${numeros.slice(0, 2)}.${numeros.slice(2, 5)}.${numeros.slice(5, 8)}/${numeros.slice(8, 12)}-${numeros.slice(12, 14)}`
+    const n = valor.replace(/\D/g, "")
+    if (n.length <= 2) return n
+    if (n.length <= 5) return `${n.slice(0, 2)}.${n.slice(2)}`
+    if (n.length <= 8) return `${n.slice(0, 2)}.${n.slice(2, 5)}.${n.slice(5)}`
+    return `${n.slice(0, 2)}.${n.slice(2, 5)}.${n.slice(5, 8)}/${n.slice(8, 12)}-${n.slice(12, 14)}`
   }
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target
 
     if (name === "fechamentoComissao" || name === "pagamentoComissao") {
-      setFormData({
-        ...formData,
-        [name]: formatarData(value),
-      })
+      setFormData({ ...formData, [name]: formatarData(value) })
       return
     }
 
     if (name === "cnpj") {
-      setFormData({
-        ...formData,
-        [name]: formatarCNPJ(value),
-      })
+      setFormData({ ...formData, [name]: formatarCNPJ(value) })
       return
     }
 
-    setFormData({
-      ...formData,
-      [name]: value,
-    })
+    setFormData({ ...formData, [name]: value })
 
     if (errors[name]) {
-      setErrors({
-        ...errors,
-        [name]: "",
-      })
+      setErrors({ ...errors, [name]: "" })
     }
   }
 
@@ -113,13 +80,7 @@ export default function NovaRepresentadaPage() {
     const novasFaixas = [...faixas]
     novasFaixas[index] = { ...novasFaixas[index], [campo]: valor }
     setFaixas(novasFaixas)
-
-    if (errors.faixas) {
-      setErrors({
-        ...errors,
-        faixas: "",
-      })
-    }
+    if (errors.faixas) setErrors({ ...errors, faixas: "" })
   }
 
   const adicionarFaixa = () => {
@@ -138,42 +99,42 @@ export default function NovaRepresentadaPage() {
     const novoErros: Record<string, string> = {}
 
     if (!formData.nome.trim()) {
-      novoErros.nome = "Nome é obrigatório"
+      novoErros.nome = "Nome e obrigatorio"
     }
 
     if (!formData.cnpj.trim()) {
-      novoErros.cnpj = "CNPJ é obrigatório"
+      novoErros.cnpj = "CNPJ e obrigatorio"
     } else if (formData.cnpj.replace(/\D/g, "").length !== 14) {
-      novoErros.cnpj = "CNPJ deve conter 14 dígitos"
+      novoErros.cnpj = "CNPJ deve conter 14 digitos"
     }
 
     if (!formData.emailPrincipal.trim()) {
-      novoErros.emailPrincipal = "Email é obrigatório"
+      novoErros.emailPrincipal = "Email e obrigatorio"
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.emailPrincipal)) {
-      novoErros.emailPrincipal = "Email inválido"
+      novoErros.emailPrincipal = "Email invalido"
     }
 
     if (!formData.telefonePrincipal.trim()) {
-      novoErros.telefonePrincipal = "Telefone é obrigatório"
+      novoErros.telefonePrincipal = "Telefone e obrigatorio"
     }
 
     if (tipoComissao === "fixa") {
       if (!formData.comissao.trim()) {
-        novoErros.comissao = "Comissão fixa é obrigatória"
+        novoErros.comissao = "Comissao fixa e obrigatoria"
       } else if (isNaN(parseFloat(formData.comissao))) {
-        novoErros.comissao = "Comissão deve ser um número"
+        novoErros.comissao = "Comissao deve ser um numero"
       } else if (parseFloat(formData.comissao) <= 0) {
-        novoErros.comissao = "Comissão deve ser maior que zero"
+        novoErros.comissao = "Comissao deve ser maior que zero"
       }
     } else if (tipoComissao === "variada") {
       if (faixas.length === 0) {
-        novoErros.faixas = "Adicione pelo menos uma faixa de comissão"
+        novoErros.faixas = "Adicione pelo menos uma faixa de comissao"
       } else {
         const faixasValidas = faixas.every(
           (f) => f.desconto.trim() && f.comissao.trim()
         )
         if (!faixasValidas) {
-          novoErros.faixas = "Todas as faixas devem ter desconto e comissão"
+          novoErros.faixas = "Todas as faixas devem ter desconto e comissao"
         }
       }
     }
@@ -184,11 +145,7 @@ export default function NovaRepresentadaPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!validarFormulario()) {
-      return
-    }
-
+    if (!validarFormulario()) return
     setLoading(true)
 
     try {
@@ -213,7 +170,8 @@ export default function NovaRepresentadaPage() {
       alert("Representada cadastrada com sucesso")
       router.push("/representadas")
     } catch (error) {
-      const mensagem = error instanceof Error ? error.message : "Erro ao cadastrar representada"
+      const mensagem =
+        error instanceof Error ? error.message : "Erro ao cadastrar representada"
       alert(mensagem)
       console.error("Erro:", error)
     } finally {
@@ -224,6 +182,7 @@ export default function NovaRepresentadaPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
+
         <div className="flex items-center gap-4 mb-6">
           <Button
             variant="ghost"
@@ -237,12 +196,14 @@ export default function NovaRepresentadaPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+
           <Card>
             <CardHeader>
-              <CardTitle>Informações Básicas</CardTitle>
+              <CardTitle>Informacoes Basicas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
                 <div>
                   <Label htmlFor="nome">Nome *</Label>
                   <Input
@@ -260,7 +221,7 @@ export default function NovaRepresentadaPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="codigo">Código</Label>
+                  <Label htmlFor="codigo">Codigo</Label>
                   <Input
                     id="codigo"
                     name="codigo"
@@ -302,16 +263,18 @@ export default function NovaRepresentadaPage() {
                     <option value="Suspensa">Suspensa</option>
                   </select>
                 </div>
+
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Informações de Contato</CardTitle>
+              <CardTitle>Informacoes de Contato</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
                 <div>
                   <Label htmlFor="contatoPrincipal">Contato Principal</Label>
                   <Input
@@ -368,23 +331,25 @@ export default function NovaRepresentadaPage() {
                     disabled={loading}
                   />
                 </div>
+
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Endereço</CardTitle>
+              <CardTitle>Endereco</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+
               <div>
-                <Label htmlFor="endereco">Endereço</Label>
+                <Label htmlFor="endereco">Endereco</Label>
                 <Input
                   id="endereco"
                   name="endereco"
                   value={formData.endereco}
                   onChange={handleChange}
-                  placeholder="Rua, número, complemento"
+                  placeholder="Rua, numero, complemento"
                   disabled={loading}
                 />
               </div>
@@ -427,14 +392,16 @@ export default function NovaRepresentadaPage() {
                   />
                 </div>
               </div>
+
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Comissão</CardTitle>
+              <CardTitle>Comissao</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+
               <div className="flex gap-4">
                 <div className="flex items-center gap-2">
                   <input
@@ -465,7 +432,7 @@ export default function NovaRepresentadaPage() {
               {tipoComissao === "fixa" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="comissao">Comissão (%) *</Label>
+                    <Label htmlFor="comissao">Comissao (%) *</Label>
                     <Input
                       id="comissao"
                       name="comissao"
@@ -478,144 +445,4 @@ export default function NovaRepresentadaPage() {
                       className={errors.comissao ? "border-red-500" : ""}
                     />
                     {errors.comissao && (
-                      <p className="text-red-500 text-sm mt-1">{errors.comissao}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="bancoComissao">Banco para Comissão</Label>
-                    <Input
-                      id="bancoComissao"
-                      name="bancoComissao"
-                      value={formData.bancoComissao}
-                      onChange={handleChange}
-                      placeholder="Nome do banco"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {tipoComissao === "variada" && (
-                <div className="space-y-4">
-                  {errors.faixas && (
-                    <p className="text-red-500 text-sm">{errors.faixas}</p>
-                  )}
-                  <div className="space-y-3">
-                    {faixas.map((faixa, index) => (
-                      <div key={index} className="flex gap-4 items-end">
-                        <div className="flex-1">
-                          <Label>Desconto Mínimo (%)</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={faixa.desconto}
-                            onChange={(e) =>
-                              handleFaixaChange(index, "desconto", e.target.value)
-                            }
-                            placeholder="0.00"
-                            disabled={loading}
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <Label>Comissão (%)</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={faixa.comissao}
-                            onChange={(e) =>
-                              handleFaixaChange(index, "comissao", e.target.value)
-                            }
-                            placeholder="0.00"
-                            disabled={loading}
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          onClick={() => removerFaixa(index)}
-                          disabled={loading || faixas.length === 1}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={adicionarFaixa}
-                    disabled={loading}
-                    className="w-full"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar Faixa
-                  </Button>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="fechamentoComissao">Fechamento Comissão</Label>
-                  <Input
-                    id="fechamentoComissao"
-                    name="fechamentoComissao"
-                    value={formData.fechamentoComissao}
-                    onChange={handleChange}
-                    placeholder="DD/MM/YYYY"
-                    maxLength={10}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="pagamentoComissao">Pagamento Comissão</Label>
-                  <Input
-                    id="pagamentoComissao"
-                    name="pagamentoComissao"
-                    value={formData.pagamentoComissao}
-                    onChange={handleChange}
-                    placeholder="DD/MM/YYYY"
-                    maxLength={10}
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Observações</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                name="observacoes"
-                value={formData.observacoes}
-                onChange={handleChange}
-                placeholder="Adicione observações sobre esta representada"
-                disabled={loading}
-                rows={4}
-              />
-            </CardContent>
-          </Card>
-
-          <div className="flex gap-4 justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-              disabled={loading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Salvando..." : "Salvar Representada"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
+                      <p className="text-re
