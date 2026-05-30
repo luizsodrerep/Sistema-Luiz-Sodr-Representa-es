@@ -36,18 +36,28 @@ model Cliente {
 
 model Representada {
   id                 String   @id @default(cuid())
+
   nome               String
   cnpj               String?
+
   endereco           String?
+  numero             String?
+  complemento        String?
+  bairro             String?
   cidade             String?
   estado             String?
+  cep                String?
+
+  ie                 String?
+
   comissao           Float?
+
   status             String   @default("Ativa")
+
   criadoEm           DateTime @default(now())
   atualizadoEm       DateTime @updatedAt
 
   bancoComissao      String?
-  cep                String?
 
   contatoPrincipal   String?
   emailPrincipal     String?

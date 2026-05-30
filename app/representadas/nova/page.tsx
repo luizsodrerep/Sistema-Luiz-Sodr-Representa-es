@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,6 @@ import {
   Trash2,
   AlertCircle,
   Loader,
-  Lock,
   Gem,
   Ban,
 } from "lucide-react"
@@ -23,35 +22,7 @@ interface Faixa {
   comissao: string
 }
 
-interface Representada {
-  id: string
-  codigo: string
-  nome: string
-  cnpj: string
-  ie: string
-  comissao: string
-  tipoComissao: "fixa" | "variada"
-  faixasComissao?: string
-  fechamentoComissao: string
-  pagamentoComissao: string
-  bancoComissao: string
-  contatoPrincipal: string
-  emailPrincipal: string
-  telefonePrincipal: string
-  whatsappPrincipal: string
-  endereco: string
-  numero: string
-  complemento: string
-  bairro: string
-  cidade: string
-  estado: string
-  cep: string
-  status: string
-  observacoes: string
-}
-
 interface FormData {
-  codigo: string
   nome: string
   cnpj: string
   ie: string
@@ -74,14 +45,10 @@ interface FormData {
   observacoes: string
 }
 
-export default function EditarRepresentadaPage() {
+export default function NovaRepresentadaPage() {
   const router = useRouter()
-  const params = useParams()
-  const id = Array.isArray(params.id) ? params.id[0] : params.id
 
   const [loading, setLoading] = useState(false)
-  const [carregando, setCarregando] = useState(true)
-  const [erro, setErro] = useState<string | null>(null)
   const [tipoComissao, setTipoComissao] = useState("fixa")
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -92,7 +59,6 @@ export default function EditarRepresentadaPage() {
   ])
 
   const [formData, setFormData] = useState<FormData>({
-    codigo: "",
     nome: "",
     cnpj: "",
     ie: "",
@@ -114,58 +80,6 @@ export default function EditarRepresentadaPage() {
     status: "Ativa",
     observacoes: "",
   })
-
-  useEffect(() => {
-    if (!id) return
-    async function carregar() {
-      try {
-        setErro(null)
-        const response = await fetch(`/api/representadas/${id}`)
-        if (!response.ok) throw new Error("Erro ao carregar representada")
-        const data: Representada = await response.json()
-        setFormData({
-          codigo: data.codigo || "",
-          nome: data.nome || "",
-          cnpj: data.cnpj || "",
-          ie: data.ie || "",
-          comissao: data.comissao?.toString() || "",
-          fechamentoComissao: data.fechamentoComissao || "",
-          pagamentoComissao: data.pagamentoComissao || "",
-          bancoComissao: data.bancoComissao || "",
-          contatoPrincipal: data.contatoPrincipal || "",
-          emailPrincipal: data.emailPrincipal || "",
-          telefonePrincipal: data.telefonePrincipal || "",
-          whatsappPrincipal: data.whatsappPrincipal || "",
-          endereco: data.endereco || "",
-          numero: data.numero || "",
-          complemento: data.complemento || "",
-          bairro: data.bairro || "",
-          cidade: data.cidade || "",
-          estado: data.estado || "",
-          cep: data.cep || "",
-          status: data.status || "Ativa",
-          observacoes: data.observacoes || "",
-        })
-        setTipoComissao(data.tipoComissao || "fixa")
-        if (data.faixasComissao) {
-          try {
-            const parsed =
-              typeof data.faixasComissao === "string"
-                ? JSON.parse(data.faixasComissao)
-                : data.faixasComissao
-            if (Array.isArray(parsed) && parsed.length > 0) setFaixas(parsed)
-          } catch (error) {
-            console.error("Erro ao fazer parse de faixas:", error)
-          }
-        }
-      } catch (error) {
-        setErro("Erro ao carregar a representada")
-      } finally {
-        setCarregando(false)
-      }
-    }
-    carregar()
-  }, [id])
 
   function formatarCNPJ(valor: string) {
     const numeros = valor.replace(/\D/g, "")
@@ -236,23 +150,46 @@ export default function EditarRepresentadaPage() {
     setLoading(true)
     try {
       const payload = {
-        ...formData,
+        nome: formData.nome,
+        cnpj: formData.cnpj,
+        ie: formData.ie,
+        comissao: formData.comissao ? parseFloat(formData.comissao) : null,
         tipoComissao,
         faixasComissao: tipoComissao === "variada" ? JSON.stringify(faixas) : null,
+        fechamentoComissao: formData.fechamentoComissao,
+        pagamentoComissao: formData.pagamentoComissao,
+        bancoComissao: formData.bancoComissao,
+        contatoPrincipal: formData.contatoPrincipal,
+        emailPrincipal: formData.emailPrincipal,
+        telefonePrincipal: formData.telefonePrincipal,
+        whatsappPrincipal: formData.whatsappPrincipal,
+        endereco: formData.endereco,
+        numero: formData.numero,
+        complemento: formData.complemento,
+        bairro: formData.bairro,
+        cidade: formData.cidade,
+        estado: formData.estado,
+        cep: formData.cep,
+        status: formData.status,
+        observacoes: formData.observacoes,
       }
-      const response = await fetch(`/api/representadas/${id}`, {
-        method: "PUT",
+
+      const response = await fetch("/api/representadas", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
+
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.message || "Erro ao atualizar representada")
+        throw new Error(data.message || "Erro ao criar representada")
       }
-      alert("Representada atualizada com sucesso")
-      router.push(`/representadas/${id}`)
+
+      const novaRepresentada = await response.json()
+      alert("Representada criada com sucesso")
+      router.push(`/representadas/${novaRepresentada.id}`)
     } catch (error) {
-      const mensagem = error instanceof Error ? error.message : "Erro ao atualizar representada"
+      const mensagem = error instanceof Error ? error.message : "Erro ao criar representada"
       alert(mensagem)
       console.error("Erro:", error)
     } finally {
@@ -260,100 +197,52 @@ export default function EditarRepresentadaPage() {
     }
   }
 
-  if (carregando) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="space-y-4 text-center">
-          <Loader className="w-8 h-8 animate-spin mx-auto text-blue-500" />
-          <p className="text-gray-600">Carregando dados...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (erro) {
-    return (
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="flex items-center gap-4 bg-red-50 border border-red-200 rounded-lg p-6">
-          <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
-          <div className="flex-1">
-            <h2 className="font-semibold text-red-900">{erro}</h2>
-            <p className="text-red-700 text-sm mt-1">Tente recarregar a página</p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => router.push("/representadas")}
-          >
-            Voltar
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="max-w-5xl mx-auto p-4 space-y-6">
 
-        {/* ===== HEADER COM CÓDIGO E STATUS ===== */}
+        {/* ===== HEADER ===== */}
         <div className="flex items-center justify-between gap-4 pt-2">
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
-              onClick={() => router.push(`/representadas/${id}`)}
+              onClick={() => router.push("/representadas")}
               disabled={loading}
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
               Voltar
             </Button>
-            <h1 className="text-2xl font-bold text-gray-900">Editar Representada</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Nova Representada</h1>
           </div>
 
-          {/* CÓDIGO E STATUS LADO A LADO */}
+          {/* STATUS PADRÃO ===== */}
           <div className="flex items-center gap-4 bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-600 uppercase">Código:</span>
-              <span className="text-sm font-bold text-blue-600">{formData.codigo || "—"}</span>
-            </div>
-            
-            <div className="w-px h-6 bg-gray-200"></div>
+            <span className="text-xs font-semibold text-gray-600 uppercase">Status:</span>
+            <select
+              id="status"
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              disabled={loading}
+              className="px-2 py-1 text-xs font-medium border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+            >
+              <option value="Ativa">Ativa</option>
+              <option value="Inativa">Inativa</option>
+              <option value="Suspensa">Suspensa</option>
+            </select>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-600 uppercase">Status:</span>
-              <select
-                id="status"
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                disabled={loading}
-                className="px-2 py-1 text-xs font-medium border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
-              >
-                <option value="Ativa">Ativa</option>
-                <option value="Inativa">Inativa</option>
-                <option value="Suspensa">Suspensa</option>
-              </select>
-
-              {/* ÍCONES COM EMOJIS BASEADO NO STATUS */}
-              <div className="flex items-center gap-1">
-                {formData.status === "Ativa" && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-green-100 rounded-md">
-                    <Gem className="w-4 h-4 text-green-600" />
-                    <span className="text-green-600 font-bold text-sm">✓</span>
-                  </div>
-                )}
-                {formData.status === "Inativa" && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-red-100 rounded-md">
-                    <Ban className="w-4 h-4 text-red-600" />
-                  </div>
-                )}
-                {formData.status === "Suspensa" && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-red-100 rounded-md">
-                    <Ban className="w-4 h-4 text-red-600" />
-                  </div>
-                )}
+            {formData.status === "Ativa" && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-green-100 rounded-md">
+                <Gem className="w-4 h-4 text-green-600" />
+                <span className="text-green-600 font-bold text-sm">✓</span>
               </div>
-            </div>
+            )}
+            {(formData.status === "Inativa" || formData.status === "Suspensa") && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-red-100 rounded-md">
+                <Ban className="w-4 h-4 text-red-600" />
+              </div>
+            )}
           </div>
         </div>
 
@@ -849,16 +738,16 @@ export default function EditarRepresentadaPage() {
               {loading ? (
                 <>
                   <Loader className="w-4 h-4 mr-2 animate-spin" />
-                  Salvando...
+                  Criando...
                 </>
               ) : (
-                "Atualizar"
+                "Criar Representada"
               )}
             </Button>
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push(`/representadas/${id}`)}
+              onClick={() => router.push("/representadas")}
               disabled={loading}
             >
               Cancelar
