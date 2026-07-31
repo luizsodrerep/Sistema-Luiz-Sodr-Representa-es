@@ -1,21 +1,12 @@
+import { prisma } from "@/lib/prisma"
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params
-
-    if (!id) {
-      return NextResponse.json(
-        { message: "ID é obrigatório" },
-        { status: 400 }
-      )
-    }
+    const { id } = params
 
     const representada = await prisma.representada.findUnique({
       where: { id },
@@ -35,36 +26,17 @@ export async function GET(
       { message: "Erro ao buscar representada" },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params
-
-    if (!id) {
-      return NextResponse.json(
-        { message: "ID é obrigatório" },
-        { status: 400 }
-      )
-    }
-
+    const { id } = params
     const body = await request.json()
 
-    // Validações básicas
-    if (!body.nome || !body.emailPrincipal) {
-      return NextResponse.json(
-        { message: "Nome e Email são obrigatórios" },
-        { status: 400 }
-      )
-    }
-
-    // Verifica se existe
     const existe = await prisma.representada.findUnique({
       where: { id },
     })
@@ -76,19 +48,16 @@ export async function PUT(
       )
     }
 
-    // Converte comissao para Float se necessário
-    const dados = {
-      ...body,
-      comissao: body.comissao ? parseFloat(body.comissao) : null,
-    }
-
     const representada = await prisma.representada.update({
       where: { id },
-      data: dados,
+      data: {
+        ...body,
+        comissao: body.comissao ? parseFloat(body.comissao) : null,
+      },
     })
 
     return NextResponse.json(
-      { message: "Representada atualizada com sucesso", data: representada },
+      { message: "Atualizado com sucesso", data: representada },
       { status: 200 }
     )
   } catch (error) {
@@ -97,26 +66,16 @@ export async function PUT(
       { message: "Erro ao atualizar representada" },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params
+    const { id } = params
 
-    if (!id) {
-      return NextResponse.json(
-        { message: "ID é obrigatório" },
-        { status: 400 }
-      )
-    }
-
-    // Verifica se existe
     const existe = await prisma.representada.findUnique({
       where: { id },
     })
@@ -133,7 +92,7 @@ export async function DELETE(
     })
 
     return NextResponse.json(
-      { message: "Representada deletada com sucesso" },
+      { message: "Deletado com sucesso" },
       { status: 200 }
     )
   } catch (error) {
@@ -142,7 +101,5 @@ export async function DELETE(
       { message: "Erro ao deletar representada" },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }

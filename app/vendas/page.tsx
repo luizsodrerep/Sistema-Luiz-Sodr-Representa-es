@@ -32,10 +32,12 @@ export default function VendasPage() {
             {/* Componente de importação/exportação de planilhas */}
             <SpreadsheetHandler moduleType="vendas" data={vendasData} />
 
-            <Button size="sm" className="h-9 gap-1">
-              <Plus className="h-4 w-4" />
-              <span>Nova Venda</span>
-            </Button>
+    <Link href="/vendas/nova">
+  <Button size="sm" className="h-9 gap-1">
+    <Plus className="h-4 w-4" />
+    <span>Nova Venda</span>
+  </Button>
+</Link>
           </div>
         </div>
 

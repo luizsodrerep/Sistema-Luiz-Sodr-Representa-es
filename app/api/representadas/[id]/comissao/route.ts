@@ -1,22 +1,38 @@
-import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { NextRequest, NextResponse } from "next/server"
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { faixas } = await request.json()
-    await prisma.comissaoFaixa.deleteMany({ where: { representadaId: params.id } })
-    if (faixas.length > 0) {
-      await prisma.comissaoFaixa.createMany({
-        data: faixas.map((f: any, i: number) => ({
-          representadaId: params.id,
-          descontoAte: Number(f.descontoAte),
-          percentualComissao: Number(f.percentualComissao),
-          ordem: i + 1,
-        }))
-      })
+    const { id } = params
+
+    const representada = await prisma.representada.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        nome: true,
+        comissao: true,
+        tipoComissao: true,
+        faixasComissao: true,
+        vendas: true,
+      },
+    })
+
+    if (!representada) {
+      return NextResponse.json(
+        { message: "Representada não encontrada" },
+        { status: 404 }
+      )
     }
-    return NextResponse.json({ success: true })
+
+    return NextResponse.json(representada, { status: 200 })
   } catch (error) {
-    return NextResponse.json({ error: "Erro ao salvar faixas" }, { status: 500 })
+    console.error("Erro comissão:", error)
+    return NextResponse.json(
+      { message: "Erro ao buscar comissão" },
+      { status: 500 }
+    )
   }
 }

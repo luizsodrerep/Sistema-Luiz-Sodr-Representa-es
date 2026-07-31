@@ -4,32 +4,33 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Cliente {
   id                String      @id @default(cuid())
+  razaoSocial       String
+  nomeFantasia      String?
+  cnpj              String?
+  inscricaoEstadual String?
+  contato           String?
   cargo             String?
   email             String?
   telefone          String?
+  whatsapp          String?
   endereco          String?
+  bairro            String?
   cidade            String?
   estado            String?
+  cep               String?
+  regiao            String?
+  rota              String?
   categoria         String?
   status            String      @default("Ativo")
+  aceitaEmail       Boolean     @default(true)
   observacoes       String?
   criadoEm          DateTime    @default(now())
   atualizadoEm      DateTime    @updatedAt
-  aceitaEmail       Boolean     @default(true)
-  bairro            String?
-  cep               String?
-  cnpj              String?
-  contato           String?
-  nomeFantasia      String?
-  razaoSocial       String
-  regiao            String?
-  rota              String?
-  whatsapp          String?
-  inscricaoEstadual String?
   interacoes        Interacao[]
   vendas            Venda[]
 }
@@ -43,29 +44,22 @@ model Representada {
   estado             String?
   comissao           Float?
   status             String   @default("Ativa")
-  criadoEm           DateTime @default(now())
-  atualizadoEm       DateTime @updatedAt
-
   bancoComissao      String?
   cep                String?
-
   contatoPrincipal   String?
   emailPrincipal     String?
   telefonePrincipal  String?
   whatsappPrincipal  String?
-
   fechamentoComissao String?
   pagamentoComissao  String?
-
   observacoes        String?
   codigo             String?
-
   contratoAssinado   Boolean  @default(false)
   emiteNF            Boolean  @default(true)
-
   tipoComissao       String?  @default("fixa")
   faixasComissao     String?
-
+  criadoEm           DateTime @default(now())
+  atualizadoEm       DateTime @updatedAt
   vendas             Venda[]
 }
 
@@ -80,14 +74,13 @@ model Venda {
   comissao            Float?
   status              String       @default("Pendente")
   observacoes         String?
-  criadoEm            DateTime     @default(now())
-  atualizadoEm        DateTime     @updatedAt
   arquivoUrl          String?
   condicaoPagamento   String?
   desconto            Float?
   numeroPedido        String?
   previsaoFaturamento DateTime?
-
+  criadoEm            DateTime     @default(now())
+  atualizadoEm        DateTime     @updatedAt
   cliente             Cliente      @relation(fields: [clienteId], references: [id])
   representada        Representada @relation(fields: [representadaId], references: [id])
 }
@@ -103,7 +96,6 @@ model Interacao {
   proximosPasso String?
   criadoEm      DateTime @default(now())
   atualizadoEm  DateTime @updatedAt
-
   cliente       Cliente  @relation(fields: [clienteId], references: [id])
 }
 
