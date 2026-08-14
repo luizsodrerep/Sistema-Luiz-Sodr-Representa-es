@@ -31,8 +31,35 @@ export async function POST(request: Request) {
       )
     }
 
+    const ultimoCliente = await prisma.cliente.findFirst({
+      where: {
+        codigo: {
+          not: null,
+        },
+      },
+      orderBy: {
+        codigo: "desc",
+      },
+    })
+
+    let proximoNumero = 1
+
+    if (ultimoCliente?.codigo) {
+      const numeroAtual = parseInt(
+        ultimoCliente.codigo.replace("CLI-", "")
+      )
+
+      if (!isNaN(numeroAtual)) {
+        proximoNumero = numeroAtual + 1
+      }
+    }
+
+    const codigoCliente = `CLI-${String(proximoNumero).padStart(6, "0")}`
+
     const cliente = await prisma.cliente.create({
       data: {
+        codigo: codigoCliente,
+
         razaoSocial: body.razaoSocial,
         nomeFantasia: body.nomeFantasia || null,
         cnpj: body.cnpj || null,

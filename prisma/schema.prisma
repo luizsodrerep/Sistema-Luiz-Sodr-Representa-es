@@ -8,106 +8,162 @@ datasource db {
 }
 
 model Cliente {
-  id                String      @id @default(cuid())
-  razaoSocial       String
-  nomeFantasia      String?
+  id String @id @default(cuid())
+
+  codigo String? @unique
+
+  razaoSocial  String
+  nomeFantasia String?
+
   cnpj              String?
   inscricaoEstadual String?
-  contato           String?
-  cargo             String?
-  email             String?
-  telefone          String?
-  whatsapp          String?
-  endereco          String?
-  bairro            String?
-  cidade            String?
-  estado            String?
-  cep               String?
-  regiao            String?
-  rota              String?
-  categoria         String?
-  status            String      @default("Ativo")
-  aceitaEmail       Boolean     @default(true)
-  observacoes       String?
-  criadoEm          DateTime    @default(now())
-  atualizadoEm      DateTime    @updatedAt
-  interacoes        Interacao[]
-  vendas            Venda[]
+
+  contato String?
+  cargo   String?
+
+  email    String?
+  telefone String?
+  whatsapp String?
+
+  endereco String?
+  bairro   String?
+  cidade   String?
+  estado   String?
+  cep      String?
+
+  regiao String?
+  rota   String?
+
+  categoria String?
+
+  status String @default("Ativo")
+
+  aceitaEmail Boolean @default(true)
+
+  observacoes String?
+
+  ultimoPedidoEm DateTime?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  interacoes Interacao[]
+  vendas     Venda[]
 }
 
 model Representada {
-  id                 String   @id @default(cuid())
-  nome               String
-  cnpj               String?
-  endereco           String?
-  cidade             String?
-  estado             String?
-  comissao           Float?
-  status             String   @default("Ativa")
-  bancoComissao      String?
-  cep                String?
-  contatoPrincipal   String?
-  emailPrincipal     String?
-  telefonePrincipal  String?
-  whatsappPrincipal  String?
+  id String @id @default(cuid())
+
+  codigo String?
+
+  nome String
+  cnpj String?
+
+  endereco String?
+  cidade   String?
+  estado   String?
+  cep      String?
+
+  contatoPrincipal  String?
+  emailPrincipal    String?
+  telefonePrincipal String?
+  whatsappPrincipal String?
+
+  bancoComissao String?
+
+  comissao       Float?
+  tipoComissao   String? @default("fixa")
+  faixasComissao String?
+
   fechamentoComissao String?
   pagamentoComissao  String?
-  observacoes        String?
-  codigo             String?
-  contratoAssinado   Boolean  @default(false)
-  emiteNF            Boolean  @default(true)
-  tipoComissao       String?  @default("fixa")
-  faixasComissao     String?
-  criadoEm           DateTime @default(now())
-  atualizadoEm       DateTime @updatedAt
-  vendas             Venda[]
+
+  contratoAssinado Boolean @default(false)
+  emiteNF          Boolean @default(true)
+
+  status String @default("Ativa")
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  vendas Venda[]
 }
 
 model Venda {
-  id                  String       @id @default(cuid())
-  data                DateTime
-  clienteId           String
-  representadaId      String
-  produto             String?
-  quantidade          Int?
-  valorTotal          Float?
-  comissao            Float?
-  status              String       @default("Pendente")
-  observacoes         String?
-  arquivoUrl          String?
-  condicaoPagamento   String?
-  desconto            Float?
-  numeroPedido        String?
+  id String @id @default(cuid())
+
+  data DateTime
+
+  clienteId      String
+  representadaId String
+
+  produto    String?
+  quantidade Int?
+
+  valorTotal Float?
+  comissao   Float?
+
+  desconto Float?
+
+  numeroPedido String?
+
+  condicaoPagamento String?
+
   previsaoFaturamento DateTime?
-  criadoEm            DateTime     @default(now())
-  atualizadoEm        DateTime     @updatedAt
-  cliente             Cliente      @relation(fields: [clienteId], references: [id])
-  representada        Representada @relation(fields: [representadaId], references: [id])
+
+  arquivoUrl String?
+
+  status String @default("Pendente")
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  cliente      Cliente      @relation(fields: [clienteId], references: [id])
+  representada Representada @relation(fields: [representadaId], references: [id])
 }
 
 model Interacao {
-  id            String   @id @default(cuid())
-  data          DateTime
-  clienteId     String
-  tipo          String
-  assunto       String?
-  descricao     String?
-  resultado     String?
+  id String @id @default(cuid())
+
+  data DateTime
+
+  clienteId String
+
+  tipo String
+
+  assunto   String?
+  descricao String?
+
+  resultado String?
+
   proximosPasso String?
-  criadoEm      DateTime @default(now())
-  atualizadoEm  DateTime @updatedAt
-  cliente       Cliente  @relation(fields: [clienteId], references: [id])
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  cliente Cliente @relation(fields: [clienteId], references: [id])
 }
 
 model Financeiro {
-  id           String    @id @default(cuid())
-  data         DateTime
-  tipo         String
-  categoria    String?
-  descricao    String?
-  valor        Float
-  status       String    @default("Pendente")
-  vencimento   DateTime?
-  criadoEm     DateTime  @default(now())
-  atualizadoEm DateTime  @updatedAt
+  id String @id @default(cuid())
+
+  data DateTime
+
+  tipo String
+
+  categoria String?
+  descricao String?
+
+  valor Float
+
+  status String @default("Pendente")
+
+  vencimento DateTime?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }

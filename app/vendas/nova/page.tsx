@@ -37,6 +37,10 @@ export default function NovaVendaPage() {
     carregarRepresentadas()
   }, [])
 
+  useEffect(() => {
+    calcularComissao()
+  }, [formData.representadaId, formData.valorTotal])
+
   async function carregarClientes() {
     try {
       const response = await fetch("/api/clientes")
@@ -55,6 +59,24 @@ export default function NovaVendaPage() {
     } catch (error) {
       console.error(error)
     }
+  }
+
+  function calcularComissao() {
+    const representada = representadas.find(
+      (r) => r.id === formData.representadaId
+    )
+
+    if (!representada) return
+
+    const percentual = Number(representada.comissao || 0)
+    const valorVenda = Number(formData.valorTotal || 0)
+
+    const valorComissao = (valorVenda * percentual) / 100
+
+    setFormData((prev) => ({
+      ...prev,
+      comissao: valorComissao.toFixed(2),
+    }))
   }
 
   async function salvarVenda() {
@@ -83,24 +105,33 @@ export default function NovaVendaPage() {
         return
       }
 
+      const payload = {
+        clienteId: formData.clienteId,
+        representadaId: formData.representadaId,
+        data: formData.data,
+        valorTotal: Number(formData.valorTotal),
+        comissao: Number(formData.comissao),
+        status: formData.status,
+        observacoes: formData.observacoes,
+      }
+
+      console.log("Payload enviado:", payload)
+
       const response = await fetch("/api/vendas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          clienteId: Number(formData.clienteId),
-          representadaId: Number(formData.representadaId),
-          data: formData.data,
-          valorTotal: Number(formData.valorTotal),
-          comissao: Number(formData.comissao || 0),
-          status: formData.status,
-          observacoes: formData.observacoes,
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
-        throw new Error("Erro ao salvar venda")
+        const erro = await response.json()
+        console.error(erro)
+
+        throw new Error(
+          erro.message || "Erro ao salvar venda"
+        )
       }
 
       toast({
@@ -113,6 +144,7 @@ export default function NovaVendaPage() {
 
       toast({
         title: "Erro ao salvar venda",
+        description: String(error),
         variant: "destructive",
       })
     }
@@ -128,13 +160,17 @@ export default function NovaVendaPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
+
           <div>
             <Label>Cliente</Label>
 
             <Select
               value={formData.clienteId}
               onValueChange={(value) =>
-                setFormData({ ...formData, clienteId: value })
+                setFormData({
+                  ...formData,
+                  clienteId: value,
+                })
               }
             >
               <SelectTrigger>
@@ -145,9 +181,10 @@ export default function NovaVendaPage() {
                 {clientes.map((cliente) => (
                   <SelectItem
                     key={cliente.id}
-                    value={String(cliente.id)}
+                    value={cliente.id}
                   >
-                    {cliente.nome}
+                    {cliente.nomeFantasia ||
+                      cliente.razaoSocial}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -160,7 +197,10 @@ export default function NovaVendaPage() {
             <Select
               value={formData.representadaId}
               onValueChange={(value) =>
-                setFormData({ ...formData, representadaId: value })
+                setFormData({
+                  ...formData,
+                  representadaId: value,
+                })
               }
             >
               <SelectTrigger>
@@ -171,7 +211,7 @@ export default function NovaVendaPage() {
                 {representadas.map((representada) => (
                   <SelectItem
                     key={representada.id}
-                    value={String(representada.id)}
+                    value={representada.id}
                   >
                     {representada.nome}
                   </SelectItem>
@@ -212,18 +252,11 @@ export default function NovaVendaPage() {
           </div>
 
           <div>
-            <Label>Comissão (R$)</Label>
+            <Label>Comissão Calculada (R$)</Label>
 
             <Input
-              type="number"
-              step="0.01"
               value={formData.comissao}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  comissao: e.target.value,
-                })
-              }
+              disabled
             />
           </div>
 
@@ -280,6 +313,7 @@ export default function NovaVendaPage() {
             <Save className="mr-2 h-4 w-4" />
             Salvar Venda
           </Button>
+
         </CardContent>
       </Card>
     </PageLayout>
