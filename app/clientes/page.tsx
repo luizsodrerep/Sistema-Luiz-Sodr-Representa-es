@@ -27,6 +27,12 @@ import {
   Pencil,
   Trash2,
   Eye,
+  MessageCircle,
+  Mail,
+  Users,
+  UserCheck,
+  UserX,
+  Target,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -39,6 +45,7 @@ interface Cliente {
   cnpj: string | null
   email: string | null
   telefone: string | null
+  whatsapp: string | null
   cidade: string | null
   estado: string | null
   categoria: string | null
@@ -135,6 +142,30 @@ export default function ClientesPage() {
     )
   ).sort((a, b) => a.localeCompare(b, "pt-BR"))
 
+  /*
+   * CONTADORES DE STATUS
+   *
+   * Os números são calculados diretamente a partir dos clientes
+   * carregados da API. Não existe informação duplicada no banco.
+   */
+  const totalClientes = clientes.length
+
+  const totalAtivos = clientes.filter(
+    (cliente) => cliente.status === "Ativo"
+  ).length
+
+  const totalProspects = clientes.filter(
+    (cliente) => cliente.status === "Prospect"
+  ).length
+
+  const totalInativos = clientes.filter(
+    (cliente) => cliente.status === "Inativo"
+  ).length
+
+  const totalInativos6Meses = clientes.filter(
+    (cliente) => cliente.status === "Inativo 6 meses"
+  ).length
+
   const clientesFiltrados = clientes.filter((cliente) => {
     const texto = busca.trim().toLowerCase()
 
@@ -148,7 +179,8 @@ export default function ClientesPage() {
       cliente.codigo?.toLowerCase().includes(texto) ||
       cliente.cnpj?.toLowerCase().includes(texto) ||
       cliente.email?.toLowerCase().includes(texto) ||
-      cliente.telefone?.toLowerCase().includes(texto)
+      cliente.telefone?.toLowerCase().includes(texto) ||
+      cliente.whatsapp?.toLowerCase().includes(texto)
 
     const correspondeStatus =
       filtroStatus === "Todos" || cliente.status === filtroStatus
@@ -168,6 +200,10 @@ export default function ClientesPage() {
     setBusca("")
     setFiltroStatus("Todos")
     setFiltroCategoria("Todas")
+  }
+
+  const aplicarFiltroStatus = (status: string) => {
+    setFiltroStatus(status)
   }
 
   const baixarModelo = () => {
@@ -215,7 +251,10 @@ export default function ClientesPage() {
 
         await carregarClientes()
       } else {
-        alert("Erro: " + (result.error || "Erro ao importar."))
+        alert(
+          "Erro: " +
+            (result.error || "Erro ao importar.")
+        )
       }
     } catch (error) {
       console.error(error)
@@ -328,8 +367,65 @@ export default function ClientesPage() {
     }
   }
 
+  /*
+   * Remove caracteres não numéricos do telefone.
+   *
+   * Se o número brasileiro já estiver com DDI 55,
+   * mantém o 55. Caso contrário, adiciona 55.
+   */
+  const prepararWhatsApp = (telefone: string) => {
+    const numero = telefone.replace(/\D/g, "")
+
+    if (!numero) return ""
+
+    if (numero.startsWith("55")) {
+      return numero
+    }
+
+    return `55${numero}`
+  }
+
+  const abrirWhatsApp = (cliente: Cliente) => {
+    const contato = cliente.whatsapp || cliente.telefone
+
+    if (!contato) {
+      alert(
+        "Este cliente não possui telefone ou WhatsApp cadastrado."
+      )
+      return
+    }
+
+    const numero = prepararWhatsApp(contato)
+
+    if (!numero) {
+      alert(
+        "O telefone ou WhatsApp cadastrado não possui um número válido."
+      )
+      return
+    }
+
+    window.open(
+      `https://wa.me/${numero}`,
+      "_blank",
+      "noopener,noreferrer"
+    )
+  }
+
+  const abrirEmail = (cliente: Cliente) => {
+    if (!cliente.email) {
+      alert(
+        "Este cliente não possui e-mail cadastrado."
+      )
+      return
+    }
+
+    window.location.href = `mailto:${cliente.email}`
+  }
+
   return (
     <div className="flex flex-col p-8 pt-6">
+
+      {/* CABEÇALHO */}
 
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
 
@@ -376,6 +472,7 @@ export default function ClientesPage() {
             }
           >
             <Upload className="h-4 w-4" />
+
             {importando
               ? "Importando..."
               : "Importar"}
@@ -402,9 +499,190 @@ export default function ClientesPage() {
         </div>
       </div>
 
+      {/* CONTADORES */}
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
+
+        <button
+          type="button"
+          onClick={() => aplicarFiltroStatus("Todos")}
+          className="text-left"
+        >
+          <Card
+            className={`transition hover:shadow-md ${
+              filtroStatus === "Todos"
+                ? "ring-2 ring-primary"
+                : ""
+            }`}
+          >
+            <CardContent className="p-4">
+
+              <div className="flex items-center justify-between">
+
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Total
+                  </p>
+
+                  <p className="text-2xl font-bold">
+                    {totalClientes}
+                  </p>
+                </div>
+
+                <Users className="h-6 w-6 text-muted-foreground" />
+
+              </div>
+
+            </CardContent>
+          </Card>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => aplicarFiltroStatus("Ativo")}
+          className="text-left"
+        >
+          <Card
+            className={`transition hover:shadow-md ${
+              filtroStatus === "Ativo"
+                ? "ring-2 ring-green-500"
+                : ""
+            }`}
+          >
+            <CardContent className="p-4">
+
+              <div className="flex items-center justify-between">
+
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Ativos
+                  </p>
+
+                  <p className="text-2xl font-bold text-green-700">
+                    {totalAtivos}
+                  </p>
+                </div>
+
+                <UserCheck className="h-6 w-6 text-green-600" />
+
+              </div>
+
+            </CardContent>
+          </Card>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => aplicarFiltroStatus("Prospect")}
+          className="text-left"
+        >
+          <Card
+            className={`transition hover:shadow-md ${
+              filtroStatus === "Prospect"
+                ? "ring-2 ring-blue-500"
+                : ""
+            }`}
+          >
+            <CardContent className="p-4">
+
+              <div className="flex items-center justify-between">
+
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Prospects
+                  </p>
+
+                  <p className="text-2xl font-bold text-blue-700">
+                    {totalProspects}
+                  </p>
+                </div>
+
+                <Target className="h-6 w-6 text-blue-600" />
+
+              </div>
+
+            </CardContent>
+          </Card>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => aplicarFiltroStatus("Inativo")}
+          className="text-left"
+        >
+          <Card
+            className={`transition hover:shadow-md ${
+              filtroStatus === "Inativo"
+                ? "ring-2 ring-red-500"
+                : ""
+            }`}
+          >
+            <CardContent className="p-4">
+
+              <div className="flex items-center justify-between">
+
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Inativos
+                  </p>
+
+                  <p className="text-2xl font-bold text-red-700">
+                    {totalInativos}
+                  </p>
+                </div>
+
+                <UserX className="h-6 w-6 text-red-600" />
+
+              </div>
+
+            </CardContent>
+          </Card>
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            aplicarFiltroStatus("Inativo 6 meses")
+          }
+          className="text-left"
+        >
+          <Card
+            className={`transition hover:shadow-md ${
+              filtroStatus === "Inativo 6 meses"
+                ? "ring-2 ring-orange-500"
+                : ""
+            }`}
+          >
+            <CardContent className="p-4">
+
+              <div className="flex items-center justify-between">
+
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Inativos +6 meses
+                  </p>
+
+                  <p className="text-2xl font-bold text-orange-700">
+                    {totalInativos6Meses}
+                  </p>
+                </div>
+
+                <UserX className="h-6 w-6 text-orange-600" />
+
+              </div>
+
+            </CardContent>
+          </Card>
+        </button>
+
+      </div>
+
+      {/* BUSCA E FILTROS */}
+
       <div className="flex gap-3 flex-wrap mb-4">
 
         <div className="relative w-full md:w-96">
+
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
 
           <Input
@@ -416,6 +694,7 @@ export default function ClientesPage() {
               setBusca(e.target.value)
             }
           />
+
         </div>
 
         <select
@@ -428,18 +707,23 @@ export default function ClientesPage() {
           <option value="Todos">
             Todos os status
           </option>
+
           <option value="Ativo">
             Ativo
           </option>
+
           <option value="Prospect">
             Prospect
           </option>
+
           <option value="Inativo">
             Inativo
           </option>
+
           <option value="Inativo 6 meses">
             Inativo 6 meses
           </option>
+
         </select>
 
         <select
@@ -461,20 +745,25 @@ export default function ClientesPage() {
               {categoria}
             </option>
           ))}
+
         </select>
 
         {(busca ||
           filtroStatus !== "Todos" ||
           filtroCategoria !== "Todas") && (
+
           <Button
             variant="outline"
             onClick={limparFiltros}
           >
             Limpar filtros
           </Button>
+
         )}
 
       </div>
+
+      {/* LISTA */}
 
       <Card>
 
@@ -497,6 +786,7 @@ export default function ClientesPage() {
           <Table>
 
             <TableHeader>
+
               <TableRow>
 
                 <TableHead>
@@ -524,40 +814,56 @@ export default function ClientesPage() {
                 </TableHead>
 
               </TableRow>
+
             </TableHeader>
 
             <TableBody>
 
               {loading ? (
+
                 <TableRow>
+
                   <TableCell
                     colSpan={6}
                     className="text-center py-8"
                   >
                     Carregando...
                   </TableCell>
+
                 </TableRow>
+
               ) : clientesFiltrados.length === 0 ? (
+
                 <TableRow>
+
                   <TableCell
                     colSpan={6}
                     className="text-center py-8"
                   >
                     Nenhum cliente encontrado.
                   </TableCell>
+
                 </TableRow>
+
               ) : (
+
                 clientesFiltrados.map(
                   (cliente) => (
+
                     <TableRow
                       key={cliente.id}
                     >
+
+                      {/* CÓDIGO */}
 
                       <TableCell>
                         {cliente.codigo || "-"}
                       </TableCell>
 
+                      {/* RAZÃO SOCIAL */}
+
                       <TableCell>
+
                         <button
                           type="button"
                           className="text-left font-medium hover:underline"
@@ -571,22 +877,34 @@ export default function ClientesPage() {
                         </button>
 
                         {cliente.nomeFantasia && (
+
                           <div className="text-xs text-muted-foreground">
                             {cliente.nomeFantasia}
                           </div>
+
                         )}
+
                       </TableCell>
+
+                      {/* CATEGORIA */}
 
                       <TableCell>
                         {cliente.categoria || "-"}
                       </TableCell>
 
+                      {/* CIDADE */}
+
                       <TableCell>
+
                         {cliente.cidade || "-"}
+
                         {cliente.estado
                           ? ` / ${cliente.estado}`
                           : ""}
+
                       </TableCell>
+
+                      {/* STATUS */}
 
                       <TableCell>
 
@@ -609,6 +927,7 @@ export default function ClientesPage() {
                             ),
                           }}
                         >
+
                           <option value="Ativo">
                             Ativo
                           </option>
@@ -624,18 +943,73 @@ export default function ClientesPage() {
                           <option value="Inativo 6 meses">
                             Inativo 6 meses
                           </option>
+
                         </select>
 
                       </TableCell>
+
+                      {/* AÇÕES */}
 
                       <TableCell>
 
                         <div className="flex justify-end gap-1">
 
+                          {/* WHATSAPP */}
+
                           <Button
                             size="sm"
                             variant="outline"
-                            title="Entrar"
+                            title={
+                              cliente.whatsapp ||
+                              cliente.telefone
+                                ? "Abrir WhatsApp"
+                                : "Sem telefone/WhatsApp cadastrado"
+                            }
+                            disabled={
+                              !(
+                                cliente.whatsapp ||
+                                cliente.telefone
+                              )
+                            }
+                            onClick={() =>
+                              abrirWhatsApp(cliente)
+                            }
+                            className="px-2"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            <span className="sr-only">
+                              WhatsApp
+                            </span>
+                          </Button>
+
+                          {/* E-MAIL */}
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            title={
+                              cliente.email
+                                ? "Enviar e-mail"
+                                : "Sem e-mail cadastrado"
+                            }
+                            disabled={!cliente.email}
+                            onClick={() =>
+                              abrirEmail(cliente)
+                            }
+                            className="px-2"
+                          >
+                            <Mail className="h-4 w-4" />
+                            <span className="sr-only">
+                              E-mail
+                            </span>
+                          </Button>
+
+                          {/* ENTRAR */}
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            title="Entrar no cadastro"
                             onClick={() =>
                               router.push(
                                 `/clientes/${cliente.id}`
@@ -645,6 +1019,8 @@ export default function ClientesPage() {
                             <Eye className="h-3 w-3 mr-1" />
                             Entrar
                           </Button>
+
+                          {/* EDITAR */}
 
                           <Button
                             size="sm"
@@ -658,6 +1034,8 @@ export default function ClientesPage() {
                           >
                             <Pencil className="h-3 w-3" />
                           </Button>
+
+                          {/* EXCLUIR */}
 
                           <Button
                             size="sm"
@@ -679,8 +1057,10 @@ export default function ClientesPage() {
                       </TableCell>
 
                     </TableRow>
+
                   )
                 )
+
               )}
 
             </TableBody>
