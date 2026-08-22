@@ -2,10 +2,22 @@
 
 import { useState } from "react"
 import { PageLayout } from "@/components/page-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { NavigationButtons } from "@/components/navigation-buttons"
 import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
 import { format, isSameDay } from "date-fns"
@@ -29,7 +41,6 @@ export default function AgendaPage() {
   const [month, setMonth] = useState<Date>(new Date())
   const [view, setView] = useState<"mes" | "semana" | "dia">("mes")
 
-  // Dados simulados de eventos
   const eventos = [
     {
       id: 1,
@@ -88,18 +99,13 @@ export default function AgendaPage() {
     },
   ]
 
-  // Função para verificar se há eventos em um dia específico
-  const hasEventOnDay = (day: Date) => {
-    return eventos.some((evento) => isSameDay(evento.data, day))
-  }
-
-  // Função para obter eventos de um dia específico
   const getEventsForDay = (day: Date) => {
     return eventos.filter((evento) => isSameDay(evento.data, day))
   }
 
-  // Eventos do dia selecionado
   const eventosHoje = getEventsForDay(date)
+
+  const diasComEvento = eventos.map((evento) => evento.data)
 
   return (
     <PageLayout title="Agenda">
@@ -107,10 +113,16 @@ export default function AgendaPage() {
 
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Select value={view} onValueChange={(v) => setView(v as "mes" | "semana" | "dia")}>
+          <Select
+            value={view}
+            onValueChange={(v) =>
+              setView(v as "mes" | "semana" | "dia")
+            }
+          >
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Visualização" />
             </SelectTrigger>
+
             <SelectContent>
               <SelectItem value="mes">Mês</SelectItem>
               <SelectItem value="semana">Semana</SelectItem>
@@ -122,10 +134,19 @@ export default function AgendaPage() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+              onClick={() =>
+                setMonth(
+                  new Date(
+                    month.getFullYear(),
+                    month.getMonth() - 1,
+                    1
+                  )
+                )
+              }
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
+
             <Button
               variant="outline"
               onClick={() => {
@@ -136,10 +157,19 @@ export default function AgendaPage() {
             >
               Hoje
             </Button>
+
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+              onClick={() =>
+                setMonth(
+                  new Date(
+                    month.getFullYear(),
+                    month.getMonth() + 1,
+                    1
+                  )
+                )
+              }
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -147,8 +177,10 @@ export default function AgendaPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Componente de importação/exportação de planilhas */}
-          <SpreadsheetHandler moduleType="agenda" data={eventos} />
+          <SpreadsheetHandler
+            moduleType="agenda"
+            data={eventos}
+          />
 
           <Button size="sm" className="gap-1">
             <Plus className="h-4 w-4" />
@@ -161,27 +193,30 @@ export default function AgendaPage() {
         <div className="md:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>{format(month, "MMMM 'de' yyyy", { locale: ptBR })}</CardTitle>
+              <CardTitle>
+                {format(month, "MMMM 'de' yyyy", {
+                  locale: ptBR,
+                })}
+              </CardTitle>
             </CardHeader>
+
             <CardContent>
               <Calendar
                 mode="single"
                 selected={date}
-                onSelect={(date) => date && setDate(date)}
+                onSelect={(novaData) =>
+                  novaData && setDate(novaData)
+                }
                 month={month}
                 onMonthChange={setMonth}
                 locale={ptBR}
                 className="rounded-md border"
-                components={{
-                  Day: ({ day, displayValue }) => {
-                    const hasEvent = hasEventOnDay(day)
-                    return (
-                      <div className="relative">
-                        {hasEvent && <div className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-primary" />}
-                        {displayValue}
-                      </div>
-                    )
-                  },
+                modifiers={{
+                  hasEvent: diasComEvento,
+                }}
+                modifiersClassNames={{
+                  hasEvent:
+                    "font-bold underline decoration-2 underline-offset-4",
                 }}
               />
             </CardContent>
@@ -191,32 +226,62 @@ export default function AgendaPage() {
             <Card className="mt-4">
               <CardHeader>
                 <CardTitle>Agenda do Dia</CardTitle>
-                <CardDescription>{format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</CardDescription>
+
+                <CardDescription>
+                  {format(date, "dd 'de' MMMM 'de' yyyy", {
+                    locale: ptBR,
+                  })}
+                </CardDescription>
               </CardHeader>
+
               <CardContent>
                 <div className="space-y-2">
                   {eventosHoje.length > 0 ? (
                     eventosHoje.map((evento) => (
-                      <div key={evento.id} className="flex items-start p-2 border rounded-md">
+                      <div
+                        key={evento.id}
+                        className="flex items-start p-2 border rounded-md"
+                      >
                         <div className="flex flex-col items-center mr-4">
-                          <div className="text-sm font-medium">{format(evento.data, "HH:mm")}</div>
-                          <div className="text-xs text-muted-foreground">{format(evento.data, "dd/MM")}</div>
+                          <div className="text-sm font-medium">
+                            {format(evento.data, "HH:mm")}
+                          </div>
+
+                          <div className="text-xs text-muted-foreground">
+                            {format(evento.data, "dd/MM")}
+                          </div>
                         </div>
+
                         <div className="flex-1">
-                          <div className="font-medium">{evento.titulo}</div>
-                          <div className="text-sm text-muted-foreground">{evento.descricao}</div>
+                          <div className="font-medium">
+                            {evento.titulo}
+                          </div>
+
+                          <div className="text-sm text-muted-foreground">
+                            {evento.descricao}
+                          </div>
+
                           <div className="flex items-center gap-4 mt-1">
                             {evento.cliente && (
                               <div className="flex items-center gap-1">
                                 <Building2 className="h-3 w-3 text-primary" />
-                                <Link href={`/clientes/${evento.clienteId}`} className="text-xs hover:underline">
+
+                                <Link
+                                  href={`/clientes/${evento.clienteId}`}
+                                  className="text-xs hover:underline"
+                                >
                                   {evento.cliente}
                                 </Link>
                               </div>
                             )}
+
                             <div className="flex items-center gap-1">
                               <User className="h-3 w-3 text-muted-foreground" />
-                              <Link href={`/usuarios/${evento.responsavelId}`} className="text-xs hover:underline">
+
+                              <Link
+                                href={`/usuarios/${evento.responsavelId}`}
+                                className="text-xs hover:underline"
+                              >
                                 {evento.responsavel}
                               </Link>
                             </div>
@@ -227,7 +292,10 @@ export default function AgendaPage() {
                   ) : (
                     <div className="flex flex-col items-center justify-center py-8">
                       <CalendarIcon className="h-12 w-12 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">Nenhum evento agendado para este dia</p>
+
+                      <p className="text-muted-foreground">
+                        Nenhum evento agendado para este dia
+                      </p>
                     </div>
                   )}
                 </div>
@@ -241,14 +309,21 @@ export default function AgendaPage() {
             <CardHeader>
               <CardTitle>Próximos Eventos</CardTitle>
             </CardHeader>
+
             <CardContent>
               <div className="space-y-4">
                 {eventos
                   .filter((evento) => evento.data >= new Date())
-                  .sort((a, b) => a.data.getTime() - b.data.getTime())
+                  .sort(
+                    (a, b) =>
+                      a.data.getTime() - b.data.getTime()
+                  )
                   .slice(0, 5)
                   .map((evento) => (
-                    <div key={evento.id} className="flex items-start gap-3 pb-3 border-b last:border-0">
+                    <div
+                      key={evento.id}
+                      className="flex items-start gap-3 pb-3 border-b last:border-0"
+                    >
                       <div
                         className={`p-2 rounded-md ${
                           evento.tipo === "visita"
@@ -260,23 +335,47 @@ export default function AgendaPage() {
                                 : "bg-orange-100 text-orange-700"
                         }`}
                       >
-                        {evento.tipo === "visita" && <User className="h-5 w-5" />}
-                        {evento.tipo === "ligacao" && <Phone className="h-5 w-5" />}
-                        {evento.tipo === "reuniao" && <Users className="h-5 w-5" />}
-                        {evento.tipo === "entrega" && <Package className="h-5 w-5" />}
+                        {evento.tipo === "visita" && (
+                          <User className="h-5 w-5" />
+                        )}
+
+                        {evento.tipo === "ligacao" && (
+                          <Phone className="h-5 w-5" />
+                        )}
+
+                        {evento.tipo === "reuniao" && (
+                          <Users className="h-5 w-5" />
+                        )}
+
+                        {evento.tipo === "entrega" && (
+                          <Package className="h-5 w-5" />
+                        )}
                       </div>
+
                       <div className="flex-1">
-                        <div className="font-medium">{evento.titulo}</div>
+                        <div className="font-medium">
+                          {evento.titulo}
+                        </div>
+
                         <div className="flex items-center gap-1 mt-1">
                           <Clock className="h-3 w-3 text-muted-foreground" />
+
                           <span className="text-xs text-muted-foreground">
-                            {format(evento.data, "dd/MM/yyyy 'às' HH:mm")}
+                            {format(
+                              evento.data,
+                              "dd/MM/yyyy 'às' HH:mm"
+                            )}
                           </span>
                         </div>
+
                         {evento.cliente && (
                           <div className="flex items-center gap-1 mt-1">
                             <Building2 className="h-3 w-3 text-primary" />
-                            <Link href={`/clientes/${evento.clienteId}`} className="text-xs hover:underline">
+
+                            <Link
+                              href={`/clientes/${evento.clienteId}`}
+                              className="text-xs hover:underline"
+                            >
                               {evento.cliente}
                             </Link>
                           </div>
@@ -292,63 +391,124 @@ export default function AgendaPage() {
             <CardHeader>
               <CardTitle>Filtros</CardTitle>
             </CardHeader>
+
             <CardContent>
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm font-medium">Tipo de Evento</label>
+                  <label className="text-sm font-medium">
+                    Tipo de Evento
+                  </label>
+
                   <div className="grid grid-cols-2 gap-2 mt-2">
-                    <Button variant="outline" size="sm" className="justify-start">
-                      <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="justify-start"
+                    >
+                      <div className="w-3 h-3 rounded-full bg-blue-500 mr-2" />
                       Visitas
                     </Button>
-                    <Button variant="outline" size="sm" className="justify-start">
-                      <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="justify-start"
+                    >
+                      <div className="w-3 h-3 rounded-full bg-green-500 mr-2" />
                       Ligações
                     </Button>
-                    <Button variant="outline" size="sm" className="justify-start">
-                      <div className="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="justify-start"
+                    >
+                      <div className="w-3 h-3 rounded-full bg-purple-500 mr-2" />
                       Reuniões
                     </Button>
-                    <Button variant="outline" size="sm" className="justify-start">
-                      <div className="w-3 h-3 rounded-full bg-orange-500 mr-2"></div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="justify-start"
+                    >
+                      <div className="w-3 h-3 rounded-full bg-orange-500 mr-2" />
                       Entregas
                     </Button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">Responsável</label>
+                  <label className="text-sm font-medium">
+                    Responsável
+                  </label>
+
                   <Select>
                     <SelectTrigger className="mt-2">
                       <SelectValue placeholder="Todos os responsáveis" />
                     </SelectTrigger>
+
                     <SelectContent>
-                      <SelectItem value="todos">Todos</SelectItem>
-                      <SelectItem value="luiz-sodre">Luiz Sodré</SelectItem>
-                      <SelectItem value="maria-silva">Maria Silva</SelectItem>
-                      <SelectItem value="joao-santos">João Santos</SelectItem>
-                      <SelectItem value="ana-oliveira">Ana Oliveira</SelectItem>
+                      <SelectItem value="todos">
+                        Todos
+                      </SelectItem>
+
+                      <SelectItem value="luiz-sodre">
+                        Luiz Sodré
+                      </SelectItem>
+
+                      <SelectItem value="maria-silva">
+                        Maria Silva
+                      </SelectItem>
+
+                      <SelectItem value="joao-santos">
+                        João Santos
+                      </SelectItem>
+
+                      <SelectItem value="ana-oliveira">
+                        Ana Oliveira
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">Cliente</label>
+                  <label className="text-sm font-medium">
+                    Cliente
+                  </label>
+
                   <Select>
                     <SelectTrigger className="mt-2">
                       <SelectValue placeholder="Todos os clientes" />
                     </SelectTrigger>
+
                     <SelectContent>
-                      <SelectItem value="todos">Todos</SelectItem>
-                      <SelectItem value="1">Distribuidora ABC</SelectItem>
-                      <SelectItem value="2">Supermercado Silva</SelectItem>
-                      <SelectItem value="3">Confeitaria Doce</SelectItem>
-                      <SelectItem value="4">Atacadão Produtos</SelectItem>
+                      <SelectItem value="todos">
+                        Todos
+                      </SelectItem>
+
+                      <SelectItem value="1">
+                        Distribuidora ABC
+                      </SelectItem>
+
+                      <SelectItem value="2">
+                        Supermercado Silva
+                      </SelectItem>
+
+                      <SelectItem value="3">
+                        Confeitaria Doce
+                      </SelectItem>
+
+                      <SelectItem value="4">
+                        Atacadão Produtos
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <Button className="w-full mt-2">Aplicar Filtros</Button>
+                <Button className="w-full mt-2">
+                  Aplicar Filtros
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -357,4 +517,3 @@ export default function AgendaPage() {
     </PageLayout>
   )
 }
-

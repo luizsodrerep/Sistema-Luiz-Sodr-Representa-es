@@ -7,8 +7,150 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ======================================================
+// ESCRITORIO DE REPRESENTACAO COMERCIAL
+// ======================================================
+
+model Escritorio {
+  id String @id @default(cuid())
+
+  nome String
+
+  status String @default("Ativo")
+
+  email    String?
+  telefone String?
+  whatsapp String?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  empresas        EmpresaEscritorio[]
+  usuarios        Usuario[]
+  clientes        Cliente[]
+  representadas   Representada[]
+  vendas          Venda[]
+  interacoes      Interacao[]
+  contasBancarias ContaBancaria[]
+  financeiros     Financeiro[]
+  obrigacoes      ObrigacaoOperacional[]
+  auditorias      Auditoria[]
+
+  @@index([status])
+}
+
+// ======================================================
+// CNPJS / EMPRESAS DO ESCRITORIO
+// ======================================================
+
+model EmpresaEscritorio {
+  id String @id @default(cuid())
+
+  escritorioId String
+
+  razaoSocial  String
+  nomeFantasia String?
+
+  cnpj String?
+
+  status String @default("Ativa")
+
+  dataInicio       DateTime?
+  dataEncerramento DateTime?
+
+  regimeTributario String?
+
+  aliquotaPadraoImposto Float?
+
+  endereco String?
+  bairro   String?
+  cidade   String?
+  estado   String?
+  cep      String?
+
+  email    String?
+  telefone String?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+
+  contratos       ContratoRepresentada[]
+  notasComissao   NFComissao[]
+  contasBancarias ContaBancaria[]
+  financeiros     Financeiro[]
+  obrigacoes      ObrigacaoOperacional[]
+  vendas          Venda[]
+
+  @@index([escritorioId])
+  @@index([cnpj])
+  @@index([status])
+}
+
+// ======================================================
+// USUARIOS
+// Luiz, Paula e futuros prepostos
+// ======================================================
+
+model Usuario {
+  id String @id @default(cuid())
+
+  escritorioId String
+
+  nome String
+
+  email String @unique
+  login String? @unique
+
+  senhaHash String?
+
+  perfil String
+
+  ativo Boolean @default(true)
+
+  regiaoAtuacao String?
+
+  ultimoAcessoEm DateTime?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+
+  clientesOriginados   Cliente[] @relation("ClienteOriginadoPor")
+  clientesResponsavel  Cliente[] @relation("ClienteResponsavelPrincipal")
+  participacoesClientes ClienteParticipacao[]
+
+  vendasCriadas     Venda[] @relation("VendaCriadaPor")
+  vendasResponsavel Venda[] @relation("VendaResponsavel")
+
+  interacoesCriadas     Interacao[] @relation("InteracaoCriadaPor")
+  interacoesResponsavel Interacao[] @relation("InteracaoResponsavel")
+
+  contasBancariasTitular ContaBancaria[] @relation("ContaTitularUsuario")
+
+  auditorias Auditoria[]
+
+  @@index([escritorioId])
+  @@index([perfil])
+  @@index([ativo])
+}
+
+// ======================================================
+// CLIENTES
+// ======================================================
+
 model Cliente {
   id String @id @default(cuid())
+
+  escritorioId String?
 
   codigo String? @unique
 
@@ -44,15 +186,71 @@ model Cliente {
 
   ultimoPedidoEm DateTime?
 
+  originadoPorId         String?
+  responsavelPrincipalId String?
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  interacoes Interacao[]
-  vendas     Venda[]
+  escritorio Escritorio? @relation(fields: [escritorioId], references: [id], onDelete: SetNull)
+
+  originadoPor Usuario? @relation("ClienteOriginadoPor", fields: [originadoPorId], references: [id], onDelete: SetNull)
+
+  responsavelPrincipal Usuario? @relation("ClienteResponsavelPrincipal", fields: [responsavelPrincipalId], references: [id], onDelete: SetNull)
+
+  participantes ClienteParticipacao[]
+
+  interacoes       Interacao[]
+  vendas           Venda[]
+  regrasComerciais RegraComercialRepresentada[]
+  financeiros      Financeiro[]
+
+  @@index([escritorioId])
+  @@index([originadoPorId])
+  @@index([responsavelPrincipalId])
+  @@index([status])
 }
+
+// ======================================================
+// PARTICIPACAO NA CARTEIRA
+// Cliente pertence ao escritorio.
+// Usuarios podem atuar simultaneamente.
+// ======================================================
+
+model ClienteParticipacao {
+  id String @id @default(cuid())
+
+  clienteId String
+  usuarioId String
+
+  papel String?
+
+  inicioEm DateTime @default(now())
+  fimEm    DateTime?
+
+  ativa Boolean @default(true)
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([clienteId])
+  @@index([usuarioId])
+  @@index([ativa])
+}
+
+// ======================================================
+// REPRESENTADAS
+// ======================================================
 
 model Representada {
   id String @id @default(cuid())
+
+  escritorioId String?
 
   codigo String?
 
@@ -69,6 +267,7 @@ model Representada {
   telefonePrincipal String?
   whatsappPrincipal String?
 
+  // Campos atuais preservados
   bancoComissao String?
 
   comissao       Float?
@@ -81,6 +280,22 @@ model Representada {
   contratoAssinado Boolean @default(false)
   emiteNF          Boolean @default(true)
 
+  // Politica comercial padrao
+  pedidoMinimo  Float?
+  minimoParcela Float?
+
+  politicaFrete     String?
+  regiaoAtendimento String?
+
+  prazoEntregaDias     Int?
+  prazoFaturamentoDias Int?
+
+  prazoAlertaFaturamentoDias Int @default(2)
+
+  regraReconhecimentoComissao String?
+
+  exigeNFComissao Boolean @default(true)
+
   status String @default("Ativa")
 
   observacoes String?
@@ -88,30 +303,184 @@ model Representada {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  vendas Venda[]
+  escritorio Escritorio? @relation(fields: [escritorioId], references: [id], onDelete: SetNull)
+
+  contratos         ContratoRepresentada[]
+  regrasComerciais  RegraComercialRepresentada[]
+  vendas            Venda[]
+  interacoes        Interacao[]
+  notasComissao     NFComissao[]
+  contasRecebimento RepresentadaContaRecebimento[]
+  financeiros       Financeiro[]
+
+  @@index([escritorioId])
+  @@index([codigo])
+  @@index([cnpj])
+  @@index([status])
 }
+
+// ======================================================
+// CONTRATOS
+// Fisico, verbal, e-mail ou outro.
+// ======================================================
+
+model ContratoRepresentada {
+  id String @id @default(cuid())
+
+  representadaId      String
+  empresaEscritorioId String?
+
+  tipoFormalizacao String
+
+  descricao String?
+
+  dataInicio       DateTime?
+  dataEncerramento DateTime?
+
+  vigente Boolean @default(true)
+
+  ultimaRevisaoEm  DateTime?
+  proximaRevisaoEm DateTime?
+
+  motivoEncerramento String?
+
+  arquivoUrl String?
+
+  origemDocumento String?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  representada Representada @relation(fields: [representadaId], references: [id], onDelete: Restrict)
+
+  empresaEscritorio EmpresaEscritorio? @relation(fields: [empresaEscritorioId], references: [id], onDelete: SetNull)
+
+  regrasComerciais RegraComercialRepresentada[]
+
+  @@index([representadaId])
+  @@index([empresaEscritorioId])
+  @@index([vigente])
+  @@index([proximaRevisaoEm])
+}
+
+// ======================================================
+// REGRAS COMERCIAIS VERSIONADAS
+// ======================================================
+
+model RegraComercialRepresentada {
+  id String @id @default(cuid())
+
+  representadaId String
+  clienteId      String?
+  contratoId     String?
+
+  nome String
+
+  tipoEscopo String @default("Padrao")
+
+  vigenciaInicio DateTime
+  vigenciaFim    DateTime?
+
+  ativa Boolean @default(true)
+
+  pedidoMinimo  Float?
+  minimoParcela Float?
+
+  prazoEntregaDias     Int?
+  prazoFaturamentoDias Int?
+
+  frete  String?
+  regiao String?
+
+  tipoComissao String?
+
+  percentualComissao Float?
+
+  faixasComissao String?
+
+  reconhecimentoComissao String?
+
+  fechamentoComissao String?
+  pagamentoComissao  String?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  representada Representada @relation(fields: [representadaId], references: [id], onDelete: Restrict)
+
+  cliente Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+
+  contrato ContratoRepresentada? @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+
+  vendas Venda[]
+
+  @@index([representadaId])
+  @@index([clienteId])
+  @@index([contratoId])
+  @@index([vigenciaInicio])
+  @@index([ativa])
+}
+
+// ======================================================
+// VENDAS / PEDIDOS
+// ======================================================
 
 model Venda {
   id String @id @default(cuid())
+
+  escritorioId       String?
+  empresaEscritorioId String?
 
   data DateTime
 
   clienteId      String
   representadaId String
 
+  regraComercialId String?
+
+  criadoPorId   String?
+  responsavelId String?
+
+  // Identificacao
+  numeroPedidoInterno      String?
+  numeroPedido             String?
+  numeroPedidoRepresentada String?
+  numeroOCCliente          String?
+
+  // Campos atuais preservados
   produto    String?
   quantidade Int?
 
   valorTotal Float?
-  comissao   Float?
+  desconto   Float?
 
-  desconto Float?
+  comissao Float?
 
-  numeroPedido String?
+  // Regra utilizada nesta venda
+  percentualComissaoAplicado Float?
+
+  regraReconhecimentoComissao String?
+
+  baseCalculoComissao Float?
+
+  valorComissaoPrevista Float?
+
+  // Bonificacao nao gera comissao
+  bonificacaoValor Float?
 
   condicaoPagamento String?
 
   previsaoFaturamento DateTime?
+
+  pedidoEnviadoEm DateTime?
+  confirmadoEm    DateTime?
+  canceladoEm     DateTime?
+
+  motivoCancelamento String?
 
   arquivoUrl String?
 
@@ -122,16 +491,312 @@ model Venda {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  cliente      Cliente      @relation(fields: [clienteId], references: [id])
-  representada Representada @relation(fields: [representadaId], references: [id])
+  escritorio Escritorio? @relation(fields: [escritorioId], references: [id], onDelete: SetNull)
+
+  empresaEscritorio EmpresaEscritorio? @relation(fields: [empresaEscritorioId], references: [id], onDelete: SetNull)
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  representada Representada @relation(fields: [representadaId], references: [id], onDelete: Restrict)
+
+  regraComercial RegraComercialRepresentada? @relation(fields: [regraComercialId], references: [id], onDelete: Restrict)
+
+  criadoPor Usuario? @relation("VendaCriadaPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  responsavel Usuario? @relation("VendaResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
+
+  faturamentos Faturamento[]
+  comissoes    ComissaoMovimento[]
+  interacoes   Interacao[]
+  financeiros  Financeiro[]
+
+  @@index([escritorioId])
+  @@index([empresaEscritorioId])
+  @@index([clienteId])
+  @@index([representadaId])
+  @@index([regraComercialId])
+  @@index([criadoPorId])
+  @@index([responsavelId])
+  @@index([data])
+  @@index([status])
 }
+
+// ======================================================
+// FATURAMENTOS
+// Uma venda pode gerar varias NFs.
+// ======================================================
+
+model Faturamento {
+  id String @id @default(cuid())
+
+  vendaId String
+
+  numeroNF String?
+
+  dataFaturamento DateTime
+
+  valorFaturado Float
+
+  faturamentoParcial Boolean @default(false)
+
+  saldoPedido Float?
+
+  percentualCorte Float?
+  valorCorte      Float?
+
+  motivoCorte String?
+
+  pdfUrl String?
+
+  status String @default("Faturado")
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  venda Venda @relation(fields: [vendaId], references: [id], onDelete: Restrict)
+
+  titulos   TituloVenda[]
+  comissoes ComissaoMovimento[]
+
+  @@index([vendaId])
+  @@index([dataFaturamento])
+  @@index([numeroNF])
+}
+
+// ======================================================
+// TITULOS / VENCIMENTOS
+// Controle informativo do escritorio.
+// ======================================================
+
+model TituloVenda {
+  id String @id @default(cuid())
+
+  faturamentoId String
+
+  numeroParcela Int?
+
+  vencimento DateTime
+
+  valor Float
+
+  status String @default("Aberto")
+
+  prorrogadoPara DateTime?
+
+  pagoEm DateTime?
+
+  atrasoInformadoEm DateTime?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  faturamento Faturamento @relation(fields: [faturamentoId], references: [id], onDelete: Restrict)
+
+  @@index([faturamentoId])
+  @@index([vencimento])
+  @@index([status])
+}
+
+// ======================================================
+// MOVIMENTACOES DE COMISSAO
+// PREVISTA, DEVIDA, RECEBIDA, ESTORNADA,
+// RECUPERADA ou AJUSTE.
+// ======================================================
+
+model ComissaoMovimento {
+  id String @id @default(cuid())
+
+  vendaId       String?
+  faturamentoId String?
+  nfComissaoId  String?
+
+  tipo String
+
+  data DateTime
+
+  valor Float
+
+  percentual Float?
+
+  status String @default("Pendente")
+
+  descricao String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  venda Venda? @relation(fields: [vendaId], references: [id], onDelete: SetNull)
+
+  faturamento Faturamento? @relation(fields: [faturamentoId], references: [id], onDelete: SetNull)
+
+  nfComissao NFComissao? @relation(fields: [nfComissaoId], references: [id], onDelete: SetNull)
+
+  @@index([vendaId])
+  @@index([faturamentoId])
+  @@index([nfComissaoId])
+  @@index([tipo])
+  @@index([data])
+}
+
+// ======================================================
+// NF DE COMISSAO DO ESCRITORIO
+// Aceita notas atuais e historicas.
+// ======================================================
+
+model NFComissao {
+  id String @id @default(cuid())
+
+  representadaId      String
+  empresaEscritorioId String
+
+  numero String?
+
+  dataEmissao DateTime
+
+  periodoInicio DateTime?
+  periodoFim    DateTime?
+
+  valorBruto Float
+
+  aliquotaImposto Float?
+  valorImposto    Float?
+  valorLiquido    Float?
+
+  vencimento DateTime?
+
+  pagoEm DateTime?
+
+  status String @default("Emitida")
+
+  pdfUrl String?
+
+  contaBancariaId String?
+
+  historica Boolean @default(false)
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  representada Representada @relation(fields: [representadaId], references: [id], onDelete: Restrict)
+
+  empresaEscritorio EmpresaEscritorio @relation(fields: [empresaEscritorioId], references: [id], onDelete: Restrict)
+
+  contaBancaria ContaBancaria? @relation(fields: [contaBancariaId], references: [id], onDelete: SetNull)
+
+  movimentosComissao ComissaoMovimento[]
+  financeiros        Financeiro[]
+
+  @@index([representadaId])
+  @@index([empresaEscritorioId])
+  @@index([numero])
+  @@index([dataEmissao])
+  @@index([status])
+  @@index([historica])
+}
+
+// ======================================================
+// CONTAS BANCARIAS
+// PJ e PF.
+// ======================================================
+
+model ContaBancaria {
+  id String @id @default(cuid())
+
+  escritorioId String
+
+  empresaEscritorioId String?
+  usuarioTitularId    String?
+
+  nome String
+
+  banco String
+
+  tipoTitular String
+
+  titular String?
+
+  agencia String?
+  conta   String?
+  pix     String?
+
+  ativa Boolean @default(true)
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+
+  empresaEscritorio EmpresaEscritorio? @relation(fields: [empresaEscritorioId], references: [id], onDelete: SetNull)
+
+  usuarioTitular Usuario? @relation("ContaTitularUsuario", fields: [usuarioTitularId], references: [id], onDelete: SetNull)
+
+  recebimentosRepresentadas RepresentadaContaRecebimento[]
+  notasComissao              NFComissao[]
+  financeiros                Financeiro[]
+
+  @@index([escritorioId])
+  @@index([empresaEscritorioId])
+  @@index([usuarioTitularId])
+  @@index([ativa])
+}
+
+// ======================================================
+// CONTA DESTINO POR REPRESENTADA
+// ======================================================
+
+model RepresentadaContaRecebimento {
+  id String @id @default(cuid())
+
+  representadaId  String
+  contaBancariaId String
+
+  tipoRecebimento String
+
+  percentualDestino Float?
+
+  ativa Boolean @default(true)
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  representada Representada @relation(fields: [representadaId], references: [id], onDelete: Restrict)
+
+  contaBancaria ContaBancaria @relation(fields: [contaBancariaId], references: [id], onDelete: Restrict)
+
+  @@index([representadaId])
+  @@index([contaBancariaId])
+  @@index([ativa])
+}
+
+// ======================================================
+// INTERACOES / FOLLOW-UP
+// Visita, Ligacao, WhatsApp, E-mail,
+// Reuniao, Pos-venda etc.
+// ======================================================
 
 model Interacao {
   id String @id @default(cuid())
 
+  escritorioId String?
+
   data DateTime
 
-  clienteId String
+  clienteId      String?
+  representadaId String?
+  vendaId        String?
+
+  criadoPorId   String?
+  responsavelId String?
 
   tipo String
 
@@ -142,14 +807,45 @@ model Interacao {
 
   proximosPasso String?
 
+  proximoContatoEm DateTime?
+
+  statusFollowUp String @default("Aberto")
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  cliente Cliente @relation(fields: [clienteId], references: [id])
+  escritorio Escritorio? @relation(fields: [escritorioId], references: [id], onDelete: SetNull)
+
+  cliente Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+
+  representada Representada? @relation(fields: [representadaId], references: [id], onDelete: SetNull)
+
+  venda Venda? @relation(fields: [vendaId], references: [id], onDelete: SetNull)
+
+  criadoPor Usuario? @relation("InteracaoCriadaPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  responsavel Usuario? @relation("InteracaoResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
+
+  @@index([escritorioId])
+  @@index([clienteId])
+  @@index([representadaId])
+  @@index([vendaId])
+  @@index([criadoPorId])
+  @@index([responsavelId])
+  @@index([data])
+  @@index([proximoContatoEm])
+  @@index([statusFollowUp])
 }
+
+// ======================================================
+// FINANCEIRO
+// ======================================================
 
 model Financeiro {
   id String @id @default(cuid())
+
+  escritorioId        String?
+  empresaEscritorioId String?
 
   data DateTime
 
@@ -164,6 +860,124 @@ model Financeiro {
 
   vencimento DateTime?
 
+  clienteId       String?
+  representadaId  String?
+  vendaId         String?
+  nfComissaoId    String?
+  contaBancariaId String?
+  obrigacaoId     String?
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+
+  escritorio Escritorio? @relation(fields: [escritorioId], references: [id], onDelete: SetNull)
+
+  empresaEscritorio EmpresaEscritorio? @relation(fields: [empresaEscritorioId], references: [id], onDelete: SetNull)
+
+  cliente Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+
+  representada Representada? @relation(fields: [representadaId], references: [id], onDelete: SetNull)
+
+  venda Venda? @relation(fields: [vendaId], references: [id], onDelete: SetNull)
+
+  nfComissao NFComissao? @relation(fields: [nfComissaoId], references: [id], onDelete: SetNull)
+
+  contaBancaria ContaBancaria? @relation(fields: [contaBancariaId], references: [id], onDelete: SetNull)
+
+  obrigacao ObrigacaoOperacional? @relation(fields: [obrigacaoId], references: [id], onDelete: SetNull)
+
+  @@index([escritorioId])
+  @@index([empresaEscritorioId])
+  @@index([clienteId])
+  @@index([representadaId])
+  @@index([vendaId])
+  @@index([nfComissaoId])
+  @@index([contaBancariaId])
+  @@index([obrigacaoId])
+  @@index([data])
+  @@index([vencimento])
+  @@index([status])
+}
+
+// ======================================================
+// OBRIGACOES OPERACIONAIS
+// CORE, contador, tributos, seguros, softwares etc.
+// ======================================================
+
+model ObrigacaoOperacional {
+  id String @id @default(cuid())
+
+  escritorioId        String?
+  empresaEscritorioId String?
+
+  nome String
+
+  categoria String
+
+  periodicidade String?
+
+  competencia String?
+
+  vencimento DateTime?
+
+  valorPrevisto Float?
+  valorPago     Float?
+
+  juros Float?
+  multa Float?
+
+  status String @default("Pendente")
+
+  pagoEm DateTime?
+
+  comprovanteUrl String?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  escritorio Escritorio? @relation(fields: [escritorioId], references: [id], onDelete: SetNull)
+
+  empresaEscritorio EmpresaEscritorio? @relation(fields: [empresaEscritorioId], references: [id], onDelete: SetNull)
+
+  financeiros Financeiro[]
+
+  @@index([escritorioId])
+  @@index([empresaEscritorioId])
+  @@index([categoria])
+  @@index([vencimento])
+  @@index([status])
+}
+
+// ======================================================
+// AUDITORIA
+// Quem alterou, qual entidade e antes/depois.
+// ======================================================
+
+model Auditoria {
+  id String @id @default(cuid())
+
+  escritorioId String
+  usuarioId    String?
+
+  entidade   String
+  entidadeId String
+
+  acao String
+
+  dadosAntes  Json?
+  dadosDepois Json?
+
+  criadoEm DateTime @default(now())
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([escritorioId])
+  @@index([usuarioId])
+  @@index([entidade])
+  @@index([entidadeId])
+  @@index([criadoEm])
 }

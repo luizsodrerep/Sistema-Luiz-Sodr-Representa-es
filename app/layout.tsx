@@ -31,8 +31,7 @@ export default function RootLayout({
           <AlertReminder
             title="Relatório de Comissão"
             description="Emitir relatório de comissão para Descartáveis Premium"
-            date="Vence hoje às 18:00"
-            type="deadline"
+            time="Vence hoje às 18:00"
           />
         </ThemeProvider>
       </body>

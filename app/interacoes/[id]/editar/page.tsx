@@ -1,14 +1,26 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { PageLayout } from "@/components/page-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { ArrowLeft, Loader2, Save, AlertCircle } from "lucide-react"
 import Link from "next/link"
 
@@ -26,7 +38,12 @@ function toDatetimeLocal(isoString: string) {
   return local.toISOString().slice(0, 16)
 }
 
-export default function EditarInteracaoPage({ params }: { params: { id: string } }) {
+export default function EditarInteracaoPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = use(params)
   const router = useRouter()
 
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -48,18 +65,25 @@ export default function EditarInteracaoPage({ params }: { params: { id: string }
     async function carregarTudo() {
       setLoadingDados(true)
       setErro(null)
+
       try {
         const [resClientes, resInteracao] = await Promise.all([
           fetch("/api/clientes"),
-          fetch(`/api/interacoes/${params.id}`),
+          fetch(`/api/interacoes/${id}`),
         ])
 
-        if (!resClientes.ok) throw new Error("Erro ao carregar clientes")
+        if (!resClientes.ok) {
+          throw new Error("Erro ao carregar clientes")
+        }
+
         if (resInteracao.status === 404) {
           setErro("Interação não encontrada.")
           return
         }
-        if (!resInteracao.ok) throw new Error("Erro ao carregar interação")
+
+        if (!resInteracao.ok) {
+          throw new Error("Erro ao carregar interação")
+        }
 
         const [dadosClientes, dadosInteracao] = await Promise.all([
           resClientes.json(),
@@ -67,6 +91,7 @@ export default function EditarInteracaoPage({ params }: { params: { id: string }
         ])
 
         setClientes(dadosClientes)
+
         setForm({
           clienteId: dadosInteracao.clienteId,
           tipo: dadosInteracao.tipo,
@@ -82,12 +107,19 @@ export default function EditarInteracaoPage({ params }: { params: { id: string }
         setLoadingDados(false)
       }
     }
+
     carregarTudo()
-  }, [params.id])
+  }, [id])
 
   function handleChange(campo: string, valor: string) {
-    setForm((prev) => ({ ...prev, [campo]: valor }))
-    if (erro) setErro(null)
+    setForm((prev) => ({
+      ...prev,
+      [campo]: valor,
+    }))
+
+    if (erro) {
+      setErro(null)
+    }
   }
 
   async function handleSalvar() {
@@ -95,10 +127,12 @@ export default function EditarInteracaoPage({ params }: { params: { id: string }
       setErro("Selecione um cliente.")
       return
     }
+
     if (!form.tipo) {
       setErro("Selecione o tipo de interação.")
       return
     }
+
     if (!form.data) {
       setErro("Informe a data da interação.")
       return
@@ -108,9 +142,11 @@ export default function EditarInteracaoPage({ params }: { params: { id: string }
     setErro(null)
 
     try {
-      const res = await fetch(`/api/interacoes/${params.id}`, {
+      const res = await fetch(`/api/interacoes/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           clienteId: form.clienteId,
           tipo: form.tipo,
@@ -129,7 +165,7 @@ export default function EditarInteracaoPage({ params }: { params: { id: string }
         return
       }
 
-      router.push(`/interacoes/${params.id}`)
+      router.push(`/interacoes/${id}`)
     } catch {
       setErro("Erro de conexão. Tente novamente.")
     } finally {
@@ -151,11 +187,16 @@ export default function EditarInteracaoPage({ params }: { params: { id: string }
   return (
     <PageLayout title="Editar Interação">
       <div className="flex items-center gap-2 mb-2">
-        <Link href={`/interacoes/${params.id}`}>
-          <Button variant="outline" size="icon" className="h-7 w-7">
+        <Link href={`/interacoes/${id}`}>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+          >
             <ArrowLeft className="h-3 w-3" />
           </Button>
         </Link>
+
         <span className="text-xs-plus font-medium text-muted-foreground">
           Interações / Editar
         </span>
@@ -163,11 +204,15 @@ export default function EditarInteracaoPage({ params }: { params: { id: string }
 
       <Card className="card-container">
         <CardHeader className="card-header">
-          <CardTitle className="card-title">Editar Interação</CardTitle>
+          <CardTitle className="card-title">
+            Editar Interação
+          </CardTitle>
+
           <CardDescription className="card-description">
             Atualize os dados desta interação
           </CardDescription>
         </CardHeader>
+
         <CardContent className="card-content">
           {erro && (
             <div className="flex items-center gap-2 p-2 mb-3 bg-red-50 border border-red-200 rounded-sm text-red-700 text-xxs">
@@ -179,16 +224,33 @@ export default function EditarInteracaoPage({ params }: { params: { id: string }
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
               <div className="space-y-1">
-                <Label htmlFor="clienteId" className="text-xxs">
+                <Label
+                  htmlFor="clienteId"
+                  className="text-xxs"
+                >
                   Cliente <span className="text-red-500">*</span>
                 </Label>
-                <Select value={form.clienteId} onValueChange={(v) => handleChange("clienteId", v)}>
-                  <SelectTrigger id="clienteId" className="h-8 text-xxs">
+
+                <Select
+                  value={form.clienteId}
+                  onValueChange={(v) =>
+                    handleChange("clienteId", v)
+                  }
+                >
+                  <SelectTrigger
+                    id="clienteId"
+                    className="h-8 text-xxs"
+                  >
                     <SelectValue placeholder="Selecione o cliente" />
                   </SelectTrigger>
+
                   <SelectContent>
                     {clientes.map((c) => (
-                      <SelectItem key={c.id} value={c.id} className="text-xxs">
+                      <SelectItem
+                        key={c.id}
+                        value={c.id}
+                        className="text-xxs"
+                      >
                         {c.nomeFantasia || c.razaoSocial}
                       </SelectItem>
                     ))}
@@ -197,16 +259,34 @@ export default function EditarInteracaoPage({ params }: { params: { id: string }
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="tipo" className="text-xxs">
-                  Tipo de Interação <span className="text-red-500">*</span>
+                <Label
+                  htmlFor="tipo"
+                  className="text-xxs"
+                >
+                  Tipo de Interação{" "}
+                  <span className="text-red-500">*</span>
                 </Label>
-                <Select value={form.tipo} onValueChange={(v) => handleChange("tipo", v)}>
-                  <SelectTrigger id="tipo" className="h-8 text-xxs">
+
+                <Select
+                  value={form.tipo}
+                  onValueChange={(v) =>
+                    handleChange("tipo", v)
+                  }
+                >
+                  <SelectTrigger
+                    id="tipo"
+                    className="h-8 text-xxs"
+                  >
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
+
                   <SelectContent>
                     {TIPOS.map((t) => (
-                      <SelectItem key={t} value={t} className="text-xxs">
+                      <SelectItem
+                        key={t}
+                        value={t}
+                        className="text-xxs"
+                      >
                         {t}
                       </SelectItem>
                     ))}
@@ -215,73 +295,126 @@ export default function EditarInteracaoPage({ params }: { params: { id: string }
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="data" className="text-xxs">
-                  Data e Hora <span className="text-red-500">*</span>
+                <Label
+                  htmlFor="data"
+                  className="text-xxs"
+                >
+                  Data e Hora{" "}
+                  <span className="text-red-500">*</span>
                 </Label>
+
                 <Input
                   id="data"
                   type="datetime-local"
                   className="h-8 text-xxs"
                   value={form.data}
-                  onChange={(e) => handleChange("data", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("data", e.target.value)
+                  }
                 />
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="assunto" className="text-xxs">Assunto</Label>
+                <Label
+                  htmlFor="assunto"
+                  className="text-xxs"
+                >
+                  Assunto
+                </Label>
+
                 <Input
                   id="assunto"
                   className="h-8 text-xxs"
                   placeholder="Ex: Apresentação de produtos, Follow-up proposta..."
                   value={form.assunto}
-                  onChange={(e) => handleChange("assunto", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("assunto", e.target.value)
+                  }
                 />
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="space-y-1">
-                <Label htmlFor="descricao" className="text-xxs">Descrição</Label>
+                <Label
+                  htmlFor="descricao"
+                  className="text-xxs"
+                >
+                  Descrição
+                </Label>
+
                 <Textarea
                   id="descricao"
                   className="min-h-[80px] text-xxs"
                   placeholder="Descreva o que foi tratado na interação..."
                   value={form.descricao}
-                  onChange={(e) => handleChange("descricao", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("descricao", e.target.value)
+                  }
                 />
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="resultado" className="text-xxs">Resultado</Label>
+                <Label
+                  htmlFor="resultado"
+                  className="text-xxs"
+                >
+                  Resultado
+                </Label>
+
                 <Textarea
                   id="resultado"
                   className="min-h-[60px] text-xxs"
                   placeholder="Qual foi o resultado desta interação?"
                   value={form.resultado}
-                  onChange={(e) => handleChange("resultado", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("resultado", e.target.value)
+                  }
                 />
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="proximosPasso" className="text-xxs">Próximos Passos</Label>
+                <Label
+                  htmlFor="proximosPasso"
+                  className="text-xxs"
+                >
+                  Próximos Passos
+                </Label>
+
                 <Textarea
                   id="proximosPasso"
                   className="min-h-[60px] text-xxs"
                   placeholder="O que precisa ser feito depois desta interação?"
                   value={form.proximosPasso}
-                  onChange={(e) => handleChange("proximosPasso", e.target.value)}
+                  onChange={(e) =>
+                    handleChange(
+                      "proximosPasso",
+                      e.target.value
+                    )
+                  }
                 />
               </div>
             </div>
           </div>
 
           <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
-            <Link href={`/interacoes/${params.id}`}>
-              <Button variant="outline" size="sm" className="h-8 text-xxs" disabled={salvando}>
+            <Link href={`/interacoes/${id}`}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xxs"
+                disabled={salvando}
+              >
                 Cancelar
               </Button>
             </Link>
-            <Button size="sm" className="h-8 text-xxs gap-1" onClick={handleSalvar} disabled={salvando}>
+
+            <Button
+              size="sm"
+              className="h-8 text-xxs gap-1"
+              onClick={handleSalvar}
+              disabled={salvando}
+            >
               {salvando ? (
                 <>
                   <Loader2 className="h-3 w-3 animate-spin" />

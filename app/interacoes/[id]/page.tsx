@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { PageLayout } from "@/components/page-layout"
 import {
@@ -78,8 +78,9 @@ function formatarData(dataISO: string) {
 export default function InteracaoDetalhesPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  const { id } = use(params)
   const router = useRouter()
 
   const [interacao, setInteracao] = useState<Interacao | null>(null)
@@ -94,7 +95,7 @@ export default function InteracaoDetalhesPage({
       setErro(null)
 
       try {
-        const res = await fetch(`/api/interacoes/${params.id}`)
+        const res = await fetch(`/api/interacoes/${id}`)
 
         if (res.status === 404) {
           setErro("Interação não encontrada.")
@@ -115,7 +116,7 @@ export default function InteracaoDetalhesPage({
     }
 
     carregar()
-  }, [params.id])
+  }, [id])
 
   async function handleExcluir() {
     if (!confirmandoExclusao) {
@@ -126,7 +127,7 @@ export default function InteracaoDetalhesPage({
     setExcluindo(true)
 
     try {
-      const res = await fetch(`/api/interacoes/${params.id}`, {
+      const res = await fetch(`/api/interacoes/${id}`, {
         method: "DELETE",
       })
 
@@ -214,7 +215,7 @@ export default function InteracaoDetalhesPage({
         </div>
 
         <div className="flex items-center gap-2">
-          <Link href={`/interacoes/${params.id}/editar`}>
+          <Link href={`/interacoes/${id}/editar`}>
             <Button
               variant="outline"
               size="sm"
@@ -499,9 +500,7 @@ export default function InteracaoDetalhesPage({
                     {interacao.cliente.email}
                   </p>
 
-                  <a
-                    href={`mailto:${interacao.cliente.email}`}
-                  >
+                  <a href={`mailto:${interacao.cliente.email}`}>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -515,9 +514,7 @@ export default function InteracaoDetalhesPage({
             )}
 
             <div className="pt-2">
-              <Link
-                href={`/clientes/${interacao.cliente.id}`}
-              >
+              <Link href={`/clientes/${interacao.cliente.id}`}>
                 <Button
                   variant="outline"
                   size="sm"

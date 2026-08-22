@@ -25,11 +25,11 @@ const config = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "#0066b3", // Azul Royal
+          DEFAULT: "#0066b3",
           foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
-          DEFAULT: "#ff8c00", // Laranja
+          DEFAULT: "#ff8c00",
           foreground: "hsl(var(--secondary-foreground))",
         },
         destructive: {
@@ -60,12 +60,12 @@ const config = {
       },
       keyframes: {
         "accordion-down": {
-          from: { height: 0 },
+          from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
           from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: 0 },
+          to: { height: "0" },
         },
       },
       animation: {
@@ -78,4 +78,3 @@ const config = {
 } satisfies Config
 
 export default config
-

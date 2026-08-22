@@ -7,10 +7,12 @@ export async function GET(request: Request) {
   const format = searchParams.get("format") || "xlsx"
 
   if (!module) {
-    return NextResponse.json({ error: "Módulo não especificado" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Módulo não especificado" },
+      { status: 400 }
+    )
   }
 
-  // Definir estrutura de dados para cada módulo
   const templates: Record<string, any[]> = {
     clientes: [
       {
@@ -26,6 +28,7 @@ export async function GET(request: Request) {
         observacoes: "Observações",
       },
     ],
+
     representadas: [
       {
         id: "",
@@ -41,6 +44,7 @@ export async function GET(request: Request) {
         comissao: "0.00",
       },
     ],
+
     vendas: [
       {
         id: "",
@@ -55,6 +59,7 @@ export async function GET(request: Request) {
         comissao: "0.00",
       },
     ],
+
     interacoes: [
       {
         id: "",
@@ -67,6 +72,7 @@ export async function GET(request: Request) {
         proximos_passos: "Próximos passos a seguir",
       },
     ],
+
     financeiro: [
       {
         id: "",
@@ -80,6 +86,7 @@ export async function GET(request: Request) {
         representada: "Nome da Representada (se aplicável)",
       },
     ],
+
     contabilidade: [
       {
         id: "",
@@ -93,6 +100,7 @@ export async function GET(request: Request) {
         observacoes: "Observações",
       },
     ],
+
     agenda: [
       {
         id: "",
@@ -108,40 +116,57 @@ export async function GET(request: Request) {
     ],
   }
 
-  // Obter o template para o módulo solicitado
   const templateData = templates[module]
 
   if (!templateData) {
-    return NextResponse.json({ error: "Módulo não encontrado" }, { status: 404 })
+    return NextResponse.json(
+      { error: "Módulo não encontrado" },
+      { status: 404 }
+    )
   }
 
-  // Criar a planilha
   const workbook = XLSX.utils.book_new()
   const worksheet = XLSX.utils.json_to_sheet(templateData)
-  XLSX.utils.book_append_sheet(workbook, worksheet, module.charAt(0).toUpperCase() + module.slice(1))
 
-  // Converter para o formato solicitado
-  let buffer: Buffer
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    module.charAt(0).toUpperCase() + module.slice(1)
+  )
+
+  let responseBody: ArrayBuffer
   let contentType: string
   let filename: string
 
   if (format === "csv") {
     const csv = XLSX.utils.sheet_to_csv(worksheet)
-    buffer = Buffer.from(csv)
-    contentType = "text/csv"
+    const encoded = new TextEncoder().encode(csv)
+
+    responseBody = encoded.slice().buffer
+
+    contentType = "text/csv; charset=utf-8"
     filename = `template_${module}.csv`
   } else {
-    buffer = Buffer.from(XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }))
-    contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    const output = XLSX.write(workbook, {
+      type: "array",
+      bookType: "xlsx",
+    })
+
+    responseBody =
+      output instanceof ArrayBuffer
+        ? output
+        : new Uint8Array(output).slice().buffer
+
+    contentType =
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
     filename = `template_${module}.xlsx`
   }
 
-  // Configurar os headers para download
-  return new NextResponse(buffer, {
+  return new NextResponse(responseBody, {
     headers: {
       "Content-Type": contentType,
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   })
 }
-

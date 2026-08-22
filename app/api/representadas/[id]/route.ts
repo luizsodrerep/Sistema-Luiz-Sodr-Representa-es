@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from "next/server"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
 
     const representada = await prisma.representada.findUnique({
       where: { id },
@@ -22,6 +22,7 @@ export async function GET(
     return NextResponse.json(representada, { status: 200 })
   } catch (error) {
     console.error("Erro ao buscar:", error)
+
     return NextResponse.json(
       { message: "Erro ao buscar representada" },
       { status: 500 }
@@ -31,10 +32,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
 
     const existe = await prisma.representada.findUnique({
@@ -62,6 +63,7 @@ export async function PUT(
     )
   } catch (error) {
     console.error("Erro ao atualizar:", error)
+
     return NextResponse.json(
       { message: "Erro ao atualizar representada" },
       { status: 500 }
@@ -71,10 +73,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
 
     const existe = await prisma.representada.findUnique({
       where: { id },
@@ -97,6 +99,7 @@ export async function DELETE(
     )
   } catch (error) {
     console.error("Erro ao deletar:", error)
+
     return NextResponse.json(
       { message: "Erro ao deletar representada" },
       { status: 500 }

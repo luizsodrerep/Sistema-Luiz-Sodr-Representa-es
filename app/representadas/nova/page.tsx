@@ -76,7 +76,9 @@ export default function NovaRepresentadaPage() {
   }
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target
 
@@ -172,6 +174,7 @@ export default function NovaRepresentadaPage() {
         const faixasValidas = faixas.every(
           (f) => f.desconto.trim() && f.comissao.trim()
         )
+
         if (!faixasValidas) {
           novoErros.faixas = "Todas as faixas devem ter desconto e comissão"
         }
@@ -213,7 +216,11 @@ export default function NovaRepresentadaPage() {
       alert("Representada cadastrada com sucesso")
       router.push("/representadas")
     } catch (error) {
-      const mensagem = error instanceof Error ? error.message : "Erro ao cadastrar representada"
+      const mensagem =
+        error instanceof Error
+          ? error.message
+          : "Erro ao cadastrar representada"
+
       alert(mensagem)
       console.error("Erro:", error)
     } finally {
@@ -233,7 +240,10 @@ export default function NovaRepresentadaPage() {
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Nova Representada</h1>
+
+          <h1 className="text-3xl font-bold text-gray-900">
+            Nova Representada
+          </h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -241,10 +251,12 @@ export default function NovaRepresentadaPage() {
             <CardHeader>
               <CardTitle>Informações Básicas</CardTitle>
             </CardHeader>
+
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="nome">Nome *</Label>
+
                   <Input
                     id="nome"
                     name="nome"
@@ -254,13 +266,17 @@ export default function NovaRepresentadaPage() {
                     disabled={loading}
                     className={errors.nome ? "border-red-500" : ""}
                   />
+
                   {errors.nome && (
-                    <p className="text-red-500 text-sm mt-1">{errors.nome}</p>
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.nome}
+                    </p>
                   )}
                 </div>
 
                 <div>
                   <Label htmlFor="codigo">Código</Label>
+
                   <Input
                     id="codigo"
                     name="codigo"
@@ -272,6 +288,7 @@ export default function NovaRepresentadaPage() {
 
                 <div>
                   <Label htmlFor="cnpj">CNPJ *</Label>
+
                   <Input
                     id="cnpj"
                     name="cnpj"
@@ -282,13 +299,17 @@ export default function NovaRepresentadaPage() {
                     disabled={loading}
                     className={errors.cnpj ? "border-red-500" : ""}
                   />
+
                   {errors.cnpj && (
-                    <p className="text-red-500 text-sm mt-1">{errors.cnpj}</p>
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.cnpj}
+                    </p>
                   )}
                 </div>
 
                 <div>
                   <Label htmlFor="status">Status</Label>
+
                   <select
                     id="status"
                     name="status"
@@ -310,10 +331,14 @@ export default function NovaRepresentadaPage() {
             <CardHeader>
               <CardTitle>Informações de Contato</CardTitle>
             </CardHeader>
+
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="contatoPrincipal">Contato Principal</Label>
+                  <Label htmlFor="contatoPrincipal">
+                    Contato Principal
+                  </Label>
+
                   <Input
                     id="contatoPrincipal"
                     name="contatoPrincipal"
@@ -326,6 +351,7 @@ export default function NovaRepresentadaPage() {
 
                 <div>
                   <Label htmlFor="emailPrincipal">Email *</Label>
+
                   <Input
                     id="emailPrincipal"
                     name="emailPrincipal"
@@ -334,15 +360,21 @@ export default function NovaRepresentadaPage() {
                     onChange={handleChange}
                     placeholder="email@exemplo.com"
                     disabled={loading}
-                    className={errors.emailPrincipal ? "border-red-500" : ""}
+                    className={
+                      errors.emailPrincipal ? "border-red-500" : ""
+                    }
                   />
+
                   {errors.emailPrincipal && (
-                    <p className="text-red-500 text-sm mt-1">{errors.emailPrincipal}</p>
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.emailPrincipal}
+                    </p>
                   )}
                 </div>
 
                 <div>
                   <Label htmlFor="telefonePrincipal">Telefone *</Label>
+
                   <Input
                     id="telefonePrincipal"
                     name="telefonePrincipal"
@@ -350,15 +382,21 @@ export default function NovaRepresentadaPage() {
                     onChange={handleChange}
                     placeholder="(00) 0000-0000"
                     disabled={loading}
-                    className={errors.telefonePrincipal ? "border-red-500" : ""}
+                    className={
+                      errors.telefonePrincipal ? "border-red-500" : ""
+                    }
                   />
+
                   {errors.telefonePrincipal && (
-                    <p className="text-red-500 text-sm mt-1">{errors.telefonePrincipal}</p>
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.telefonePrincipal}
+                    </p>
                   )}
                 </div>
 
                 <div>
                   <Label htmlFor="whatsappPrincipal">WhatsApp</Label>
+
                   <Input
                     id="whatsappPrincipal"
                     name="whatsappPrincipal"
@@ -376,9 +414,11 @@ export default function NovaRepresentadaPage() {
             <CardHeader>
               <CardTitle>Endereço</CardTitle>
             </CardHeader>
+
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="endereco">Endereço</Label>
+
                 <Input
                   id="endereco"
                   name="endereco"
@@ -392,6 +432,7 @@ export default function NovaRepresentadaPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="cidade">Cidade</Label>
+
                   <Input
                     id="cidade"
                     name="cidade"
@@ -404,6 +445,7 @@ export default function NovaRepresentadaPage() {
 
                 <div>
                   <Label htmlFor="estado">Estado</Label>
+
                   <Input
                     id="estado"
                     name="estado"
@@ -417,6 +459,7 @@ export default function NovaRepresentadaPage() {
 
                 <div>
                   <Label htmlFor="cep">CEP</Label>
+
                   <Input
                     id="cep"
                     name="cep"
@@ -434,6 +477,7 @@ export default function NovaRepresentadaPage() {
             <CardHeader>
               <CardTitle>Comissão</CardTitle>
             </CardHeader>
+
             <CardContent className="space-y-4">
               <div className="flex gap-4">
                 <div className="flex items-center gap-2">
@@ -446,8 +490,12 @@ export default function NovaRepresentadaPage() {
                     onChange={(e) => setTipoComissao(e.target.value)}
                     disabled={loading}
                   />
-                  <Label htmlFor="fixa" className="cursor-pointer">Fixa</Label>
+
+                  <Label htmlFor="fixa" className="cursor-pointer">
+                    Fixa
+                  </Label>
                 </div>
+
                 <div className="flex items-center gap-2">
                   <input
                     type="radio"
@@ -458,7 +506,10 @@ export default function NovaRepresentadaPage() {
                     onChange={(e) => setTipoComissao(e.target.value)}
                     disabled={loading}
                   />
-                  <Label htmlFor="variada" className="cursor-pointer">Variada</Label>
+
+                  <Label htmlFor="variada" className="cursor-pointer">
+                    Variada
+                  </Label>
                 </div>
               </div>
 
@@ -466,6 +517,7 @@ export default function NovaRepresentadaPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="comissao">Comissão (%) *</Label>
+
                     <Input
                       id="comissao"
                       name="comissao"
@@ -477,13 +529,19 @@ export default function NovaRepresentadaPage() {
                       disabled={loading}
                       className={errors.comissao ? "border-red-500" : ""}
                     />
+
                     {errors.comissao && (
-                      <p className="text-red-500 text-sm mt-1">{errors.comissao}</p>
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.comissao}
+                      </p>
                     )}
                   </div>
 
                   <div>
-                    <Label htmlFor="bancoComissao">Banco para Comissão</Label>
+                    <Label htmlFor="bancoComissao">
+                      Banco para Comissão
+                    </Label>
+
                     <Input
                       id="bancoComissao"
                       name="bancoComissao"
@@ -499,37 +557,55 @@ export default function NovaRepresentadaPage() {
               {tipoComissao === "variada" && (
                 <div className="space-y-4">
                   {errors.faixas && (
-                    <p className="text-red-500 text-sm">{errors.faixas}</p>
+                    <p className="text-red-500 text-sm">
+                      {errors.faixas}
+                    </p>
                   )}
+
                   <div className="space-y-3">
                     {faixas.map((faixa, index) => (
-                      <div key={index} className="flex gap-4 items-end">
+                      <div
+                        key={index}
+                        className="flex gap-4 items-end"
+                      >
                         <div className="flex-1">
                           <Label>Desconto Mínimo (%)</Label>
+
                           <Input
                             type="number"
                             step="0.01"
                             value={faixa.desconto}
                             onChange={(e) =>
-                              handleFaixaChange(index, "desconto", e.target.value)
+                              handleFaixaChange(
+                                index,
+                                "desconto",
+                                e.target.value
+                              )
                             }
                             placeholder="0.00"
                             disabled={loading}
                           />
                         </div>
+
                         <div className="flex-1">
                           <Label>Comissão (%)</Label>
+
                           <Input
                             type="number"
                             step="0.01"
                             value={faixa.comissao}
                             onChange={(e) =>
-                              handleFaixaChange(index, "comissao", e.target.value)
+                              handleFaixaChange(
+                                index,
+                                "comissao",
+                                e.target.value
+                              )
                             }
                             placeholder="0.00"
                             disabled={loading}
                           />
                         </div>
+
                         <Button
                           type="button"
                           variant="destructive"
@@ -542,6 +618,7 @@ export default function NovaRepresentadaPage() {
                       </div>
                     ))}
                   </div>
+
                   <Button
                     type="button"
                     variant="outline"
@@ -557,7 +634,10 @@ export default function NovaRepresentadaPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="fechamentoComissao">Fechamento Comissão</Label>
+                  <Label htmlFor="fechamentoComissao">
+                    Fechamento Comissão
+                  </Label>
+
                   <Input
                     id="fechamentoComissao"
                     name="fechamentoComissao"
@@ -570,7 +650,10 @@ export default function NovaRepresentadaPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="pagamentoComissao">Pagamento Comissão</Label>
+                  <Label htmlFor="pagamentoComissao">
+                    Pagamento Comissão
+                  </Label>
+
                   <Input
                     id="pagamentoComissao"
                     name="pagamentoComissao"
@@ -589,6 +672,7 @@ export default function NovaRepresentadaPage() {
             <CardHeader>
               <CardTitle>Observações</CardTitle>
             </CardHeader>
+
             <CardContent>
               <Textarea
                 name="observacoes"
@@ -610,6 +694,7 @@ export default function NovaRepresentadaPage() {
             >
               Cancelar
             </Button>
+
             <Button type="submit" disabled={loading}>
               {loading ? "Salvando..." : "Salvar Representada"}
             </Button>

@@ -32,12 +32,29 @@ export async function GET(request: Request) {
   ]
 
   sheet.columns = colunas
-  sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } }
-  sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1e40af" } }
-  sheet.getRow(1).alignment = { horizontal: "center" }
+
+  sheet.getRow(1).font = {
+    bold: true,
+    color: { argb: "FFFFFFFF" },
+  }
+
+  sheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF1e40af" },
+  }
+
+  sheet.getRow(1).alignment = {
+    horizontal: "center",
+  }
 
   if (tipo === "dados") {
-    const clientes = await prisma.cliente.findMany({ orderBy: { razaoSocial: "asc" } })
+    const clientes = await prisma.cliente.findMany({
+      orderBy: {
+        razaoSocial: "asc",
+      },
+    })
+
     clientes.forEach((c) => {
       sheet.addRow({
         razaoSocial: c.razaoSocial,
@@ -83,15 +100,25 @@ export async function GET(request: Request) {
       rota: "Segunda",
       observacoes: "Cliente exemplo - pode excluir",
     })
-    sheet.getRow(2).font = { italic: true, color: { argb: "FF999999" } }
+
+    sheet.getRow(2).font = {
+      italic: true,
+      color: { argb: "FF999999" },
+    }
   }
 
   const buffer = await workbook.xlsx.writeBuffer()
-  const nome = tipo === "dados" ? "clientes-exportados.xlsx" : "modelo-importacao-clientes.xlsx"
+  const body = new Uint8Array(buffer)
 
-  return new NextResponse(buffer as Buffer, {
+  const nome =
+    tipo === "dados"
+      ? "clientes-exportados.xlsx"
+      : "modelo-importacao-clientes.xlsx"
+
+  return new NextResponse(body, {
     headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="${nome}"`,
     },
   })

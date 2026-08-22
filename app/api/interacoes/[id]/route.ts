@@ -3,11 +3,13 @@ import { NextResponse } from "next/server"
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+
     const interacao = await prisma.interacao.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         cliente: {
           select: {
@@ -34,6 +36,7 @@ export async function GET(
     return NextResponse.json(interacao)
   } catch (error) {
     console.error("Erro ao buscar interação:", error)
+
     return NextResponse.json(
       { message: "Erro ao buscar interação." },
       { status: 500 }
@@ -43,9 +46,10 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
 
     if (!body.clienteId || body.clienteId.trim() === "") {
@@ -70,7 +74,7 @@ export async function PUT(
     }
 
     const interacao = await prisma.interacao.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         clienteId: body.clienteId,
         tipo: body.tipo,
@@ -94,6 +98,7 @@ export async function PUT(
     return NextResponse.json(interacao)
   } catch (error) {
     console.error("Erro ao atualizar interação:", error)
+
     return NextResponse.json(
       { message: "Erro ao atualizar interação." },
       { status: 500 }
@@ -103,16 +108,21 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+
     await prisma.interacao.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
-    return NextResponse.json({ message: "Interação excluída com sucesso." })
+    return NextResponse.json({
+      message: "Interação excluída com sucesso.",
+    })
   } catch (error) {
     console.error("Erro ao excluir interação:", error)
+
     return NextResponse.json(
       { message: "Erro ao excluir interação." },
       { status: 500 }

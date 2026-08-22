@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from "next/server"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
 
     const representada = await prisma.representada.findUnique({
       where: { id },
@@ -30,6 +30,7 @@ export async function GET(
     return NextResponse.json(representada, { status: 200 })
   } catch (error) {
     console.error("Erro comissão:", error)
+
     return NextResponse.json(
       { message: "Erro ao buscar comissão" },
       { status: 500 }
