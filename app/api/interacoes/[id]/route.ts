@@ -1,15 +1,42 @@
 import { prisma } from "@/lib/prisma"
+import { exigirSessao } from "@/lib/auth/server"
 import { NextResponse } from "next/server"
+
+function filtroAcessoInteracao(
+  escritorioId: string,
+  usuarioId: string,
+  perfil: string,
+  id: string
+) {
+  return {
+    id,
+    escritorioId,
+    ...(perfil === "Preposto"
+      ? {
+          OR: [
+            { responsavelId: usuarioId },
+            { criadoPorId: usuarioId },
+          ],
+        }
+      : {}),
+  }
+}
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const sessao = await exigirSessao()
     const { id } = await params
 
-    const interacao = await prisma.interacao.findUnique({
-      where: { id },
+    const interacao = await prisma.interacao.findFirst({
+      where: filtroAcessoInteracao(
+        sessao.escritorioId,
+        sessao.usuarioId,
+        sessao.perfil,
+        id
+      ),
       include: {
         cliente: {
           select: {
@@ -28,13 +55,20 @@ export async function GET(
 
     if (!interacao) {
       return NextResponse.json(
-        { message: "Interação não encontrada." },
+        { message: "Interação não encontrada ou sem permissão de acesso." },
         { status: 404 }
       )
     }
 
     return NextResponse.json(interacao)
   } catch (error) {
+    if (error instanceof Error && error.message === "NAO_AUTENTICADO") {
+      return NextResponse.json(
+        { message: "Não autenticado" },
+        { status: 401 }
+      )
+    }
+
     console.error("Erro ao buscar interação:", error)
 
     return NextResponse.json(
@@ -49,6 +83,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const sessao = await exigirSessao()
     const { id } = await params
     const body = await request.json()
 
@@ -73,8 +108,63 @@ export async function PUT(
       )
     }
 
+    const interacaoExistente = await prisma.interacao.findFirst({
+      where: filtroAcessoInteracao(
+        sessao.escritorioId,
+        sessao.usuarioId,
+        sessao.perfil,
+        id
+      ),
+      select: {
+        id: true,
+      },
+    })
+
+    if (!interacaoExistente) {
+      return NextResponse.json(
+        { message: "Interação não encontrada ou sem permissão de acesso." },
+        { status: 404 }
+      )
+    }
+
+    const cliente = await prisma.cliente.findFirst({
+      where: {
+        id: body.clienteId,
+        escritorioId: sessao.escritorioId,
+        ...(sessao.perfil === "Preposto"
+          ? {
+              OR: [
+                {
+                  responsavelPrincipalId: sessao.usuarioId,
+                },
+                {
+                  participantes: {
+                    some: {
+                      usuarioId: sessao.usuarioId,
+                      ativa: true,
+                    },
+                  },
+                },
+              ],
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+      },
+    })
+
+    if (!cliente) {
+      return NextResponse.json(
+        { message: "Cliente não encontrado ou sem permissão de acesso." },
+        { status: 403 }
+      )
+    }
+
     const interacao = await prisma.interacao.update({
-      where: { id },
+      where: {
+        id: interacaoExistente.id,
+      },
       data: {
         clienteId: body.clienteId,
         tipo: body.tipo,
@@ -83,6 +173,10 @@ export async function PUT(
         descricao: body.descricao || null,
         resultado: body.resultado || null,
         proximosPasso: body.proximosPasso || null,
+        responsavelId:
+          sessao.perfil === "Preposto"
+            ? sessao.usuarioId
+            : body.responsavelId,
       },
       include: {
         cliente: {
@@ -97,6 +191,13 @@ export async function PUT(
 
     return NextResponse.json(interacao)
   } catch (error) {
+    if (error instanceof Error && error.message === "NAO_AUTENTICADO") {
+      return NextResponse.json(
+        { message: "Não autenticado" },
+        { status: 401 }
+      )
+    }
+
     console.error("Erro ao atualizar interação:", error)
 
     return NextResponse.json(
@@ -111,16 +212,45 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const sessao = await exigirSessao()
     const { id } = await params
 
+    const interacaoExistente = await prisma.interacao.findFirst({
+      where: filtroAcessoInteracao(
+        sessao.escritorioId,
+        sessao.usuarioId,
+        sessao.perfil,
+        id
+      ),
+      select: {
+        id: true,
+      },
+    })
+
+    if (!interacaoExistente) {
+      return NextResponse.json(
+        { message: "Interação não encontrada ou sem permissão de acesso." },
+        { status: 404 }
+      )
+    }
+
     await prisma.interacao.delete({
-      where: { id },
+      where: {
+        id: interacaoExistente.id,
+      },
     })
 
     return NextResponse.json({
       message: "Interação excluída com sucesso.",
     })
   } catch (error) {
+    if (error instanceof Error && error.message === "NAO_AUTENTICADO") {
+      return NextResponse.json(
+        { message: "Não autenticado" },
+        { status: 401 }
+      )
+    }
+
     console.error("Erro ao excluir interação:", error)
 
     return NextResponse.json(

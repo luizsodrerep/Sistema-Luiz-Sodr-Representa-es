@@ -1,9 +1,23 @@
 import { prisma } from "@/lib/prisma"
+import { exigirSessao } from "@/lib/auth/server"
 import { NextRequest, NextResponse } from "next/server"
 
 export async function GET() {
   try {
+    const sessao = await exigirSessao()
+
     const vendas = await prisma.venda.findMany({
+      where: {
+        escritorioId: sessao.escritorioId,
+        ...(sessao.perfil === "Preposto"
+          ? {
+              OR: [
+                { responsavelId: sessao.usuarioId },
+                { criadoPorId: sessao.usuarioId },
+              ],
+            }
+          : {}),
+      },
       include: {
         cliente: true,
         representada: true,
@@ -15,6 +29,13 @@ export async function GET() {
 
     return NextResponse.json(vendas)
   } catch (error) {
+    if (error instanceof Error && error.message === "NAO_AUTENTICADO") {
+      return NextResponse.json(
+        { message: "Não autenticado" },
+        { status: 401 }
+      )
+    }
+
     console.error("Erro ao listar vendas:", error)
 
     return NextResponse.json(
@@ -26,6 +47,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const sessao = await exigirSessao()
     const body = await request.json()
 
     if (!body.clienteId) {
@@ -51,6 +73,12 @@ export async function POST(request: NextRequest) {
 
     const venda = await prisma.venda.create({
       data: {
+        escritorioId: sessao.escritorioId,
+        criadoPorId: sessao.usuarioId,
+        responsavelId:
+          sessao.perfil === "Preposto"
+            ? sessao.usuarioId
+            : body.responsavelId || sessao.usuarioId,
         data: new Date(body.data),
         clienteId: body.clienteId,
         representadaId: body.representadaId,
@@ -68,6 +96,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(venda, { status: 201 })
   } catch (error) {
+    if (error instanceof Error && error.message === "NAO_AUTENTICADO") {
+      return NextResponse.json(
+        { message: "Não autenticado" },
+        { status: 401 }
+      )
+    }
+
     console.error("Erro ao criar venda:", error)
 
     return NextResponse.json(

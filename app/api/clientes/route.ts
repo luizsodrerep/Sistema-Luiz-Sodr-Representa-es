@@ -1,9 +1,32 @@
 ﻿import { prisma } from "@/lib/prisma"
+import { exigirSessao } from "@/lib/auth/server"
 import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
+    const sessao = await exigirSessao()
+
     const clientes = await prisma.cliente.findMany({
+      where: {
+        escritorioId: sessao.escritorioId,
+        ...(sessao.perfil === "Preposto"
+          ? {
+              OR: [
+                {
+                  responsavelPrincipalId: sessao.usuarioId,
+                },
+                {
+                  participantes: {
+                    some: {
+                      usuarioId: sessao.usuarioId,
+                      ativa: true,
+                    },
+                  },
+                },
+              ],
+            }
+          : {}),
+      },
       orderBy: {
         razaoSocial: "asc",
       },
@@ -11,6 +34,13 @@ export async function GET() {
 
     return NextResponse.json(clientes)
   } catch (error) {
+    if (error instanceof Error && error.message === "NAO_AUTENTICADO") {
+      return NextResponse.json(
+        { message: "Não autenticado" },
+        { status: 401 }
+      )
+    }
+
     console.error("Erro ao listar clientes:", error)
 
     return NextResponse.json(
@@ -22,6 +52,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const sessao = await exigirSessao()
     const body = await request.json()
 
     if (!body.razaoSocial || body.razaoSocial.trim() === "") {
@@ -58,6 +89,13 @@ export async function POST(request: Request) {
 
     const cliente = await prisma.cliente.create({
       data: {
+        escritorioId: sessao.escritorioId,
+        originadoPorId: sessao.usuarioId,
+        responsavelPrincipalId:
+          sessao.perfil === "Preposto"
+            ? sessao.usuarioId
+            : body.responsavelPrincipalId || sessao.usuarioId,
+
         codigo: codigoCliente,
 
         razaoSocial: body.razaoSocial,
@@ -85,6 +123,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json(cliente, { status: 201 })
   } catch (error) {
+    if (error instanceof Error && error.message === "NAO_AUTENTICADO") {
+      return NextResponse.json(
+        { message: "Não autenticado" },
+        { status: 401 }
+      )
+    }
+
     console.error("Erro ao cadastrar cliente:", error)
 
     return NextResponse.json(
