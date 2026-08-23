@@ -41,7 +41,10 @@ A arquitetura deve preservar:
 - financeiro;
 - obrigações;
 - interações;
-- auditoria.
+- auditoria;
+- autenticação;
+- autorização;
+- isolamento de dados por usuário.
 
 ---
 
@@ -68,7 +71,7 @@ Usuários do escritório podem possuir:
 - atuação por região;
 - histórico próprio.
 
-O sistema deve suportar Luiz, Paula e futuros prepostos sem depender de estruturas fixas.
+O sistema deve suportar Diretor, Administrativo e futuros Prepostos sem depender de estruturas fixas.
 
 ---
 
@@ -80,6 +83,8 @@ O sistema deve suportar Luiz, Paula e futuros prepostos sem depender de estrutur
 - PostgreSQL
 - Tailwind CSS
 - Windows
+- bcryptjs
+- jose
 - Projeto local prioritário antes de qualquer expansão para nuvem
 
 Não atualizar Next.js, Prisma ou outras dependências estruturais sem necessidade técnica comprovada.
@@ -116,6 +121,8 @@ Não executar ou orientar automaticamente:
 - alteração de schema;
 - migration;
 - upgrade de dependências;
+- npm audit fix;
+- npm audit fix --force;
 
 sem validar o estado técnico antes.
 
@@ -159,13 +166,29 @@ Branch:
 
 Commit funcional validado mais recente:
 
+`53c41c23ab310b8f10fd0e4aec85205c0ca8ff32`
+
+Mensagem:
+
+`feat: adiciona autenticacao e controle de acesso`
+
+Esse commit foi enviado com sucesso ao GitHub em 23/08/2026.
+
+Checkpoint funcional anterior:
+
 `6dcd74a25dfc8523c2e25ddcafb524c5bd3a1631`
 
 Mensagem:
 
 `feat: conclui estrutura funcional de representadas`
 
-Esse commit foi enviado com sucesso ao GitHub em 22/08/2026.
+Checkpoint documental anterior:
+
+`5ee92f0`
+
+Mensagem:
+
+`docs: atualiza checkpoint e estado de representadas`
 
 Checkpoint técnico anterior relevante:
 
@@ -175,13 +198,11 @@ Mensagem:
 
 `checkpoint: estrutura integrada CRM e correcoes TypeScript`
 
-O commit documental posterior `15d90e0...` adicionou o documento mestre sem alterar o código funcional.
-
 ---
 
 ## 10. Estado de validação técnica atual
 
-Última validação antes do checkpoint `6dcd74a`:
+Última validação antes do checkpoint `53c41c2`:
 
 `npx tsc --noEmit`
 
@@ -198,9 +219,23 @@ Resultado:
 - build concluído com sucesso;
 - Next.js 15.2.4;
 - `Compiled successfully`;
-- 35/35 páginas estáticas geradas;
+- 42/42 páginas estáticas geradas;
 - rotas dinâmicas processadas;
-- APIs processadas.
+- APIs processadas;
+- Middleware compilado com 38.8 kB.
+
+O primeiro build do lote apresentou dois pontos:
+
+1. warnings do `jose` relacionados a `CompressionStream` e `DecompressionStream` no Edge Runtime;
+2. erro de `useSearchParams()` sem `Suspense` na página `/acesso-negado`.
+
+A página `/acesso-negado` foi corrigida com `Suspense`.
+
+No build final:
+
+- o build foi concluído com sucesso;
+- o erro de `/acesso-negado` desapareceu;
+- os warnings anteriores do `jose` não reapareceram.
 
 Observação:
 
@@ -227,7 +262,7 @@ Depois das correções sucessivas:
 
 Estado atual:
 
-0 erros TypeScript no checkpoint `6dcd74a`.
+0 erros TypeScript no checkpoint `53c41c2`.
 
 ---
 
@@ -340,6 +375,12 @@ A migration oficial continua sendo:
 `prisma/migrations/20260821213558_estrutura_integrada_crm/migration.sql`
 
 Não tratar `proposed_schema_diff.sql` como migration oficial, não executá-lo e não adicioná-lo ao Git sem nova validação técnica explícita.
+
+Estado após o checkpoint `53c41c2`:
+
+`?? prisma/proposed_schema_diff.sql`
+
+Isso é proposital.
 
 ---
 
@@ -489,7 +530,7 @@ Decisão funcional registrada em 22/08/2026:
 - Conta 01 será a principal/prioritária;
 - Conta 01 será normalmente destinada a recebimentos de comissão com NF;
 - Conta 02 será alternativa normalmente destinada a recebimentos sem NF;
-- Conta 03 será uma opção adicional disponível ao diretor do escritório;
+- Conta 03 será uma opção adicional disponível ao Diretor do escritório;
 - as três contas podem permanecer cadastradas mesmo quando apenas uma estiver recebendo naquele momento;
 - a arquitetura deve permitir no futuro dividir o recebimento de uma comissão entre duas ou três contas;
 - a ordem 01/02/03 deve ser estável e não depender apenas da ordem visual da consulta;
@@ -510,31 +551,351 @@ Antes de alterar Prisma, migrations ou banco, deve existir validação explícit
 
 `Representada.escritorioId` é opcional no schema atual.
 
-O cadastro atual de representadas ainda precisa ser auditado para garantir o vínculo correto com o escritório antes de liberar cadastro completo de contas bancárias a partir do módulo Representadas.
+A auditoria pelo Prisma Studio confirmou em 22/08/2026:
+
+- Representada: 3 registros;
+- ContratoRepresentada: 1;
+- RegraComercialRepresentada: 1;
+- ContaBancaria: 0;
+- RepresentadaContaRecebimento: 0;
+- EmpresaEscritorio: 0;
+- Escritorio: 0;
+- Usuario: 0.
+
+Portanto, atualmente ainda não existe um `Escritorio` real no banco para ser usado como raiz institucional.
+
+O setup inicial criado no checkpoint `53c41c2` resolverá essa raiz posteriormente.
 
 Não criar conta bancária escolhendo ou presumindo um escritório arbitrariamente.
 
-O próximo trabalho estrutural deve resolver essa origem de `escritorioId` de forma determinística.
+---
+
+## 19. Autenticação e autorização — checkpoint 53c41c2
+
+Foi criado um lote estrutural de autenticação e controle de acesso.
+
+Dependências adicionadas:
+
+- `bcryptjs`
+- `jose`
+
+`AUTH_SECRET` foi configurado localmente no `.env.local`.
+
+O valor do `AUTH_SECRET` nunca deve ser enviado para conversas, GitHub ou documentação pública.
+
+### 19.1 Infraestrutura criada
+
+Arquivos:
+
+- `lib/auth/session.ts`
+- `lib/auth/server.ts`
+- `lib/auth/permissions.ts`
+- `middleware.ts`
+
+### 19.2 APIs de autenticação
+
+Criadas:
+
+- `app/api/auth/login/route.ts`
+- `app/api/auth/logout/route.ts`
+- `app/api/auth/me/route.ts`
+- `app/api/auth/setup-inicial/route.ts`
+
+### 19.3 Telas
+
+Criadas:
+
+- `app/login/page.tsx`
+- `app/setup-inicial/page.tsx`
+- `app/acesso-negado/page.tsx`
+
+Criado também:
+
+- `components/auth/user-session-menu.tsx`
+
+O componente foi integrado em:
+
+- `app/layout.tsx`
+
+### 19.4 Login
+
+A API de login suporta:
+
+- login por e-mail;
+- login por identificador/login;
+- senha com bcrypt;
+- bloqueio de usuário inativo;
+- bloqueio de usuário sem senha configurada;
+- validação de perfil;
+- cookie HttpOnly;
+- SameSite Lax;
+- cookie Secure em produção;
+- atualização de `ultimoAcessoEm`.
+
+### 19.5 Setup inicial
+
+A API e página de setup inicial estão prontas para criar:
+
+- primeiro `Escritorio`;
+- primeiro usuário `Diretor`;
+- usuário `Administrativo` opcional;
+- senha armazenada como hash;
+- login automático do Diretor após setup.
+
+Proteção:
+
+O setup somente funciona enquanto:
+
+- total de `Escritorio` = 0;
+- total de `Usuario` = 0.
+
+Depois disso, retorna conflito e não cria uma segunda raiz acidentalmente.
+
+IMPORTANTE:
+
+O setup inicial REAL ainda NÃO foi executado.
+
+Nenhum usuário real foi criado por esse fluxo até o checkpoint `53c41c2`.
 
 ---
 
-## 19. Front-end — ordem recomendada
+## 20. Perfis e política de segurança
 
-Ordem funcional recomendada:
+Perfis definidos:
 
-1. Finalizar Representadas
-2. Vendas
-3. Interações
-4. Financeiro
-5. Contabilidade
-6. Agenda
-7. Dashboard
+- Diretor
+- Administrativo
+- Preposto
 
-Alterações visuais devem ser feitas somente depois da validação funcional do módulo correspondente.
+A segurança deve trabalhar com duas camadas:
+
+1. RBAC — permissão por perfil/recurso/ação;
+2. escopo de dados — permissão sobre registros específicos.
+
+Esconder botões não é considerado segurança suficiente.
+
+Toda API sensível deve validar:
+
+- sessão;
+- perfil;
+- ação;
+- escritório;
+- escopo do registro.
+
+### 20.1 Diretor
+
+Diretor possui acesso integral ao sistema.
+
+Inclui:
+
+- dados comerciais;
+- financeiro;
+- contabilidade;
+- usuários;
+- configurações;
+- auditoria;
+- contas bancárias;
+- gestão estrutural.
+
+### 20.2 Administrativo
+
+Administrativo possui acesso operacional ampliado.
+
+Inclui:
+
+- clientes;
+- representadas;
+- contratos;
+- regras comerciais;
+- contas de recebimento;
+- vendas;
+- interações;
+- agenda;
+- relatórios;
+- financeiro;
+- contabilidade.
+
+Não deve administrar:
+
+- usuários;
+- configurações estruturais;
+- auditoria administrativa;
+- permissões superiores.
+
+### 20.3 Preposto
+
+Preposto deve operar com princípio de mínimo privilégio.
+
+Não pode acessar níveis superiores de Diretoria ou Administração.
+
+Não deve acessar:
+
+- contas bancárias;
+- contas de recebimento;
+- financeiro;
+- contabilidade;
+- usuários;
+- configurações;
+- auditoria;
+- dados globais do escritório.
+
+Pode acessar somente o necessário para sua atividade:
+
+- seu dashboard;
+- sua carteira;
+- representadas necessárias à sua função;
+- regras comerciais necessárias à venda;
+- suas vendas;
+- suas interações;
+- sua agenda;
+- seus relatórios;
+- consultas relacionadas à própria função.
 
 ---
 
-## 20. Regra para novas conversas
+## 21. Escopo de dados do Preposto
+
+O middleware bloqueia áreas e ações, mas NÃO substitui o filtro de registros nas APIs.
+
+Próxima etapa obrigatória:
+
+Aplicar isolamento por `usuarioId` nas APIs acessíveis ao Preposto.
+
+### 21.1 Vendas
+
+Preposto deve visualizar registros quando:
+
+- `responsavelId = usuario logado`;
+- OU `criadoPorId = usuario logado`.
+
+Não deve visualizar vendas globais do escritório.
+
+### 21.2 Clientes
+
+Preposto deve visualizar clientes quando:
+
+- `responsavelPrincipalId = usuario logado`;
+- OU existir `ClienteParticipacao` ativa para o usuário.
+
+### 21.3 Interações
+
+Preposto deve visualizar registros quando:
+
+- `responsavelId = usuario logado`;
+- OU `criadoPorId = usuario logado`.
+
+### 21.4 Agenda
+
+Agenda de Preposto deve ser derivada somente dos registros relacionados ao próprio usuário.
+
+### 21.5 Relatórios
+
+Relatórios do Preposto devem ser calculados somente sobre seu universo filtrado.
+
+Nunca usar dados globais do escritório em relatório de usuário simples.
+
+---
+
+## 22. Middleware
+
+O middleware atual valida:
+
+- presença de sessão;
+- validade criptográfica do token;
+- páginas públicas;
+- APIs públicas de autenticação;
+- recurso solicitado;
+- perfil;
+- método HTTP convertido em ação.
+
+Mapeamento:
+
+- GET → ver
+- HEAD → ver
+- OPTIONS → ver
+- POST → criar
+- PUT → editar
+- PATCH → editar
+- DELETE → excluir
+
+Resultados:
+
+- sem autenticação em API → 401;
+- sessão inválida → 401;
+- operação sem permissão → 403;
+- página sem permissão → `/acesso-negado`.
+
+O middleware não deve ser tratado como único controle de segurança de dados.
+
+---
+
+## 23. Vulnerabilidades npm
+
+Após instalar `bcryptjs` e `jose`, o npm informou:
+
+- 8 vulnerabilidades;
+- 2 moderate;
+- 5 high;
+- 1 critical.
+
+Não foi executado:
+
+- `npm audit fix`
+- `npm audit fix --force`
+
+Essas vulnerabilidades precisam ser auditadas em lote técnico próprio.
+
+Não aplicar correção automática sem analisar dependências afetadas e risco de breaking changes.
+
+---
+
+## 24. Identidade visual futura
+
+Foi registrada uma etapa futura exclusiva para identidade visual profissional.
+
+Essa etapa deve ocorrer depois de autenticação/segurança estarem estabilizadas e versionadas.
+
+Quando chegar o momento, solicitar o logotipo atual e demais materiais necessários.
+
+Escopo previsto:
+
+- logotipo;
+- marca do CRM;
+- página de login;
+- sidebar/cabeçalho;
+- dashboard;
+- favicon;
+- cores institucionais;
+- tipografia;
+- cards;
+- espaçamentos;
+- loading;
+- erros;
+- aplicação consistente da identidade em Clientes, Representadas e demais módulos.
+
+Não misturar redesign visual com lote de segurança ou migration estrutural.
+
+---
+
+## 25. Front-end — ordem recomendada
+
+Ordem funcional recomendada atual:
+
+1. Segurança e isolamento de dados
+2. Concluir Representadas / contas
+3. Vendas
+4. Interações
+5. Financeiro
+6. Contabilidade
+7. Agenda
+8. Dashboard
+9. Identidade visual profissional em lote próprio
+
+Alterações visuais amplas devem ser feitas somente depois da validação funcional e de segurança correspondente.
+
+---
+
+## 26. Regra para novas conversas
 
 Novas conversas podem ser abertas dentro deste mesmo projeto.
 
@@ -544,13 +905,13 @@ Ao iniciar nova conversa, usar como referência:
 
 Mensagem recomendada:
 
-“Leia o DOCUMENTO_MESTRE_CRM.md e continue exatamente do checkpoint registrado. Este documento é a fonte oficial de continuidade do projeto.”
+“Leia o DOCUMENTO_MESTRE_CRM.md no GitHub e continue exatamente do checkpoint registrado. Este documento é a fonte oficial de continuidade do projeto.”
 
 Não depender exclusivamente da memória automática.
 
 ---
 
-## 21. Memória e fontes oficiais
+## 27. Memória e fontes oficiais
 
 A continuidade oficial deve depender de:
 
@@ -563,64 +924,96 @@ O documento mestre deve ser atualizado em checkpoints relevantes.
 
 ---
 
-## 22. Estado atual do projeto
+## 28. Estado atual do projeto
 
 Estado técnico:
 
 ESTÁVEL PARA CONTINUAR O DESENVOLVIMENTO
 
-Validações do último lote:
+Último checkpoint funcional:
+
+`53c41c23ab310b8f10fd0e4aec85205c0ca8ff32`
+
+Validações:
 
 - TypeScript: OK — 0 erros
 - Build: OK
-- 35/35 páginas estáticas geradas no build
-- Migration integrada anterior: aplicada
-- Prisma Client: gerado
-- Git commit funcional: criado
+- 42/42 páginas estáticas geradas
+- Middleware: compilado
+- Login: infraestrutura criada
+- Logout: infraestrutura criada
+- Sessão: infraestrutura criada
+- Setup inicial: criado, mas ainda não executado
+- Permissões: matriz criada
+- Git commit: criado
 - GitHub push: concluído
-- Commit funcional: `6dcd74a25dfc8523c2e25ddcafb524c5bd3a1631`
 
 Ainda pendente:
 
+- isolamento de dados por usuário nas APIs;
+- execução segura do setup inicial;
+- criação real de Diretor e Administrativo;
+- testes funcionais de login/logout;
+- testes funcionais dos três perfis;
+- criação futura de Preposto de teste;
 - lint;
-- fechamento completo do submódulo de contas bancárias/recebimento;
-- vínculo seguro Representada → Escritório;
-- formalização da regra de contas 01/02/03;
+- auditoria das vulnerabilidades npm;
+- fechamento completo das contas bancárias/recebimento;
+- formalização de contas 01/02/03;
 - integração de regras comerciais com Vendas;
 - integração total de comissão;
 - integração total de faturamento;
 - integração total de financeiro;
-- auditoria funcional dos próximos módulos;
-- substituição de dados simulados por dados reais apenas após conclusão dos testes.
+- identidade visual futura;
+- substituição de dados fictícios por dados reais somente depois dos testes.
 
-Durante a fase atual, usar apenas dados fictícios para testes funcionais.
-
----
-
-## 23. Próximo passo recomendado
-
-Continuar no módulo Representadas antes de iniciar Vendas.
-
-Sequência imediata:
-
-1. Confirmar origem correta do `escritorioId` para representadas.
-2. Definir tecnicamente a modelagem das contas 01/02/03.
-3. Validar se a modelagem exige alteração de `schema.prisma`.
-4. Se exigir, realizar alteração e migration somente após validação explícita.
-5. Criar `POST`/edição necessários para cadastro de `ContaBancaria`.
-6. Integrar “Nova conta bancária” na tela de Contas de Recebimento.
-7. Aplicar limite de até 3 contas e regra da Conta 01 principal.
-8. Testar criação, edição, vínculo, inativação e futuro rateio.
-9. Validar `npx tsc --noEmit`.
-10. Validar `npm run build`.
-11. Conferir Git.
-12. Criar novo checkpoint Git/GitHub.
-13. Atualizar este documento.
-14. Somente então iniciar o módulo Vendas.
+Durante a fase atual, continuar utilizando dados fictícios.
 
 ---
 
-## 24. Regra de decisão técnica
+## 29. Próximo passo exato
+
+NÃO executar o setup inicial real ainda.
+
+NÃO criar usuários reais ainda.
+
+NÃO alterar Prisma agora.
+
+NÃO executar migration agora.
+
+NÃO executar `npm audit fix` agora.
+
+Próxima etapa:
+
+AUDITORIA E ISOLAMENTO DE DADOS DAS APIs ACESSÍVEIS AO PREPOSTO.
+
+Primeiro arquivo:
+
+`app/api/vendas/route.ts`
+
+Procedimento:
+
+1. Ler o arquivo completo atual.
+2. Identificar GET e POST existentes.
+3. Integrar `obterSessaoAtual` / sessão autenticada.
+4. Garantir `escritorioId` a partir da sessão.
+5. Para Diretor: acesso conforme regra integral.
+6. Para Administrativo: acesso operacional do escritório.
+7. Para Preposto: filtrar vendas próprias/atribuídas.
+8. Impedir Preposto de criar venda em nome de outro usuário.
+9. Preservar APIs existentes e regras comerciais.
+10. Validar TypeScript.
+11. Auditar `app/api/vendas/[id]/route.ts`.
+12. Depois repetir a estratégia em Clientes.
+13. Depois Interações.
+14. Depois Agenda/Relatórios.
+15. Somente quando o isolamento estiver validado, executar setup real.
+16. Testar Diretor / Administrativo / Preposto.
+17. Criar novo checkpoint.
+
+---
+
+## 30. Regra de decisão técnica
 
 Não alterar código apenas para silenciar erro.
 
@@ -637,11 +1030,13 @@ Evitar:
 - alteração estrutural sem necessidade;
 - mudança de banco sem validação;
 - reescrita desnecessária;
-- criação de campos sem regra de negócio definida.
+- criação de campos sem regra de negócio definida;
+- autorização somente visual;
+- APIs retornando dados globais para usuário de escopo restrito.
 
 ---
 
-## 25. Regra final
+## 31. Regra final
 
 O sistema deve evoluir preservando:
 
@@ -650,6 +1045,8 @@ O sistema deve evoluir preservando:
 - previsibilidade;
 - rastreabilidade;
 - estabilidade;
+- isolamento de dados;
+- princípio de mínimo privilégio;
 - baixo risco de regressão;
 - clareza para manutenção futura.
 
