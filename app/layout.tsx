@@ -4,10 +4,13 @@ import "@/app/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { AlertReminder } from "@/app/components/alert-reminder"
+import { UserSessionMenu } from "@/components/auth/user-session-menu"
 
 export const metadata = {
-  title: "CRM e Sistema de Gestão Comercial",
-  description: "Sistema completo de CRM e Gestão Comercial",
+  title:
+    "CRM e Sistema de Gestão Comercial",
+  description:
+    "Sistema completo de CRM e Gestão Comercial",
 }
 
 export default function RootLayout({
@@ -16,7 +19,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html
+      lang="pt-BR"
+      suppressHydrationWarning
+    >
       <body>
         <ThemeProvider
           attribute="class"
@@ -25,6 +31,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+
+          <UserSessionMenu />
 
           <Toaster />
 
