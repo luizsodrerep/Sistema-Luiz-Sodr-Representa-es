@@ -30,9 +30,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-
           <UserSessionMenu />
+
+          {children}
 
           <Toaster />
 

@@ -1,8 +1,18 @@
 "use client"
 
-import { use, useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { PageLayout } from "@/components/page-layout"
+import {
+  use,
+  useEffect,
+  useState,
+} from "react"
+import Link from "next/link"
+
+import {
+  PageLayout,
+} from "@/components/page-layout"
+import {
+  NavigationButtons,
+} from "@/components/navigation-buttons"
 import {
   Card,
   CardContent,
@@ -10,24 +20,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import {
-  ArrowLeft,
-  ArrowRight,
+  Button,
+} from "@/components/ui/button"
+
+import {
   AlertCircle,
+  ArrowRight,
   Building2,
   Calendar,
   CheckCircle2,
   ClipboardList,
+  Clock,
+  Factory,
   Loader2,
   Mail,
   MessageSquare,
   Pencil,
   Phone,
-  Trash2,
   User,
 } from "lucide-react"
-import Link from "next/link"
 
 type Cliente = {
   id: string
@@ -40,76 +52,193 @@ type Cliente = {
   cargo: string | null
 }
 
+type Representada = {
+  id: string
+  nome: string
+  cnpj: string | null
+  contatoPrincipal: string | null
+  emailPrincipal: string | null
+  telefonePrincipal: string | null
+  whatsappPrincipal: string | null
+}
+
+type UsuarioResumo = {
+  id: string
+  nome: string
+  perfil: string
+}
+
 type Interacao = {
   id: string
   data: string
+
   tipo: string
+
   assunto: string | null
   descricao: string | null
   resultado: string | null
   proximosPasso: string | null
-  clienteId: string
-  cliente: Cliente
+
+  proximoContatoEm: string | null
+  statusFollowUp: string
+
+  clienteId: string | null
+  representadaId: string | null
+
+  cliente: Cliente | null
+  representada: Representada | null
+
+  criadoPor: UsuarioResumo | null
+  responsavel: UsuarioResumo | null
+
   criadoEm: string
   atualizadoEm: string
 }
 
 const corTipo: Record<string, string> = {
-  WhatsApp: "bg-green-100 text-green-800",
-  "E-mail": "bg-blue-100 text-blue-800",
-  Visita: "bg-orange-100 text-orange-800",
-  Ligação: "bg-purple-100 text-purple-800",
-  Outro: "bg-gray-100 text-gray-800",
+  WhatsApp:
+    "bg-green-100 text-green-800",
+
+  "E-mail":
+    "bg-blue-100 text-blue-800",
+
+  Visita:
+    "bg-orange-100 text-orange-800",
+
+  Ligação:
+    "bg-purple-100 text-purple-800",
+
+  Outro:
+    "bg-gray-100 text-gray-800",
 }
 
-function formatarData(dataISO: string) {
-  const d = new Date(dataISO)
+function formatarData(
+  valor: string | null
+) {
+  if (!valor) {
+    return "—"
+  }
 
-  return (
-    d.toLocaleDateString("pt-BR") +
-    " às " +
-    d.toLocaleTimeString("pt-BR", {
+  const data =
+    new Date(valor)
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return "—"
+  }
+
+  return data.toLocaleString(
+    "pt-BR",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    })
+    }
   )
+}
+
+function foiEditada(
+  criadoEm: string,
+  atualizadoEm: string
+) {
+  const criado =
+    new Date(
+      criadoEm
+    ).getTime()
+
+  const atualizado =
+    new Date(
+      atualizadoEm
+    ).getTime()
+
+  if (
+    Number.isNaN(criado) ||
+    Number.isNaN(atualizado)
+  ) {
+    return false
+  }
+
+  /*
+   * Evita marcar como editada apenas
+   * pela diferença mínima natural
+   * existente no momento da criação.
+   */
+  return atualizado - criado > 2000
 }
 
 export default function InteracaoDetalhesPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{
+    id: string
+  }>
 }) {
   const { id } = use(params)
-  const router = useRouter()
 
-  const [interacao, setInteracao] = useState<Interacao | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [erro, setErro] = useState<string | null>(null)
-  const [excluindo, setExcluindo] = useState(false)
-  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
+  const [
+    interacao,
+    setInteracao,
+  ] =
+    useState<Interacao | null>(
+      null
+    )
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true)
+
+  const [
+    erro,
+    setErro,
+  ] =
+    useState<string | null>(
+      null
+    )
 
   useEffect(() => {
     async function carregar() {
-      setLoading(true)
-      setErro(null)
-
       try {
-        const res = await fetch(`/api/interacoes/${id}`)
+        setLoading(true)
+        setErro(null)
 
-        if (res.status === 404) {
-          setErro("Interação não encontrada.")
+        const response =
+          await fetch(
+            `/api/interacoes/${id}`,
+            {
+              method: "GET",
+              cache: "no-store",
+            }
+          )
+
+        const data =
+          await response
+            .json()
+            .catch(
+              () => null
+            )
+
+        if (!response.ok) {
+          setErro(
+            data?.message ||
+              "Não foi possível carregar a interação."
+          )
+
           return
         }
 
-        if (!res.ok) {
-          throw new Error()
-        }
-
-        const data = await res.json()
-        setInteracao(data)
+        setInteracao(
+          data
+        )
       } catch {
-        setErro("Erro ao carregar interação. Tente novamente.")
+        setErro(
+          "Erro ao carregar interação. Tente novamente."
+        )
       } finally {
         setLoading(false)
       }
@@ -118,60 +247,35 @@ export default function InteracaoDetalhesPage({
     carregar()
   }, [id])
 
-  async function handleExcluir() {
-    if (!confirmandoExclusao) {
-      setConfirmandoExclusao(true)
-      return
-    }
-
-    setExcluindo(true)
-
-    try {
-      const res = await fetch(`/api/interacoes/${id}`, {
-        method: "DELETE",
-      })
-
-      if (!res.ok) {
-        throw new Error()
-      }
-
-      router.push("/interacoes")
-    } catch {
-      setErro("Erro ao excluir interação.")
-      setExcluindo(false)
-      setConfirmandoExclusao(false)
-    }
-  }
-
   if (loading) {
     return (
       <PageLayout title="Carregando...">
-        <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground text-xxs">
+        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
+
           Carregando interação...
         </div>
       </PageLayout>
     )
   }
 
-  if (erro && !interacao) {
+  if (
+    erro &&
+    !interacao
+  ) {
     return (
-      <PageLayout title="Erro">
-        <div className="flex flex-col items-center justify-center py-16 gap-3 text-xxs">
-          <AlertCircle className="h-6 w-6 text-red-500" />
+      <PageLayout title="Interação">
+        <NavigationButtons
+          backLabel="Voltar para Interações"
+          backHref="/interacoes"
+        />
 
-          <p className="text-red-500">{erro}</p>
+        <div className="mt-4 flex flex-col items-center justify-center gap-3 rounded-md border border-red-200 bg-red-50 p-8 text-sm text-red-700">
+          <AlertCircle className="h-6 w-6" />
 
-          <Link href="/interacoes">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xxs"
-            >
-              <ArrowLeft className="h-3 w-3 mr-1" />
-              Voltar para Interações
-            </Button>
-          </Link>
+          <p>
+            {erro}
+          </p>
         </div>
       </PageLayout>
     )
@@ -181,365 +285,595 @@ export default function InteracaoDetalhesPage({
     return null
   }
 
+  const editada =
+    foiEditada(
+      interacao.criadoEm,
+      interacao.atualizadoEm
+    )
+
+  const origemCliente =
+    interacao.cliente !== null
+
+  const nomeOrigem =
+    interacao.cliente
+      ? interacao.cliente
+          .nomeFantasia ||
+        interacao.cliente
+          .razaoSocial
+      : interacao
+          .representada
+        ? interacao
+            .representada
+            .nome
+        : "Origem não disponível"
+
   return (
     <PageLayout title="Detalhes da Interação">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <Link href="/interacoes">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-7 w-7"
-            >
-              <ArrowLeft className="h-3 w-3" />
-            </Button>
-          </Link>
+      <NavigationButtons
+        backLabel="Voltar para Interações"
+        backHref="/interacoes"
+      />
 
-          <div className="flex items-center gap-1">
-            <Building2 className="h-4 w-4 text-primary" />
+      <div className="mb-3 mt-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          {origemCliente ? (
+            <Building2 className="h-5 w-5 shrink-0 text-blue-600" />
+          ) : (
+            <Factory className="h-5 w-5 shrink-0 text-orange-600" />
+          )}
 
-            <span className="text-xs-plus font-medium">
-              {interacao.cliente.nomeFantasia ||
-                interacao.cliente.razaoSocial}
-            </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">
+              {nomeOrigem}
+            </p>
+
+            <p className="text-xs text-muted-foreground">
+              {origemCliente
+                ? "Cliente"
+                : "Representada"}
+            </p>
           </div>
 
           <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xxxs font-semibold ${
-              corTipo[interacao.tipo] ??
+            className={`rounded-full px-2 py-1 text-xs font-medium ${
+              corTipo[
+                interacao.tipo
+              ] ??
               "bg-gray-100 text-gray-800"
             }`}
           >
             {interacao.tipo}
           </span>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <Link href={`/interacoes/${id}/editar`}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xxs gap-1"
-            >
-              <Pencil className="h-3 w-3" />
-              Editar
-            </Button>
-          </Link>
-
-          {confirmandoExclusao ? (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="destructive"
-                size="sm"
-                className="h-7 text-xxs"
-                onClick={handleExcluir}
-                disabled={excluindo}
-              >
-                {excluindo ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  "Sim, excluir"
-                )}
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xxs"
-                onClick={() => setConfirmandoExclusao(false)}
-                disabled={excluindo}
-              >
-                Cancelar
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xxs gap-1 text-red-600 hover:text-red-700 hover:border-red-300"
-              onClick={handleExcluir}
-            >
-              <Trash2 className="h-3 w-3" />
-              Excluir
-            </Button>
+          {editada && (
+            <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
+              Editada
+            </span>
           )}
         </div>
+
+        <Link
+          href={`/interacoes/${id}/editar`}
+        >
+          <Button
+            variant="outline"
+            size="sm"
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+
+            Editar
+          </Button>
+        </Link>
       </div>
 
       {erro && (
-        <div className="flex items-center gap-2 p-2 mb-3 bg-red-50 border border-red-200 rounded-sm text-red-700 text-xxs">
-          <AlertCircle className="h-3 w-3 shrink-0" />
+        <div className="mb-3 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+
           {erro}
         </div>
       )}
 
-      <div className="grid gap-2 md:grid-cols-3">
-        <Card className="card-container md:col-span-2">
-          <CardHeader className="card-header">
-            <CardTitle className="card-title">
-              Detalhes da Interação
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>
+              Registro da Interação
             </CardTitle>
 
-            <CardDescription className="card-description">
-              Registrada em {formatarData(interacao.criadoEm)}
+            <CardDescription>
+              Histórico comercial preservado.
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="card-content space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <p className="text-xxs text-muted-foreground">
-                  Data e Hora
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Data e hora
                 </p>
 
-                <p className="text-xxs font-medium flex items-center gap-1">
-                  <Calendar className="h-3 w-3 text-muted-foreground" />
-                  {formatarData(interacao.data)}
+                <p className="mt-1 flex items-center gap-1 text-sm font-medium">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+
+                  {formatarData(
+                    interacao.data
+                  )}
                 </p>
               </div>
 
-              <div className="space-y-1">
-                <p className="text-xxs text-muted-foreground">
-                  Tipo
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Registrado por
                 </p>
 
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xxs font-medium ${
-                    corTipo[interacao.tipo] ??
-                    "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  {interacao.tipo}
-                </span>
+                <p className="mt-1 text-sm font-medium">
+                  {interacao.criadoPor
+                    ?.nome ||
+                    "Usuário não identificado"}
+                </p>
+
+                <p className="text-xs text-muted-foreground">
+                  {interacao.criadoPor
+                    ?.perfil ||
+                    "—"}
+                </p>
               </div>
             </div>
 
             {interacao.assunto && (
-              <div className="space-y-1">
-                <p className="text-xxs text-muted-foreground">
+              <div>
+                <p className="text-xs text-muted-foreground">
                   Assunto
                 </p>
 
-                <p className="text-xxs font-medium">
-                  {interacao.assunto}
+                <p className="mt-1 text-sm font-medium">
+                  {
+                    interacao.assunto
+                  }
                 </p>
               </div>
             )}
 
             {interacao.descricao && (
-              <div className="space-y-1">
-                <p className="text-xxs text-muted-foreground">
+              <div>
+                <p className="text-xs text-muted-foreground">
                   Descrição
                 </p>
 
-                <p className="text-xxs border rounded-sm p-2 bg-muted/10 whitespace-pre-wrap">
-                  {interacao.descricao}
-                </p>
+                <div className="mt-1 whitespace-pre-wrap rounded-md border bg-muted/10 p-3 text-sm">
+                  {
+                    interacao.descricao
+                  }
+                </div>
               </div>
             )}
 
             {interacao.resultado && (
-              <div className="space-y-1">
-                <p className="text-xxs text-muted-foreground flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+              <div>
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+
                   Resultado
                 </p>
 
-                <p className="text-xxs border rounded-sm p-2 bg-green-50 whitespace-pre-wrap">
-                  {interacao.resultado}
-                </p>
+                <div className="mt-1 whitespace-pre-wrap rounded-md border bg-green-50 p-3 text-sm">
+                  {
+                    interacao.resultado
+                  }
+                </div>
               </div>
             )}
 
             {interacao.proximosPasso && (
-              <div className="space-y-1">
-                <p className="text-xxs text-muted-foreground flex items-center gap-1">
-                  <ArrowRight className="h-3 w-3 text-blue-500" />
+              <div>
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <ArrowRight className="h-4 w-4 text-blue-600" />
+
                   Próximos Passos
                 </p>
 
-                <p className="text-xxs border rounded-sm p-2 bg-blue-50 whitespace-pre-wrap">
-                  {interacao.proximosPasso}
+                <div className="mt-1 whitespace-pre-wrap rounded-md border bg-blue-50 p-3 text-sm">
+                  {
+                    interacao
+                      .proximosPasso
+                  }
+                </div>
+              </div>
+            )}
+
+            {interacao
+              .proximoContatoEm && (
+              <div>
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="h-4 w-4 text-orange-600" />
+
+                  Próximo acompanhamento
                 </p>
+
+                <div className="mt-1 rounded-md border bg-amber-50 p-3">
+                  <p className="text-sm font-medium">
+                    {formatarData(
+                      interacao
+                        .proximoContatoEm
+                    )}
+                  </p>
+
+                  <p className="text-xs text-muted-foreground">
+                    Status:{" "}
+                    {
+                      interacao
+                        .statusFollowUp
+                    }
+                  </p>
+
+                  {interacao
+                    .responsavel && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Responsável:{" "}
+                      {
+                        interacao
+                          .responsavel
+                          .nome
+                      }{" "}
+                      —{" "}
+                      {
+                        interacao
+                          .responsavel
+                          .perfil
+                      }
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
             {!interacao.assunto &&
               !interacao.descricao &&
               !interacao.resultado &&
-              !interacao.proximosPasso && (
-                <p className="text-xxs text-muted-foreground italic">
+              !interacao.proximosPasso &&
+              !interacao.proximoContatoEm && (
+                <p className="text-sm italic text-muted-foreground">
                   Nenhum detalhe adicional registrado.
                 </p>
               )}
 
-            <div className="pt-2 border-t">
-              <p className="text-xxxs text-muted-foreground">
-                Última atualização:{" "}
-                {formatarData(interacao.atualizadoEm)}
+            <div className="border-t pt-3 text-xs text-muted-foreground">
+              <p>
+                Criada em:{" "}
+                {formatarData(
+                  interacao.criadoEm
+                )}
               </p>
+
+              {editada && (
+                <p className="mt-1 font-medium text-amber-700">
+                  Editada em:{" "}
+                  {formatarData(
+                    interacao
+                      .atualizadoEm
+                  )}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="card-container">
-          <CardHeader className="card-header">
-            <CardTitle className="card-title">
-              Dados do Cliente
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {origemCliente
+                ? "Dados do Cliente"
+                : "Dados da Representada"}
             </CardTitle>
 
-            <CardDescription className="card-description">
-              Informações de contato
+            <CardDescription>
+              Informações relacionadas ao registro.
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="card-content space-y-2">
-            <div className="space-y-1">
-              <p className="text-xxs text-muted-foreground">
-                Empresa
-              </p>
+          <CardContent className="space-y-3">
+            {interacao.cliente && (
+              <>
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Empresa
+                  </p>
 
-              <p className="text-xxs font-medium">
-                {interacao.cliente.razaoSocial}
-              </p>
+                  <p className="text-sm font-medium">
+                    {
+                      interacao
+                        .cliente
+                        .razaoSocial
+                    }
+                  </p>
 
-              {interacao.cliente.nomeFantasia && (
-                <p className="text-xxs text-muted-foreground">
-                  {interacao.cliente.nomeFantasia}
-                </p>
-              )}
-            </div>
-
-            {interacao.cliente.contato && (
-              <div className="space-y-1">
-                <p className="text-xxs text-muted-foreground">
-                  Contato
-                </p>
-
-                <p className="text-xxs font-medium">
-                  {interacao.cliente.contato}
-
-                  {interacao.cliente.cargo && (
-                    <span className="text-muted-foreground">
-                      {" "}
-                      — {interacao.cliente.cargo}
-                    </span>
+                  {interacao
+                    .cliente
+                    .nomeFantasia && (
+                    <p className="text-xs text-muted-foreground">
+                      {
+                        interacao
+                          .cliente
+                          .nomeFantasia
+                      }
+                    </p>
                   )}
-                </p>
-              </div>
-            )}
-
-            {interacao.cliente.whatsapp && (
-              <div className="space-y-1">
-                <p className="text-xxs text-muted-foreground">
-                  WhatsApp
-                </p>
-
-                <div className="flex items-center gap-1">
-                  <p className="text-xxs">
-                    {interacao.cliente.whatsapp}
-                  </p>
-
-                  <a
-                    href={`https://wa.me/55${interacao.cliente.whatsapp.replace(
-                      /\D/g,
-                      ""
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 w-5 p-0"
-                    >
-                      <MessageSquare className="h-3 w-3 text-green-500" />
-                    </Button>
-                  </a>
                 </div>
-              </div>
-            )}
 
-            {interacao.cliente.telefone && (
-              <div className="space-y-1">
-                <p className="text-xxs text-muted-foreground">
-                  Telefone
-                </p>
+                {interacao
+                  .cliente
+                  .contato && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Contato
+                    </p>
 
-                <div className="flex items-center gap-1">
-                  <p className="text-xxs">
-                    {interacao.cliente.telefone}
-                  </p>
+                    <p className="text-sm">
+                      {
+                        interacao
+                          .cliente
+                          .contato
+                      }
 
-                  <a
-                    href={`tel:${interacao.cliente.telefone.replace(
-                      /\D/g,
-                      ""
-                    )}`}
-                  >
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 w-5 p-0"
-                    >
-                      <Phone className="h-3 w-3 text-primary" />
-                    </Button>
-                  </a>
-                </div>
-              </div>
-            )}
+                      {interacao
+                        .cliente
+                        .cargo
+                        ? ` — ${interacao.cliente.cargo}`
+                        : ""}
+                    </p>
+                  </div>
+                )}
 
-            {interacao.cliente.email && (
-              <div className="space-y-1">
-                <p className="text-xxs text-muted-foreground">
-                  E-mail
-                </p>
+                {interacao
+                  .cliente
+                  .whatsapp && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      WhatsApp
+                    </p>
 
-                <div className="flex items-center gap-1">
-                  <p className="text-xxs truncate">
-                    {interacao.cliente.email}
-                  </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm">
+                        {
+                          interacao
+                            .cliente
+                            .whatsapp
+                        }
+                      </p>
 
-                  <a href={`mailto:${interacao.cliente.email}`}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 w-5 p-0"
-                    >
-                      <Mail className="h-3 w-3 text-blue-500" />
-                    </Button>
-                  </a>
-                </div>
-              </div>
-            )}
+                      <a
+                        href={`https://wa.me/55${interacao.cliente.whatsapp.replace(
+                          /\D/g,
+                          ""
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <MessageSquare className="h-4 w-4 text-green-600" />
+                      </a>
+                    </div>
+                  </div>
+                )}
 
-            <div className="pt-2">
-              <Link href={`/clientes/${interacao.cliente.id}`}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full h-7 text-xxs gap-1"
+                {interacao
+                  .cliente
+                  .telefone && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Telefone
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm">
+                        {
+                          interacao
+                            .cliente
+                            .telefone
+                        }
+                      </p>
+
+                      <a
+                        href={`tel:${interacao.cliente.telefone.replace(
+                          /\D/g,
+                          ""
+                        )}`}
+                      >
+                        <Phone className="h-4 w-4 text-blue-600" />
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {interacao
+                  .cliente
+                  .email && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      E-mail
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm">
+                        {
+                          interacao
+                            .cliente
+                            .email
+                        }
+                      </p>
+
+                      <a
+                        href={`mailto:${interacao.cliente.email}`}
+                      >
+                        <Mail className="h-4 w-4 text-blue-600" />
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                <Link
+                  href={`/clientes/${interacao.cliente.id}`}
                 >
-                  <User className="h-3 w-3" />
-                  Ver Cadastro Completo
-                </Button>
-              </Link>
-            </div>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <User className="mr-2 h-4 w-4" />
 
-            <div className="pt-1">
-              <Link
-                href={`/interacoes/nova?clienteId=${interacao.cliente.id}`}
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full h-7 text-xxs gap-1"
-                >
-                  <ClipboardList className="h-3 w-3" />
-                  Nova Interação com este Cliente
-                </Button>
-              </Link>
-            </div>
+                    Ver Cliente
+                  </Button>
+                </Link>
+              </>
+            )}
+
+            {interacao.representada && (
+              <>
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Representada
+                  </p>
+
+                  <p className="text-sm font-medium">
+                    {
+                      interacao
+                        .representada
+                        .nome
+                    }
+                  </p>
+                </div>
+
+                {interacao
+                  .representada
+                  .cnpj && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      CNPJ
+                    </p>
+
+                    <p className="text-sm">
+                      {
+                        interacao
+                          .representada
+                          .cnpj
+                      }
+                    </p>
+                  </div>
+                )}
+
+                {interacao
+                  .representada
+                  .contatoPrincipal && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Contato
+                    </p>
+
+                    <p className="text-sm">
+                      {
+                        interacao
+                          .representada
+                          .contatoPrincipal
+                      }
+                    </p>
+                  </div>
+                )}
+
+                {interacao
+                  .representada
+                  .whatsappPrincipal && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      WhatsApp
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm">
+                        {
+                          interacao
+                            .representada
+                            .whatsappPrincipal
+                        }
+                      </p>
+
+                      <a
+                        href={`https://wa.me/55${interacao.representada.whatsappPrincipal.replace(
+                          /\D/g,
+                          ""
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <MessageSquare className="h-4 w-4 text-green-600" />
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {interacao
+                  .representada
+                  .telefonePrincipal && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Telefone
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm">
+                        {
+                          interacao
+                            .representada
+                            .telefonePrincipal
+                        }
+                      </p>
+
+                      <a
+                        href={`tel:${interacao.representada.telefonePrincipal.replace(
+                          /\D/g,
+                          ""
+                        )}`}
+                      >
+                        <Phone className="h-4 w-4 text-blue-600" />
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {interacao
+                  .representada
+                  .emailPrincipal && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      E-mail
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm">
+                        {
+                          interacao
+                            .representada
+                            .emailPrincipal
+                        }
+                      </p>
+
+                      <a
+                        href={`mailto:${interacao.representada.emailPrincipal}`}
+                      >
+                        <Mail className="h-4 w-4 text-blue-600" />
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {!interacao.cliente &&
+              !interacao.representada && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <ClipboardList className="h-4 w-4" />
+
+                  Origem não disponível.
+                </div>
+              )}
           </CardContent>
         </Card>
       </div>

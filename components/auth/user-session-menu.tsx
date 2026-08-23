@@ -1,7 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation"
 import {
   LogOut,
   ShieldCheck,
@@ -166,40 +169,43 @@ export function UserSessionMenu() {
   }
 
   return (
-    <div className="fixed top-3 right-4 z-40">
-      <div className="flex items-center gap-3 rounded-xl border bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
-        <div className="hidden sm:flex items-center gap-2">
-          {usuario.perfil ===
-          "Diretor" ? (
-            <ShieldCheck className="h-4 w-4 text-blue-600" />
-          ) : (
-            <UserRound className="h-4 w-4 text-slate-500" />
-          )}
+    <div className="w-full border-b bg-white">
+      <div className="mx-auto flex min-h-[64px] w-full items-center justify-end px-4 py-2 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-3 rounded-xl border bg-white px-3 py-2 shadow-sm">
+          <div className="flex items-center gap-2">
+            {usuario.perfil ===
+            "Diretor" ? (
+              <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600" />
+            ) : (
+              <UserRound className="h-4 w-4 shrink-0 text-slate-500" />
+            )}
 
-          <div className="leading-tight">
-            <p className="max-w-[180px] truncate text-sm font-medium text-slate-900">
-              {usuario.nome}
-            </p>
+            <div className="min-w-0 leading-tight">
+              <p className="max-w-[180px] truncate text-sm font-medium text-slate-900">
+                {usuario.nome}
+              </p>
 
-            <p className="text-xs text-slate-500">
-              {usuario.perfil}
-            </p>
+              <p className="text-xs text-slate-500">
+                {usuario.perfil}
+              </p>
+            </div>
           </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={realizarLogout}
+            disabled={saindo}
+            className="shrink-0"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+
+            {saindo
+              ? "Saindo..."
+              : "Sair"}
+          </Button>
         </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={realizarLogout}
-          disabled={saindo}
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-
-          {saindo
-            ? "Saindo..."
-            : "Sair"}
-        </Button>
       </div>
     </div>
   )

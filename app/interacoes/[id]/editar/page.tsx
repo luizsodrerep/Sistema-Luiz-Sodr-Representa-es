@@ -2,7 +2,10 @@
 
 import { use, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+
 import { PageLayout } from "@/components/page-layout"
+import { NavigationButtons } from "@/components/navigation-buttons"
+
 import {
   Card,
   CardContent,
@@ -10,10 +13,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+
 import {
   Select,
   SelectContent,
@@ -21,8 +26,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Loader2, Save, AlertCircle } from "lucide-react"
-import Link from "next/link"
+
+import {
+  AlertCircle,
+  Clock,
+  Loader2,
+  Save,
+} from "lucide-react"
 
 type Cliente = {
   id: string
@@ -30,90 +40,321 @@ type Cliente = {
   nomeFantasia: string | null
 }
 
-const TIPOS = ["WhatsApp", "E-mail", "Visita", "Ligação", "Outro"]
+type Representada = {
+  id: string
+  nome: string
+}
 
-function toDatetimeLocal(isoString: string) {
-  const d = new Date(isoString)
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-  return local.toISOString().slice(0, 16)
+type Vinculo =
+  | "cliente"
+  | "representada"
+
+const TIPOS = [
+  "WhatsApp",
+  "E-mail",
+  "Visita",
+  "Ligação",
+]
+
+const STATUS = [
+  "Aberto",
+  "Em acompanhamento",
+  "Finalizado",
+  "Sem acompanhamento",
+]
+
+function converterParaDataLocal(
+  valor: string | null
+) {
+  if (!valor) {
+    return ""
+  }
+
+  const data = new Date(valor)
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return ""
+  }
+
+  const local = new Date(
+    data.getTime() -
+      data.getTimezoneOffset() *
+        60000
+  )
+
+  return local
+    .toISOString()
+    .slice(0, 16)
+}
+
+function formatarData(
+  valor: string
+) {
+  const data = new Date(valor)
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return "—"
+  }
+
+  return data.toLocaleString(
+    "pt-BR"
+  )
 }
 
 export default function EditarInteracaoPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{
+    id: string
+  }>
 }) {
   const { id } = use(params)
+
   const router = useRouter()
 
-  const [clientes, setClientes] = useState<Cliente[]>([])
-  const [loadingDados, setLoadingDados] = useState(true)
-  const [salvando, setSalvando] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
+  const [
+    clientes,
+    setClientes,
+  ] = useState<Cliente[]>([])
 
-  const [form, setForm] = useState({
+  const [
+    representadas,
+    setRepresentadas,
+  ] = useState<Representada[]>([])
+
+  const [
+    vinculo,
+    setVinculo,
+  ] =
+    useState<Vinculo>(
+      "cliente"
+    )
+
+  const [
+    dataOriginal,
+    setDataOriginal,
+  ] = useState("")
+
+  const [
+    autorOriginal,
+    setAutorOriginal,
+  ] = useState("")
+
+  const [
+    carregando,
+    setCarregando,
+  ] = useState(true)
+
+  const [
+    salvando,
+    setSalvando,
+  ] = useState(false)
+
+  const [
+    erro,
+    setErro,
+  ] =
+    useState<string | null>(
+      null
+    )
+
+  const [
+    form,
+    setForm,
+  ] = useState({
     clienteId: "",
+    representadaId: "",
     tipo: "",
-    data: "",
     assunto: "",
     descricao: "",
     resultado: "",
     proximosPasso: "",
+    proximoContatoEm: "",
+    statusFollowUp:
+      "Sem acompanhamento",
   })
 
   useEffect(() => {
-    async function carregarTudo() {
-      setLoadingDados(true)
-      setErro(null)
-
+    async function carregar() {
       try {
-        const [resClientes, resInteracao] = await Promise.all([
-          fetch("/api/clientes"),
-          fetch(`/api/interacoes/${id}`),
+        setCarregando(true)
+        setErro(null)
+
+        const [
+          respostaClientes,
+          respostaRepresentadas,
+          respostaInteracao,
+        ] = await Promise.all([
+          fetch(
+            "/api/clientes",
+            {
+              cache: "no-store",
+            }
+          ),
+
+          fetch(
+            "/api/representadas",
+            {
+              cache: "no-store",
+            }
+          ),
+
+          fetch(
+            `/api/interacoes/${id}`,
+            {
+              cache: "no-store",
+            }
+          ),
         ])
 
-        if (!resClientes.ok) {
-          throw new Error("Erro ao carregar clientes")
+        const dadosInteracao =
+          await respostaInteracao
+            .json()
+            .catch(() => null)
+
+        if (
+          !respostaInteracao.ok
+        ) {
+          throw new Error(
+            dadosInteracao?.message ||
+              "Não foi possível carregar a interação."
+          )
         }
 
-        if (resInteracao.status === 404) {
-          setErro("Interação não encontrada.")
-          return
+        if (
+          !respostaClientes.ok
+        ) {
+          throw new Error(
+            "Não foi possível carregar os clientes."
+          )
         }
 
-        if (!resInteracao.ok) {
-          throw new Error("Erro ao carregar interação")
+        if (
+          !respostaRepresentadas.ok
+        ) {
+          throw new Error(
+            "Não foi possível carregar as representadas."
+          )
         }
 
-        const [dadosClientes, dadosInteracao] = await Promise.all([
-          resClientes.json(),
-          resInteracao.json(),
-        ])
+        const dadosClientes =
+          await respostaClientes.json()
 
-        setClientes(dadosClientes)
+        const dadosRepresentadas =
+          await respostaRepresentadas.json()
+
+        setClientes(
+          Array.isArray(
+            dadosClientes
+          )
+            ? dadosClientes
+            : []
+        )
+
+        setRepresentadas(
+          Array.isArray(
+            dadosRepresentadas
+          )
+            ? dadosRepresentadas
+            : []
+        )
+
+        const possuiRepresentada =
+          Boolean(
+            dadosInteracao.representadaId
+          )
+
+        setVinculo(
+          possuiRepresentada
+            ? "representada"
+            : "cliente"
+        )
+
+        setDataOriginal(
+          dadosInteracao.data ||
+            ""
+        )
+
+        setAutorOriginal(
+          dadosInteracao.criadoPor
+            ? `${dadosInteracao.criadoPor.nome} — ${dadosInteracao.criadoPor.perfil}`
+            : "Usuário não identificado"
+        )
 
         setForm({
-          clienteId: dadosInteracao.clienteId,
-          tipo: dadosInteracao.tipo,
-          data: toDatetimeLocal(dadosInteracao.data),
-          assunto: dadosInteracao.assunto || "",
-          descricao: dadosInteracao.descricao || "",
-          resultado: dadosInteracao.resultado || "",
-          proximosPasso: dadosInteracao.proximosPasso || "",
+          clienteId:
+            dadosInteracao
+              .clienteId ||
+            "",
+
+          representadaId:
+            dadosInteracao
+              .representadaId ||
+            "",
+
+          tipo:
+            dadosInteracao.tipo ||
+            "",
+
+          assunto:
+            dadosInteracao
+              .assunto ||
+            "",
+
+          descricao:
+            dadosInteracao
+              .descricao ||
+            "",
+
+          resultado:
+            dadosInteracao
+              .resultado ||
+            "",
+
+          proximosPasso:
+            dadosInteracao
+              .proximosPasso ||
+            "",
+
+          proximoContatoEm:
+            converterParaDataLocal(
+              dadosInteracao
+                .proximoContatoEm
+            ),
+
+          statusFollowUp:
+            dadosInteracao
+              .statusFollowUp ||
+            "Sem acompanhamento",
         })
-      } catch {
-        setErro("Erro ao carregar dados. Tente novamente.")
+      } catch (error) {
+        setErro(
+          error instanceof Error
+            ? error.message
+            : "Erro ao carregar a interação."
+        )
       } finally {
-        setLoadingDados(false)
+        setCarregando(false)
       }
     }
 
-    carregarTudo()
+    carregar()
   }, [id])
 
-  function handleChange(campo: string, valor: string) {
-    setForm((prev) => ({
-      ...prev,
+  function alterarCampo(
+    campo: keyof typeof form,
+    valor: string
+  ) {
+    setForm((anterior) => ({
+      ...anterior,
       [campo]: valor,
     }))
 
@@ -122,63 +363,170 @@ export default function EditarInteracaoPage({
     }
   }
 
-  async function handleSalvar() {
-    if (!form.clienteId) {
-      setErro("Selecione um cliente.")
+  function alterarVinculo(
+    novoVinculo: Vinculo
+  ) {
+    setVinculo(novoVinculo)
+
+    setForm((anterior) => ({
+      ...anterior,
+
+      clienteId:
+        novoVinculo ===
+        "cliente"
+          ? anterior.clienteId
+          : "",
+
+      representadaId:
+        novoVinculo ===
+        "representada"
+          ? anterior.representadaId
+          : "",
+    }))
+
+    setErro(null)
+  }
+
+  async function salvar() {
+    if (
+      vinculo === "cliente" &&
+      !form.clienteId
+    ) {
+      setErro(
+        "Selecione o cliente."
+      )
+      return
+    }
+
+    if (
+      vinculo ===
+        "representada" &&
+      !form.representadaId
+    ) {
+      setErro(
+        "Selecione a representada."
+      )
       return
     }
 
     if (!form.tipo) {
-      setErro("Selecione o tipo de interação.")
+      setErro(
+        "Selecione o tipo de interação."
+      )
       return
     }
 
-    if (!form.data) {
-      setErro("Informe a data da interação.")
+    if (
+      (
+        form.statusFollowUp ===
+          "Aberto" ||
+        form.statusFollowUp ===
+          "Em acompanhamento"
+      ) &&
+      !form.proximoContatoEm
+    ) {
+      setErro(
+        "Informe a data do próximo acompanhamento."
+      )
       return
     }
-
-    setSalvando(true)
-    setErro(null)
 
     try {
-      const res = await fetch(`/api/interacoes/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          clienteId: form.clienteId,
-          tipo: form.tipo,
-          data: new Date(form.data).toISOString(),
-          assunto: form.assunto || null,
-          descricao: form.descricao || null,
-          resultado: form.resultado || null,
-          proximosPasso: form.proximosPasso || null,
-        }),
-      })
+      setSalvando(true)
+      setErro(null)
 
-      const data = await res.json()
+      const resposta =
+        await fetch(
+          `/api/interacoes/${id}`,
+          {
+            method: "PUT",
 
-      if (!res.ok) {
-        setErro(data.message || "Erro ao salvar alterações.")
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              clienteId:
+                vinculo ===
+                "cliente"
+                  ? form.clienteId
+                  : null,
+
+              representadaId:
+                vinculo ===
+                "representada"
+                  ? form.representadaId
+                  : null,
+
+              tipo:
+                form.tipo,
+
+              assunto:
+                form.assunto ||
+                null,
+
+              descricao:
+                form.descricao ||
+                null,
+
+              resultado:
+                form.resultado ||
+                null,
+
+              proximosPasso:
+                form.proximosPasso ||
+                null,
+
+              proximoContatoEm:
+                form.proximoContatoEm
+                  ? new Date(
+                      form.proximoContatoEm
+                    ).toISOString()
+                  : null,
+
+              statusFollowUp:
+                form.statusFollowUp,
+            }),
+          }
+        )
+
+      const dados =
+        await resposta
+          .json()
+          .catch(
+            () => null
+          )
+
+      if (!resposta.ok) {
+        setErro(
+          dados?.message ||
+            "Não foi possível salvar as alterações."
+        )
         return
       }
 
-      router.push(`/interacoes/${id}`)
+      router.push(
+        `/interacoes/${id}`
+      )
+
+      router.refresh()
     } catch {
-      setErro("Erro de conexão. Tente novamente.")
+      setErro(
+        "Erro de conexão ao salvar as alterações."
+      )
     } finally {
       setSalvando(false)
     }
   }
 
-  if (loadingDados) {
+  if (carregando) {
     return (
-      <PageLayout title="Carregando...">
-        <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground text-xxs">
+      <PageLayout title="Editar Interação">
+        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Carregando dados...
+
+          Carregando interação...
         </div>
       </PageLayout>
     )
@@ -186,243 +534,393 @@ export default function EditarInteracaoPage({
 
   return (
     <PageLayout title="Editar Interação">
-      <div className="flex items-center gap-2 mb-2">
-        <Link href={`/interacoes/${id}`}>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-7 w-7"
-          >
-            <ArrowLeft className="h-3 w-3" />
-          </Button>
-        </Link>
+      <NavigationButtons
+        backLabel="Voltar para Interação"
+        backHref={`/interacoes/${id}`}
+      />
 
-        <span className="text-xs-plus font-medium text-muted-foreground">
-          Interações / Editar
-        </span>
-      </div>
-
-      <Card className="card-container">
-        <CardHeader className="card-header">
-          <CardTitle className="card-title">
+      <Card className="mt-3">
+        <CardHeader>
+          <CardTitle>
             Editar Interação
           </CardTitle>
 
-          <CardDescription className="card-description">
-            Atualize os dados desta interação
+          <CardDescription>
+            Corrija ou atualize este registro. A data, a hora e o usuário que criou a interação permanecem preservados.
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="card-content">
+        <CardContent className="space-y-5">
           {erro && (
-            <div className="flex items-center gap-2 p-2 mb-3 bg-red-50 border border-red-200 rounded-sm text-red-700 text-xxs">
-              <AlertCircle className="h-3 w-3 shrink-0" />
+            <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+
               {erro}
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label
-                  htmlFor="clienteId"
-                  className="text-xxs"
-                >
-                  Cliente <span className="text-red-500">*</span>
-                </Label>
+          <div className="grid gap-4 rounded-md border bg-slate-50 p-4 md:grid-cols-2">
+            <div>
+              <p className="text-xs text-muted-foreground">
+                Data e hora original
+              </p>
 
-                <Select
-                  value={form.clienteId}
-                  onValueChange={(v) =>
-                    handleChange("clienteId", v)
-                  }
-                >
-                  <SelectTrigger
-                    id="clienteId"
-                    className="h-8 text-xxs"
-                  >
-                    <SelectValue placeholder="Selecione o cliente" />
-                  </SelectTrigger>
+              <p className="mt-1 flex items-center gap-2 text-sm font-medium">
+                <Clock className="h-4 w-4" />
 
-                  <SelectContent>
-                    {clientes.map((c) => (
-                      <SelectItem
-                        key={c.id}
-                        value={c.id}
-                        className="text-xxs"
-                      >
-                        {c.nomeFantasia || c.razaoSocial}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label
-                  htmlFor="tipo"
-                  className="text-xxs"
-                >
-                  Tipo de Interação{" "}
-                  <span className="text-red-500">*</span>
-                </Label>
-
-                <Select
-                  value={form.tipo}
-                  onValueChange={(v) =>
-                    handleChange("tipo", v)
-                  }
-                >
-                  <SelectTrigger
-                    id="tipo"
-                    className="h-8 text-xxs"
-                  >
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {TIPOS.map((t) => (
-                      <SelectItem
-                        key={t}
-                        value={t}
-                        className="text-xxs"
-                      >
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label
-                  htmlFor="data"
-                  className="text-xxs"
-                >
-                  Data e Hora{" "}
-                  <span className="text-red-500">*</span>
-                </Label>
-
-                <Input
-                  id="data"
-                  type="datetime-local"
-                  className="h-8 text-xxs"
-                  value={form.data}
-                  onChange={(e) =>
-                    handleChange("data", e.target.value)
-                  }
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label
-                  htmlFor="assunto"
-                  className="text-xxs"
-                >
-                  Assunto
-                </Label>
-
-                <Input
-                  id="assunto"
-                  className="h-8 text-xxs"
-                  placeholder="Ex: Apresentação de produtos, Follow-up proposta..."
-                  value={form.assunto}
-                  onChange={(e) =>
-                    handleChange("assunto", e.target.value)
-                  }
-                />
-              </div>
+                {dataOriginal
+                  ? formatarData(
+                      dataOriginal
+                    )
+                  : "—"}
+              </p>
             </div>
 
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label
-                  htmlFor="descricao"
-                  className="text-xxs"
-                >
-                  Descrição
-                </Label>
+            <div>
+              <p className="text-xs text-muted-foreground">
+                Registrado por
+              </p>
 
-                <Textarea
-                  id="descricao"
-                  className="min-h-[80px] text-xxs"
-                  placeholder="Descreva o que foi tratado na interação..."
-                  value={form.descricao}
-                  onChange={(e) =>
-                    handleChange("descricao", e.target.value)
-                  }
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label
-                  htmlFor="resultado"
-                  className="text-xxs"
-                >
-                  Resultado
-                </Label>
-
-                <Textarea
-                  id="resultado"
-                  className="min-h-[60px] text-xxs"
-                  placeholder="Qual foi o resultado desta interação?"
-                  value={form.resultado}
-                  onChange={(e) =>
-                    handleChange("resultado", e.target.value)
-                  }
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label
-                  htmlFor="proximosPasso"
-                  className="text-xxs"
-                >
-                  Próximos Passos
-                </Label>
-
-                <Textarea
-                  id="proximosPasso"
-                  className="min-h-[60px] text-xxs"
-                  placeholder="O que precisa ser feito depois desta interação?"
-                  value={form.proximosPasso}
-                  onChange={(e) =>
-                    handleChange(
-                      "proximosPasso",
-                      e.target.value
-                    )
-                  }
-                />
-              </div>
+              <p className="mt-1 text-sm font-medium">
+                {autorOriginal}
+              </p>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
-            <Link href={`/interacoes/${id}`}>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xxs"
+          <div className="space-y-2">
+            <Label>
+              Relacionado a *
+            </Label>
+
+            <Select
+              value={vinculo}
+              onValueChange={(
+                valor
+              ) =>
+                alterarVinculo(
+                  valor as Vinculo
+                )
+              }
+              disabled={salvando}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+
+              <SelectContent>
+                <SelectItem value="cliente">
+                  Cliente
+                </SelectItem>
+
+                <SelectItem value="representada">
+                  Representada
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {vinculo ===
+            "cliente" && (
+            <div className="space-y-2">
+              <Label>
+                Cliente *
+              </Label>
+
+              <Select
+                value={
+                  form.clienteId
+                }
+                onValueChange={(
+                  valor
+                ) =>
+                  alterarCampo(
+                    "clienteId",
+                    valor
+                  )
+                }
                 disabled={salvando}
               >
-                Cancelar
-              </Button>
-            </Link>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o cliente" />
+                </SelectTrigger>
 
+                <SelectContent>
+                  {clientes.map(
+                    (cliente) => (
+                      <SelectItem
+                        key={
+                          cliente.id
+                        }
+                        value={
+                          cliente.id
+                        }
+                      >
+                        {cliente.nomeFantasia ||
+                          cliente.razaoSocial}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {vinculo ===
+            "representada" && (
+            <div className="space-y-2">
+              <Label>
+                Representada *
+              </Label>
+
+              <Select
+                value={
+                  form.representadaId
+                }
+                onValueChange={(
+                  valor
+                ) =>
+                  alterarCampo(
+                    "representadaId",
+                    valor
+                  )
+                }
+                disabled={salvando}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a representada" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {representadas.map(
+                    (representada) => (
+                      <SelectItem
+                        key={
+                          representada.id
+                        }
+                        value={
+                          representada.id
+                        }
+                      >
+                        {
+                          representada.nome
+                        }
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>
+                Tipo de Interação *
+              </Label>
+
+              <Select
+                value={form.tipo}
+                onValueChange={(
+                  valor
+                ) =>
+                  alterarCampo(
+                    "tipo",
+                    valor
+                  )
+                }
+                disabled={salvando}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {TIPOS.map(
+                    (tipo) => (
+                      <SelectItem
+                        key={tipo}
+                        value={tipo}
+                      >
+                        {tipo}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Assunto
+              </Label>
+
+              <Input
+                value={
+                  form.assunto
+                }
+                onChange={(
+                  evento
+                ) =>
+                  alterarCampo(
+                    "assunto",
+                    evento.target
+                      .value
+                  )
+                }
+                disabled={salvando}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>
+              Descrição
+            </Label>
+
+            <Textarea
+              className="min-h-[80px]"
+              value={
+                form.descricao
+              }
+              onChange={(
+                evento
+              ) =>
+                alterarCampo(
+                  "descricao",
+                  evento.target
+                    .value
+                )
+              }
+              disabled={salvando}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>
+              Resultado
+            </Label>
+
+            <Textarea
+              className="min-h-[70px]"
+              value={
+                form.resultado
+              }
+              onChange={(
+                evento
+              ) =>
+                alterarCampo(
+                  "resultado",
+                  evento.target
+                    .value
+                )
+              }
+              disabled={salvando}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>
+              Próximos Passos
+            </Label>
+
+            <Textarea
+              className="min-h-[70px]"
+              value={
+                form.proximosPasso
+              }
+              onChange={(
+                evento
+              ) =>
+                alterarCampo(
+                  "proximosPasso",
+                  evento.target
+                    .value
+                )
+              }
+              disabled={salvando}
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>
+                Próximo acompanhamento
+              </Label>
+
+              <Input
+                type="datetime-local"
+                value={
+                  form.proximoContatoEm
+                }
+                onChange={(
+                  evento
+                ) =>
+                  alterarCampo(
+                    "proximoContatoEm",
+                    evento.target
+                      .value
+                  )
+                }
+                disabled={salvando}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Situação
+              </Label>
+
+              <Select
+                value={
+                  form.statusFollowUp
+                }
+                onValueChange={(
+                  valor
+                ) =>
+                  alterarCampo(
+                    "statusFollowUp",
+                    valor
+                  )
+                }
+                disabled={salvando}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {STATUS.map(
+                    (status) => (
+                      <SelectItem
+                        key={
+                          status
+                        }
+                        value={
+                          status
+                        }
+                      >
+                        {status}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex justify-end border-t pt-4">
             <Button
-              size="sm"
-              className="h-8 text-xxs gap-1"
-              onClick={handleSalvar}
+              onClick={salvar}
               disabled={salvando}
             >
               {salvando ? (
                 <>
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Salvando...
                 </>
               ) : (
                 <>
-                  <Save className="h-3 w-3" />
+                  <Save className="mr-2 h-4 w-4" />
                   Salvar Alterações
                 </>
               )}

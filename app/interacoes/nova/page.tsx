@@ -1,13 +1,39 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { PageLayout } from "@/components/page-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import {
+  useEffect,
+  useState,
+} from "react"
+import {
+  useRouter,
+} from "next/navigation"
+import Link from "next/link"
+
+import {
+  PageLayout,
+} from "@/components/page-layout"
+import {
+  NavigationButtons,
+} from "@/components/navigation-buttons"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Button,
+} from "@/components/ui/button"
+import {
+  Input,
+} from "@/components/ui/input"
+import {
+  Label,
+} from "@/components/ui/label"
+import {
+  Textarea,
+} from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -15,8 +41,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Loader2, Save, AlertCircle } from "lucide-react"
-import Link from "next/link"
+
+import {
+  AlertCircle,
+  Clock,
+  Loader2,
+  Save,
+} from "lucide-react"
 
 type Cliente = {
   id: string
@@ -24,45 +55,155 @@ type Cliente = {
   nomeFantasia: string | null
 }
 
-const TIPOS = ["WhatsApp", "E-mail", "Visita", "Ligação", "Outro"]
+type Representada = {
+  id: string
+  nome: string
+}
+
+const TIPOS = [
+  "WhatsApp",
+  "E-mail",
+  "Visita",
+  "Ligação",
+]
+
+type Vinculo =
+  | "cliente"
+  | "representada"
 
 export default function NovaInteracaoPage() {
   const router = useRouter()
 
-  const [clientes, setClientes] = useState<Cliente[]>([])
-  const [salvando, setSalvando] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
+  const [
+    clientes,
+    setClientes,
+  ] = useState<Cliente[]>([])
 
-  const [form, setForm] = useState({
+  const [
+    representadas,
+    setRepresentadas,
+  ] = useState<Representada[]>([])
+
+  const [
+    carregando,
+    setCarregando,
+  ] = useState(true)
+
+  const [
+    salvando,
+    setSalvando,
+  ] = useState(false)
+
+  const [
+    erro,
+    setErro,
+  ] =
+    useState<string | null>(
+      null
+    )
+
+  const [
+    vinculo,
+    setVinculo,
+  ] =
+    useState<Vinculo>(
+      "cliente"
+    )
+
+  const [
+    form,
+    setForm,
+  ] = useState({
     clienteId: "",
+    representadaId: "",
     tipo: "",
-    data: "",
     assunto: "",
     descricao: "",
     resultado: "",
     proximosPasso: "",
+    proximoContatoEm: "",
   })
 
   useEffect(() => {
-    async function carregarClientes() {
+    async function carregarDados() {
       try {
-        const res = await fetch("/api/clientes")
+        setCarregando(true)
+        setErro(null)
 
-        if (!res.ok) {
-          throw new Error()
+        const [
+          respostaClientes,
+          respostaRepresentadas,
+        ] = await Promise.all([
+          fetch(
+            "/api/clientes",
+            {
+              cache: "no-store",
+            }
+          ),
+
+          fetch(
+            "/api/representadas",
+            {
+              cache: "no-store",
+            }
+          ),
+        ])
+
+        if (!respostaClientes.ok) {
+          throw new Error(
+            "Não foi possível carregar os clientes."
+          )
         }
 
-        const dados = await res.json()
-        setClientes(dados)
-      } catch {
-        setErro("Erro ao carregar clientes.")
+        if (
+          !respostaRepresentadas.ok
+        ) {
+          throw new Error(
+            "Não foi possível carregar as representadas."
+          )
+        }
+
+        const dadosClientes =
+          await respostaClientes.json()
+
+        const dadosRepresentadas =
+          await respostaRepresentadas.json()
+
+        setClientes(
+          Array.isArray(
+            dadosClientes
+          )
+            ? dadosClientes
+            : []
+        )
+
+        setRepresentadas(
+          Array.isArray(
+            dadosRepresentadas
+          )
+            ? dadosRepresentadas
+            : []
+        )
+      } catch (error) {
+        console.error(error)
+
+        setErro(
+          error instanceof Error
+            ? error.message
+            : "Erro ao carregar os dados necessários."
+        )
+      } finally {
+        setCarregando(false)
       }
     }
 
-    carregarClientes()
+    carregarDados()
   }, [])
 
-  function handleChange(campo: string, valor: string) {
+  function handleChange(
+    campo: keyof typeof form,
+    valor: string
+  ) {
     setForm((prev) => ({
       ...prev,
       [campo]: valor,
@@ -73,52 +214,145 @@ export default function NovaInteracaoPage() {
     }
   }
 
+  function alterarVinculo(
+    novoVinculo: Vinculo
+  ) {
+    setVinculo(
+      novoVinculo
+    )
+
+    setForm((prev) => ({
+      ...prev,
+
+      clienteId:
+        novoVinculo ===
+        "cliente"
+          ? prev.clienteId
+          : "",
+
+      representadaId:
+        novoVinculo ===
+        "representada"
+          ? prev.representadaId
+          : "",
+    }))
+
+    setErro(null)
+  }
+
   async function handleSalvar() {
-    if (!form.clienteId) {
-      setErro("Selecione um cliente.")
+    if (
+      vinculo === "cliente" &&
+      !form.clienteId
+    ) {
+      setErro(
+        "Selecione o cliente relacionado à interação."
+      )
+
+      return
+    }
+
+    if (
+      vinculo ===
+        "representada" &&
+      !form.representadaId
+    ) {
+      setErro(
+        "Selecione a representada relacionada à interação."
+      )
+
       return
     }
 
     if (!form.tipo) {
-      setErro("Selecione o tipo de interação.")
+      setErro(
+        "Selecione o tipo de interação."
+      )
+
       return
     }
-
-    if (!form.data) {
-      setErro("Informe a data da interação.")
-      return
-    }
-
-    setSalvando(true)
-    setErro(null)
 
     try {
-      const res = await fetch("/api/interacoes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          clienteId: form.clienteId,
-          tipo: form.tipo,
-          data: new Date(form.data).toISOString(),
-          assunto: form.assunto || null,
-          descricao: form.descricao || null,
-          resultado: form.resultado || null,
-          proximosPasso: form.proximosPasso || null,
-        }),
-      })
+      setSalvando(true)
+      setErro(null)
 
-      const data = await res.json()
+      const response =
+        await fetch(
+          "/api/interacoes",
+          {
+            method: "POST",
 
-      if (!res.ok) {
-        setErro(data.message || "Erro ao salvar interação.")
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              clienteId:
+                vinculo ===
+                "cliente"
+                  ? form.clienteId
+                  : null,
+
+              representadaId:
+                vinculo ===
+                "representada"
+                  ? form.representadaId
+                  : null,
+
+              tipo:
+                form.tipo,
+
+              assunto:
+                form.assunto ||
+                null,
+
+              descricao:
+                form.descricao ||
+                null,
+
+              resultado:
+                form.resultado ||
+                null,
+
+              proximosPasso:
+                form.proximosPasso ||
+                null,
+
+              proximoContatoEm:
+                form.proximoContatoEm ||
+                null,
+            }),
+          }
+        )
+
+      const data =
+        await response
+          .json()
+          .catch(
+            () => null
+          )
+
+      if (!response.ok) {
+        setErro(
+          data?.message ||
+            "Erro ao salvar interação."
+        )
+
         return
       }
 
-      router.push("/interacoes")
-    } catch {
-      setErro("Erro de conexão.")
+      router.push(
+        "/interacoes"
+      )
+
+      router.refresh()
+    } catch (error) {
+      console.error(error)
+
+      setErro(
+        "Erro de conexão ao salvar a interação."
+      )
     } finally {
       setSalvando(false)
     }
@@ -126,221 +360,443 @@ export default function NovaInteracaoPage() {
 
   return (
     <PageLayout title="Nova Interação">
-      <div className="flex items-center gap-2 mb-2">
-        <Link href="/interacoes">
-          <Button variant="outline" size="icon" className="h-7 w-7">
-            <ArrowLeft className="h-3 w-3" />
-          </Button>
-        </Link>
+      <NavigationButtons
+        backLabel="Voltar para Interações"
+        backHref="/interacoes"
+      />
 
-        <span className="text-xs-plus font-medium text-muted-foreground">
-          Interações / Nova
-        </span>
-      </div>
-
-      <Card className="card-container">
-        <CardHeader className="card-header">
-          <CardTitle className="card-title">
-            Nova Interação
+      <Card className="mt-3">
+        <CardHeader>
+          <CardTitle>
+            Registrar Interação
           </CardTitle>
 
-          <CardDescription className="card-description">
-            Cadastre uma nova interação
+          <CardDescription>
+            Registre contatos com clientes ou representadas. O usuário, a data e a hora da interação são registrados automaticamente pelo sistema.
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="card-content">
+        <CardContent className="space-y-5">
           {erro && (
-            <div className="flex items-center gap-2 p-2 mb-3 bg-red-50 border border-red-200 rounded-sm text-red-700 text-xxs">
-              <AlertCircle className="h-3 w-3 shrink-0" />
-              {erro}
+            <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+
+              <span>
+                {erro}
+              </span>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-md border bg-slate-50 p-3">
+            <div className="flex items-center gap-2 text-sm text-slate-700">
+              <Clock className="h-4 w-4" />
 
-            <div className="space-y-3">
-
-              <div className="space-y-1">
-                <Label htmlFor="clienteId" className="text-xxs">
-                  Cliente <span className="text-red-500">*</span>
-                </Label>
-
-                <Select
-                  value={form.clienteId}
-                  onValueChange={(v) =>
-                    handleChange("clienteId", v)
-                  }
-                >
-                  <SelectTrigger
-                    id="clienteId"
-                    className="h-8 text-xxs"
-                  >
-                    <SelectValue placeholder="Selecione o cliente" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {clientes.map((c) => (
-                      <SelectItem
-                        key={c.id}
-                        value={c.id}
-                        className="text-xxs"
-                      >
-                        {c.nomeFantasia || c.razaoSocial}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="tipo" className="text-xxs">
-                  Tipo de Interação <span className="text-red-500">*</span>
-                </Label>
-
-                <Select
-                  value={form.tipo}
-                  onValueChange={(v) =>
-                    handleChange("tipo", v)
-                  }
-                >
-                  <SelectTrigger
-                    id="tipo"
-                    className="h-8 text-xxs"
-                  >
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {TIPOS.map((t) => (
-                      <SelectItem
-                        key={t}
-                        value={t}
-                        className="text-xxs"
-                      >
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="data" className="text-xxs">
-                  Data e Hora <span className="text-red-500">*</span>
-                </Label>
-
-                <Input
-                  id="data"
-                  type="datetime-local"
-                  className="h-8 text-xxs"
-                  value={form.data}
-                  onChange={(e) =>
-                    handleChange("data", e.target.value)
-                  }
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="assunto" className="text-xxs">
-                  Assunto
-                </Label>
-
-                <Input
-                  id="assunto"
-                  className="h-8 text-xxs"
-                  value={form.assunto}
-                  onChange={(e) =>
-                    handleChange("assunto", e.target.value)
-                  }
-                />
-              </div>
-
+              <span>
+                Data e hora da interação são registradas automaticamente no momento do salvamento.
+              </span>
             </div>
-
-            <div className="space-y-3">
-
-              <div className="space-y-1">
-                <Label htmlFor="descricao" className="text-xxs">
-                  Descrição
-                </Label>
-
-                <Textarea
-                  id="descricao"
-                  className="min-h-[80px] text-xxs"
-                  value={form.descricao}
-                  onChange={(e) =>
-                    handleChange("descricao", e.target.value)
-                  }
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="resultado" className="text-xxs">
-                  Resultado
-                </Label>
-
-                <Textarea
-                  id="resultado"
-                  className="min-h-[60px] text-xxs"
-                  value={form.resultado}
-                  onChange={(e) =>
-                    handleChange("resultado", e.target.value)
-                  }
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="proximosPasso" className="text-xxs">
-                  Próximos Passos
-                </Label>
-
-                <Textarea
-                  id="proximosPasso"
-                  className="min-h-[60px] text-xxs"
-                  value={form.proximosPasso}
-                  onChange={(e) =>
-                    handleChange("proximosPasso", e.target.value)
-                  }
-                />
-              </div>
-
-            </div>
-
           </div>
 
-          <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
+          <div className="space-y-2">
+            <Label>
+              Relacionar interação com{" "}
+              <span className="text-red-500">
+                *
+              </span>
+            </Label>
 
+            <Select
+              value={
+                vinculo
+              }
+              onValueChange={(
+                value
+              ) =>
+                alterarVinculo(
+                  value as Vinculo
+                )
+              }
+              disabled={
+                carregando ||
+                salvando
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+
+              <SelectContent>
+                <SelectItem value="cliente">
+                  Cliente
+                </SelectItem>
+
+                <SelectItem value="representada">
+                  Representada
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {vinculo ===
+            "cliente" && (
+            <div className="space-y-2">
+              <Label>
+                Cliente{" "}
+                <span className="text-red-500">
+                  *
+                </span>
+              </Label>
+
+              <Select
+                value={
+                  form.clienteId
+                }
+                onValueChange={(
+                  value
+                ) =>
+                  handleChange(
+                    "clienteId",
+                    value
+                  )
+                }
+                disabled={
+                  carregando ||
+                  salvando ||
+                  clientes.length ===
+                    0
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      carregando
+                        ? "Carregando clientes..."
+                        : clientes.length ===
+                            0
+                          ? "Nenhum cliente disponível"
+                          : "Selecione o cliente"
+                    }
+                  />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {clientes.map(
+                    (cliente) => (
+                      <SelectItem
+                        key={
+                          cliente.id
+                        }
+                        value={
+                          cliente.id
+                        }
+                      >
+                        {cliente.nomeFantasia ||
+                          cliente.razaoSocial}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+
+              {clientes.length ===
+                0 &&
+                !carregando && (
+                  <Link href="/clientes/novo">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                    >
+                      Cadastrar Cliente
+                    </Button>
+                  </Link>
+                )}
+            </div>
+          )}
+
+          {vinculo ===
+            "representada" && (
+            <div className="space-y-2">
+              <Label>
+                Representada{" "}
+                <span className="text-red-500">
+                  *
+                </span>
+              </Label>
+
+              <Select
+                value={
+                  form.representadaId
+                }
+                onValueChange={(
+                  value
+                ) =>
+                  handleChange(
+                    "representadaId",
+                    value
+                  )
+                }
+                disabled={
+                  carregando ||
+                  salvando ||
+                  representadas.length ===
+                    0
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      carregando
+                        ? "Carregando representadas..."
+                        : representadas.length ===
+                            0
+                          ? "Nenhuma representada disponível"
+                          : "Selecione a representada"
+                    }
+                  />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {representadas.map(
+                    (representada) => (
+                      <SelectItem
+                        key={
+                          representada.id
+                        }
+                        value={
+                          representada.id
+                        }
+                      >
+                        {
+                          representada.nome
+                        }
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>
+                Tipo de Interação{" "}
+                <span className="text-red-500">
+                  *
+                </span>
+              </Label>
+
+              <Select
+                value={
+                  form.tipo
+                }
+                onValueChange={(
+                  value
+                ) =>
+                  handleChange(
+                    "tipo",
+                    value
+                  )
+                }
+                disabled={
+                  carregando ||
+                  salvando
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {TIPOS.map(
+                    (tipo) => (
+                      <SelectItem
+                        key={tipo}
+                        value={tipo}
+                      >
+                        {tipo}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+
+              <p className="text-xs text-muted-foreground">
+                Novos tipos padronizados serão administrados posteriormente pela configuração do CRM.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                Assunto
+              </Label>
+
+              <Input
+                value={
+                  form.assunto
+                }
+                disabled={
+                  salvando
+                }
+                placeholder={
+                  vinculo ===
+                  "representada"
+                    ? "Ex.: Cobrança de relatório de comissão"
+                    : "Ex.: Retorno sobre proposta comercial"
+                }
+                onChange={(
+                  event
+                ) =>
+                  handleChange(
+                    "assunto",
+                    event.target.value
+                  )
+                }
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>
+              Descrição
+            </Label>
+
+            <Textarea
+              className="min-h-[90px]"
+              value={
+                form.descricao
+              }
+              disabled={
+                salvando
+              }
+              placeholder="Descreva o que foi tratado."
+              onChange={(
+                event
+              ) =>
+                handleChange(
+                  "descricao",
+                  event.target.value
+                )
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>
+              Resultado
+            </Label>
+
+            <Textarea
+              className="min-h-[70px]"
+              value={
+                form.resultado
+              }
+              disabled={
+                salvando
+              }
+              placeholder="Registre o resultado da interação."
+              onChange={(
+                event
+              ) =>
+                handleChange(
+                  "resultado",
+                  event.target.value
+                )
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>
+              Próximos Passos
+            </Label>
+
+            <Textarea
+              className="min-h-[70px]"
+              value={
+                form.proximosPasso
+              }
+              disabled={
+                salvando
+              }
+              placeholder="Informe o que deverá ser feito depois."
+              onChange={(
+                event
+              ) =>
+                handleChange(
+                  "proximosPasso",
+                  event.target.value
+                )
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>
+              Próximo acompanhamento
+            </Label>
+
+            <Input
+              type="datetime-local"
+              value={
+                form.proximoContatoEm
+              }
+              disabled={
+                salvando
+              }
+              onChange={(
+                event
+              ) =>
+                handleChange(
+                  "proximoContatoEm",
+                  event.target.value
+                )
+              }
+            />
+
+            <p className="text-xs text-muted-foreground">
+              Opcional. Preencha quando houver nova cobrança, retorno, visita ou acompanhamento futuro.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
             <Link href="/interacoes">
               <Button
+                type="button"
                 variant="outline"
-                size="sm"
-                className="h-8 text-xxs"
-                disabled={salvando}
+                disabled={
+                  salvando
+                }
               >
                 Cancelar
               </Button>
             </Link>
 
             <Button
-              size="sm"
-              className="h-8 text-xxs gap-1"
-              onClick={handleSalvar}
-              disabled={salvando}
+              type="button"
+              onClick={
+                handleSalvar
+              }
+              disabled={
+                carregando ||
+                salvando
+              }
             >
               {salvando ? (
                 <>
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+
                   Salvando...
                 </>
               ) : (
                 <>
-                  <Save className="h-3 w-3" />
+                  <Save className="mr-2 h-4 w-4" />
+
                   Salvar Interação
                 </>
               )}
             </Button>
-
           </div>
         </CardContent>
       </Card>
