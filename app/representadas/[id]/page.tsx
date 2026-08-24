@@ -1,27 +1,48 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react"
+import {
+  useParams,
+  useRouter,
+} from "next/navigation"
+
+import {
+  Button,
+} from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+
 import {
+  formatarCodigoInteracao,
+} from "@/lib/interacoes/codigo"
+
+import {
+  AlertCircle,
   ArrowLeft,
   Building2,
-  Phone,
+  Calendar,
+  ClipboardList,
+  Eye,
+  FileText,
+  Landmark,
+  ListChecks,
+  Loader2,
   Mail,
   MapPin,
-  Trash2,
   Pencil,
-  AlertCircle,
-  Loader,
-  FileText,
-  ListChecks,
-  Landmark,
+  Phone,
+  Plus,
+  RefreshCw,
+  Trash2,
+  User,
 } from "lucide-react"
 
 interface Faixa {
@@ -35,7 +56,9 @@ interface Representada {
   codigo: string
   cnpj: string
   comissao: string
-  tipoComissao: "fixa" | "variada"
+  tipoComissao:
+    | "fixa"
+    | "variada"
   faixasComissao?: string
   fechamentoComissao: string
   pagamentoComissao: string
@@ -52,30 +75,211 @@ interface Representada {
   observacoes: string
 }
 
+interface UsuarioResumo {
+  id: string
+  nome: string
+  perfil: string
+}
+
+interface Interacao {
+  id: string
+
+  numeroSequencial: number
+
+  data: string
+  tipo: string
+
+  assunto: string | null
+  descricao: string | null
+  resultado: string | null
+  proximosPasso: string | null
+
+  proximoContatoEm:
+    | string
+    | null
+
+  statusFollowUp: string
+
+  criadoPor:
+    | UsuarioResumo
+    | null
+
+  responsavel:
+    | UsuarioResumo
+    | null
+
+  criadoEm: string
+  atualizadoEm: string
+}
+
+function formatarData(
+  valor: string | null
+) {
+  if (!valor) {
+    return "—"
+  }
+
+  const data =
+    new Date(valor)
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return "—"
+  }
+
+  return data.toLocaleString(
+    "pt-BR",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  )
+}
+
+function foiEditada(
+  criadoEm: string,
+  atualizadoEm: string
+) {
+  const criado =
+    new Date(
+      criadoEm
+    ).getTime()
+
+  const atualizado =
+    new Date(
+      atualizadoEm
+    ).getTime()
+
+  if (
+    Number.isNaN(criado) ||
+    Number.isNaN(atualizado)
+  ) {
+    return false
+  }
+
+  return (
+    atualizado - criado >
+    2000
+  )
+}
+
+function corTipo(
+  tipo: string
+) {
+  switch (tipo) {
+    case "WhatsApp":
+      return "bg-green-100 text-green-800"
+
+    case "E-mail":
+      return "bg-blue-100 text-blue-800"
+
+    case "Visita":
+      return "bg-orange-100 text-orange-800"
+
+    case "Ligação":
+      return "bg-purple-100 text-purple-800"
+
+    default:
+      return "bg-gray-100 text-gray-800"
+  }
+}
+
+function corStatusFollowUp(
+  status: string
+) {
+  switch (status) {
+    case "Aberto":
+      return "bg-amber-100 text-amber-800"
+
+    case "Em acompanhamento":
+      return "bg-blue-100 text-blue-800"
+
+    case "Finalizado":
+      return "bg-green-100 text-green-800"
+
+    case "Sem acompanhamento":
+      return "bg-gray-100 text-gray-700"
+
+    default:
+      return "bg-gray-100 text-gray-700"
+  }
+}
+
 export default function RepresentadaPage() {
-  const params = useParams()
-  const router = useRouter()
+  const params =
+    useParams()
 
-  const id = Array.isArray(params.id)
-    ? params.id[0]
-    : params.id
+  const router =
+    useRouter()
 
-  const [representada, setRepresentada] =
-    useState<Representada | null>(null)
+  const id =
+    Array.isArray(
+      params.id
+    )
+      ? params.id[0]
+      : params.id
 
-  const [loading, setLoading] =
+  const [
+    representada,
+    setRepresentada,
+  ] =
+    useState<Representada | null>(
+      null
+    )
+
+  const [
+    interacoes,
+    setInteracoes,
+  ] =
+    useState<Interacao[]>(
+      []
+    )
+
+  const [
+    loading,
+    setLoading,
+  ] =
     useState(true)
 
-  const [erro, setErro] =
-    useState<string | null>(null)
+  const [
+    loadingInteracoes,
+    setLoadingInteracoes,
+  ] =
+    useState(true)
 
-  const [excluindo, setExcluindo] =
+  const [
+    erro,
+    setErro,
+  ] =
+    useState<
+      string | null
+    >(null)
+
+  const [
+    erroInteracoes,
+    setErroInteracoes,
+  ] =
+    useState<
+      string | null
+    >(null)
+
+  const [
+    excluindo,
+    setExcluindo,
+  ] =
     useState(false)
 
   const [
     mostrarConfirmacao,
     setMostrarConfirmacao,
-  ] = useState(false)
+  ] =
+    useState(false)
 
   useEffect(() => {
     async function carregar() {
@@ -84,43 +288,55 @@ export default function RepresentadaPage() {
 
         if (!id) {
           setErro(
-            "ID da representada não encontrado"
+            "ID da representada não encontrado."
           )
-          setLoading(false)
+
           return
         }
 
-        const response = await fetch(
-          `/api/representadas/${id}`
-        )
+        const response =
+          await fetch(
+            `/api/representadas/${id}`,
+            {
+              cache:
+                "no-store",
+            }
+          )
 
-        if (!response.ok) {
-          if (response.status === 404) {
+        if (
+          !response.ok
+        ) {
+          if (
+            response.status ===
+            404
+          ) {
             setErro(
-              "Representada não encontrada"
+              "Representada não encontrada."
             )
           } else {
             setErro(
-              "Erro ao carregar representada"
+              "Erro ao carregar representada."
             )
           }
 
-          setLoading(false)
           return
         }
 
-        const data: Representada =
+        const data:
+          Representada =
           await response.json()
 
-        setRepresentada(data)
+        setRepresentada(
+          data
+        )
       } catch (error) {
         console.error(
-          "Erro ao carregar:",
+          "Erro ao carregar representada:",
           error
         )
 
         setErro(
-          "Erro ao carregar os dados"
+          "Erro ao carregar os dados."
         )
       } finally {
         setLoading(false)
@@ -130,46 +346,169 @@ export default function RepresentadaPage() {
     carregar()
   }, [id])
 
-  const parseeFaixas = (): Faixa[] => {
+  const carregarInteracoes =
+    useCallback(
+      async (
+        silencioso =
+          false
+      ) => {
+        if (!id) {
+          setInteracoes(
+            []
+          )
+
+          setLoadingInteracoes(
+            false
+          )
+
+          return
+        }
+
+        if (
+          !silencioso
+        ) {
+          setLoadingInteracoes(
+            true
+          )
+        }
+
+        setErroInteracoes(
+          null
+        )
+
+        try {
+          const response =
+            await fetch(
+              `/api/interacoes?representadaId=${encodeURIComponent(
+                id
+              )}`,
+              {
+                cache:
+                  "no-store",
+              }
+            )
+
+          if (
+            !response.ok
+          ) {
+            throw new Error(
+              "Falha ao carregar interações."
+            )
+          }
+
+          const data =
+            await response.json()
+
+          if (
+            !Array.isArray(
+              data
+            )
+          ) {
+            throw new Error(
+              "Resposta inválida da API."
+            )
+          }
+
+          setInteracoes(
+            data
+          )
+        } catch (error) {
+          console.error(
+            "Erro ao carregar interações:",
+            error
+          )
+
+          setErroInteracoes(
+            "Não foi possível carregar as interações desta representada."
+          )
+        } finally {
+          if (
+            !silencioso
+          ) {
+            setLoadingInteracoes(
+              false
+            )
+          }
+        }
+      },
+      [id]
+    )
+
+  useEffect(() => {
+    carregarInteracoes()
+  }, [
+    carregarInteracoes,
+  ])
+
+  useEffect(() => {
+    const intervalo =
+      window.setInterval(
+        () => {
+          carregarInteracoes(
+            true
+          )
+        },
+        15000
+      )
+
+    return () => {
+      window.clearInterval(
+        intervalo
+      )
+    }
+  }, [
+    carregarInteracoes,
+  ])
+
+  function obterFaixas():
+    Faixa[] {
     if (
-      !representada?.faixasComissao
+      !representada
+        ?.faixasComissao
     ) {
       return []
     }
 
     try {
-      const parsed = JSON.parse(
-        representada.faixasComissao
-      )
+      const parsed =
+        JSON.parse(
+          representada.faixasComissao
+        )
 
-      return Array.isArray(parsed)
+      return Array.isArray(
+        parsed
+      )
         ? parsed
         : []
     } catch {
-      console.error(
-        "Erro ao fazer parse de faixas"
-      )
-
       return []
     }
   }
 
   async function excluirRepresentada() {
-    setMostrarConfirmacao(false)
+    setMostrarConfirmacao(
+      false
+    )
 
     try {
-      setExcluindo(true)
-
-      const response = await fetch(
-        `/api/representadas/${id}`,
-        {
-          method: "DELETE",
-        }
+      setExcluindo(
+        true
       )
 
-      if (!response.ok) {
+      const response =
+        await fetch(
+          `/api/representadas/${id}`,
+          {
+            method:
+              "DELETE",
+          }
+        )
+
+      if (
+        !response.ok
+      ) {
         let mensagem =
-          "Erro ao excluir representada"
+          "Erro ao excluir representada."
 
         try {
           const dados =
@@ -179,49 +518,47 @@ export default function RepresentadaPage() {
             typeof dados.message ===
             "string"
           ) {
-            mensagem = dados.message
+            mensagem =
+              dados.message
           }
         } catch {
-          if (
-            response.status === 404
-          ) {
-            mensagem =
-              "Representada não encontrada"
-          }
+          // mantém mensagem padrão
         }
 
-        throw new Error(mensagem)
+        throw new Error(
+          mensagem
+        )
       }
 
       alert(
-        "Representada excluída com sucesso"
+        "Representada excluída com sucesso."
       )
 
-      router.push("/representadas")
+      router.push(
+        "/representadas"
+      )
     } catch (error) {
       const mensagem =
-        error instanceof Error
+        error instanceof
+        Error
           ? error.message
-          : "Erro ao excluir representada"
-
-      console.error(
-        "Erro ao excluir:",
-        error
-      )
+          : "Erro ao excluir representada."
 
       alert(mensagem)
     } finally {
-      setExcluindo(false)
+      setExcluindo(
+        false
+      )
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="space-y-4 text-center">
-          <Loader className="w-8 h-8 animate-spin mx-auto text-blue-500" />
+          <Loader2 className="mx-auto h-8 w-8 animate-spin" />
 
-          <p className="text-gray-600">
+          <p>
             Carregando representada...
           </p>
         </div>
@@ -229,71 +566,46 @@ export default function RepresentadaPage() {
     )
   }
 
-  if (erro) {
+  if (
+    erro ||
+    !representada
+  ) {
     return (
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="flex items-center gap-4 bg-red-50 border border-red-200 rounded-lg p-6">
-          <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
+      <div className="mx-auto max-w-7xl p-6">
+        <Card>
+          <CardContent className="flex items-center gap-4 p-6">
+            <AlertCircle className="h-6 w-6 text-red-600" />
 
-          <div className="flex-1">
-            <h2 className="font-semibold text-red-900">
-              {erro}
-            </h2>
+            <div className="flex-1">
+              <p className="font-semibold text-red-900">
+                {erro ||
+                  "Representada não encontrada."}
+              </p>
+            </div>
 
-            <p className="text-red-700 text-sm mt-1">
-              Tente recarregar a página ou volte à lista de representadas.
-            </p>
-          </div>
-
-          <Button
-            variant="outline"
-            onClick={() =>
-              router.push(
-                "/representadas"
-              )
-            }
-          >
-            Voltar
-          </Button>
-        </div>
+            <Button
+              variant="outline"
+              onClick={() =>
+                router.push(
+                  "/representadas"
+                )
+              }
+            >
+              Voltar
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
-  if (!representada) {
-    return (
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="flex items-center gap-4 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0" />
-
-          <div>
-            <h2 className="font-semibold text-yellow-900">
-              Representada não encontrada
-            </h2>
-          </div>
-
-          <Button
-            variant="outline"
-            onClick={() =>
-              router.push(
-                "/representadas"
-              )
-            }
-            className="ml-auto"
-          >
-            Voltar
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  const faixas = parseeFaixas()
+  const faixas =
+    obterFaixas()
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+      <div className="mx-auto max-w-7xl space-y-6 p-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
@@ -302,15 +614,19 @@ export default function RepresentadaPage() {
                   "/representadas"
                 )
               }
-              disabled={excluindo}
+              disabled={
+                excluindo
+              }
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar
             </Button>
 
             <div>
               <h1 className="text-3xl font-bold text-slate-900">
-                {representada.nome}
+                {
+                  representada.nome
+                }
               </h1>
 
               <p className="text-sm text-slate-500">
@@ -321,7 +637,19 @@ export default function RepresentadaPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap justify-start xl:justify-end gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() =>
+                router.push(
+                  "/interacoes/nova"
+                )
+              }
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Interação
+            </Button>
+
             <Button
               variant="outline"
               onClick={() =>
@@ -329,9 +657,8 @@ export default function RepresentadaPage() {
                   `/representadas/${id}/contratos`
                 )
               }
-              disabled={excluindo}
             >
-              <FileText className="h-4 w-4 mr-2" />
+              <FileText className="mr-2 h-4 w-4" />
               Contratos
             </Button>
 
@@ -342,9 +669,8 @@ export default function RepresentadaPage() {
                   `/representadas/${id}/regras-comerciais`
                 )
               }
-              disabled={excluindo}
             >
-              <ListChecks className="h-4 w-4 mr-2" />
+              <ListChecks className="mr-2 h-4 w-4" />
               Regras Comerciais
             </Button>
 
@@ -355,10 +681,9 @@ export default function RepresentadaPage() {
                   `/representadas/${id}/contas-recebimento`
                 )
               }
-              disabled={excluindo}
             >
-              <Landmark className="h-4 w-4 mr-2" />
-              Contas de Recebimento
+              <Landmark className="mr-2 h-4 w-4" />
+              Contas
             </Button>
 
             <Button
@@ -368,51 +693,49 @@ export default function RepresentadaPage() {
                   `/representadas/${id}/editar`
                 )
               }
-              disabled={excluindo}
             >
-              <Pencil className="h-4 w-4 mr-2" />
+              <Pencil className="mr-2 h-4 w-4" />
               Editar
             </Button>
 
             <Button
               variant="destructive"
-              disabled={excluindo}
+              disabled={
+                excluindo
+              }
               onClick={() =>
                 setMostrarConfirmacao(
                   true
                 )
               }
             >
-              <Trash2 className="h-4 w-4 mr-2" />
-
-              {excluindo
-                ? "Excluindo..."
-                : "Excluir"}
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir
             </Button>
           </div>
         </div>
 
         {mostrarConfirmacao && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <Card className="w-full max-w-md">
               <CardHeader>
-                <CardTitle className="text-red-600">
+                <CardTitle>
                   Excluir Representada
                 </CardTitle>
               </CardHeader>
 
               <CardContent className="space-y-4">
-                <p className="text-slate-700">
-                  Tem certeza que deseja
-                  excluir{" "}
+                <p>
+                  Tem certeza que deseja excluir{" "}
                   <strong>
-                    {representada.nome}
+                    {
+                      representada.nome
+                    }
                   </strong>
-                  ? Esta ação não pode ser
-                  desfeita.
+                  ?
                 </p>
 
-                <div className="flex gap-3 justify-end">
+                <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"
                     onClick={() =>
@@ -420,7 +743,6 @@ export default function RepresentadaPage() {
                         false
                       )
                     }
-                    disabled={excluindo}
                   >
                     Cancelar
                   </Button>
@@ -430,11 +752,8 @@ export default function RepresentadaPage() {
                     onClick={
                       excluirRepresentada
                     }
-                    disabled={excluindo}
                   >
-                    {excluindo
-                      ? "Excluindo..."
-                      : "Excluir"}
+                    Confirmar exclusão
                   </Button>
                 </div>
               </CardContent>
@@ -442,7 +761,7 @@ export default function RepresentadaPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -452,15 +771,16 @@ export default function RepresentadaPage() {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-5">
+              <div className="grid gap-5 md:grid-cols-2">
                 <div>
                   <p className="text-sm text-slate-500">
                     Nome
                   </p>
 
-                  <p className="font-medium text-slate-900">
-                    {representada.nome ||
-                      "-"}
+                  <p className="font-medium">
+                    {
+                      representada.nome
+                    }
                   </p>
                 </div>
 
@@ -469,7 +789,7 @@ export default function RepresentadaPage() {
                     CNPJ
                   </p>
 
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium">
                     {representada.cnpj ||
                       "-"}
                   </p>
@@ -481,20 +801,9 @@ export default function RepresentadaPage() {
                   </p>
 
                   <p className="font-medium">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                        representada.status ===
-                        "Ativa"
-                          ? "bg-green-100 text-green-800"
-                          : representada.status ===
-                              "Inativa"
-                            ? "bg-gray-100 text-gray-800"
-                            : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {representada.status ||
-                        "-"}
-                    </span>
+                    {
+                      representada.status
+                    }
                   </p>
                 </div>
 
@@ -503,7 +812,7 @@ export default function RepresentadaPage() {
                     Fechamento Comissão
                   </p>
 
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium">
                     {representada.fechamentoComissao ||
                       "-"}
                   </p>
@@ -514,7 +823,7 @@ export default function RepresentadaPage() {
                     Pagamento Comissão
                   </p>
 
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium">
                     {representada.pagamentoComissao ||
                       "-"}
                   </p>
@@ -525,7 +834,7 @@ export default function RepresentadaPage() {
                     Banco Pagador
                   </p>
 
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium">
                     {representada.bancoComissao ||
                       "-"}
                   </p>
@@ -533,30 +842,32 @@ export default function RepresentadaPage() {
               </div>
 
               <div className="border-t pt-5">
-                <h3 className="font-semibold text-slate-900 mb-4">
+                <h3 className="mb-4 font-semibold">
                   Comissão
                 </h3>
 
                 {representada.tipoComissao ===
                 "variada" ? (
                   <div className="space-y-3">
-                    {faixas &&
-                    faixas.length > 0 ? (
+                    {faixas.length >
+                    0 ? (
                       faixas.map(
                         (
                           faixa,
                           index
                         ) => (
                           <div
-                            key={index}
-                            className="grid grid-cols-2 gap-4 bg-slate-50 border rounded-xl px-4 py-3"
+                            key={
+                              index
+                            }
+                            className="grid grid-cols-2 gap-4 rounded-lg border bg-slate-50 p-4"
                           >
                             <div>
                               <p className="text-xs text-slate-500">
                                 Desconto
                               </p>
 
-                              <p className="font-semibold text-slate-900">
+                              <p className="font-semibold">
                                 {
                                   faixa.desconto
                                 }
@@ -580,13 +891,13 @@ export default function RepresentadaPage() {
                         )
                       )
                     ) : (
-                      <p className="text-slate-500 italic">
-                        Nenhuma faixa configurada
+                      <p className="text-sm text-slate-500">
+                        Nenhuma faixa configurada.
                       </p>
                     )}
                   </div>
                 ) : (
-                  <div className="bg-slate-50 border rounded-xl p-4">
+                  <div className="rounded-lg border bg-slate-50 p-4">
                     <p className="text-sm text-slate-500">
                       Comissão Fixa
                     </p>
@@ -617,34 +928,28 @@ export default function RepresentadaPage() {
                     Contato Principal
                   </p>
 
-                  <p className="font-medium text-slate-900">
+                  <p>
                     {representada.contatoPrincipal ||
                       "-"}
                   </p>
                 </div>
 
-                <div>
-                  <p className="text-sm text-slate-500">
-                    Telefone
-                  </p>
+                <div className="flex items-start gap-2">
+                  <Phone className="mt-0.5 h-4 w-4" />
 
-                  {representada.telefonePrincipal ? (
-                    <a
-                      href={`tel:${representada.telefonePrincipal.replace(
-                        /\D/g,
-                        ""
-                      )}`}
-                      className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                    >
-                      {
-                        representada.telefonePrincipal
-                      }
-                    </a>
-                  ) : (
-                    <p className="font-medium text-slate-900">
-                      -
-                    </p>
-                  )}
+                  <p>
+                    {representada.telefonePrincipal ||
+                      "-"}
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Mail className="mt-0.5 h-4 w-4" />
+
+                  <p className="break-all">
+                    {representada.emailPrincipal ||
+                      "-"}
+                  </p>
                 </div>
 
                 <div>
@@ -652,52 +957,11 @@ export default function RepresentadaPage() {
                     WhatsApp
                   </p>
 
-                  {representada.whatsappPrincipal ? (
-                    <a
-                      href={`https://wa.me/${representada.whatsappPrincipal.replace(
-                        /\D/g,
-                        ""
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-green-600 hover:text-green-800 hover:underline"
-                    >
-                      {
-                        representada.whatsappPrincipal
-                      }
-                    </a>
-                  ) : (
-                    <p className="font-medium text-slate-900">
-                      -
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5" />
-                  Email
-                </CardTitle>
-              </CardHeader>
-
-              <CardContent>
-                {representada.emailPrincipal ? (
-                  <a
-                    href={`mailto:${representada.emailPrincipal}`}
-                    className="font-medium text-blue-600 hover:text-blue-800 hover:underline break-all"
-                  >
-                    {
-                      representada.emailPrincipal
-                    }
-                  </a>
-                ) : (
-                  <p className="font-medium text-slate-900">
-                    -
+                  <p>
+                    {representada.whatsappPrincipal ||
+                      "-"}
                   </p>
-                )}
+                </div>
               </CardContent>
             </Card>
 
@@ -710,27 +974,330 @@ export default function RepresentadaPage() {
               </CardHeader>
 
               <CardContent className="space-y-2">
-                <p className="text-slate-900">
+                <p>
                   {representada.endereco ||
                     "-"}
                 </p>
 
-                <p className="text-slate-900">
+                <p>
                   {representada.cidade ||
-                    "-"}{" "}
-                  -{" "}
+                    "-"}
+                  {" / "}
                   {representada.estado ||
                     "-"}
                 </p>
 
-                <p className="text-slate-900">
+                <p>
                   CEP:{" "}
-                  {representada.cep || "-"}
+                  {representada.cep ||
+                    "-"}
                 </p>
               </CardContent>
             </Card>
           </div>
         </div>
+
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" />
+                  Interações
+                </CardTitle>
+
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Histórico institucional relacionado exclusivamente a esta representada.
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    carregarInteracoes()
+                  }
+                  disabled={
+                    loadingInteracoes
+                  }
+                >
+                  <RefreshCw
+                    className={`mr-2 h-4 w-4 ${
+                      loadingInteracoes
+                        ? "animate-spin"
+                        : ""
+                    }`}
+                  />
+
+                  Atualizar
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    router.push(
+                      "/interacoes/nova"
+                    )
+                  }
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nova Interação
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            {loadingInteracoes ? (
+              <div className="flex items-center justify-center gap-2 py-10">
+                <Loader2 className="h-4 w-4 animate-spin" />
+
+                Carregando interações...
+              </div>
+            ) : erroInteracoes ? (
+              <div className="flex flex-col items-center gap-3 py-10">
+                <div className="flex items-center gap-2 text-red-600">
+                  <AlertCircle className="h-4 w-4" />
+
+                  {
+                    erroInteracoes
+                  }
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    carregarInteracoes()
+                  }
+                >
+                  Tentar novamente
+                </Button>
+              </div>
+            ) : interacoes.length ===
+              0 ? (
+              <div className="flex flex-col items-center gap-3 py-10 text-center text-muted-foreground">
+                <ClipboardList className="h-8 w-8" />
+
+                <p>
+                  Nenhuma interação registrada para esta representada.
+                </p>
+
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    router.push(
+                      "/interacoes/nova"
+                    )
+                  }
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+
+                  Registrar primeira interação
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {interacoes.map(
+                  (
+                    interacao
+                  ) => {
+                    const editada =
+                      foiEditada(
+                        interacao.criadoEm,
+                        interacao.atualizadoEm
+                      )
+
+                    const codigo =
+                      formatarCodigoInteracao(
+                        interacao.numeroSequencial
+                      )
+
+                    return (
+                      <div
+                        key={
+                          interacao.id
+                        }
+                        className="rounded-lg border p-4 transition-colors hover:bg-muted/20"
+                      >
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-md border bg-slate-50 px-2 py-1 font-mono text-xs font-semibold text-slate-700">
+                              {
+                                codigo
+                              }
+                            </span>
+
+                            <span className="text-xs text-muted-foreground">
+                              Identificação permanente
+                            </span>
+                          </div>
+
+                          {editada && (
+                            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                              Editada
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col gap-4 xl:flex-row xl:justify-between">
+                          <div className="flex-1 space-y-3">
+                            <div className="flex flex-wrap gap-2">
+                              <span
+                                className={`rounded-full px-2 py-1 text-xs font-medium ${corTipo(
+                                  interacao.tipo
+                                )}`}
+                              >
+                                {
+                                  interacao.tipo
+                                }
+                              </span>
+
+                              <span
+                                className={`rounded-full px-2 py-1 text-xs font-medium ${corStatusFollowUp(
+                                  interacao.statusFollowUp
+                                )}`}
+                              >
+                                {
+                                  interacao.statusFollowUp
+                                }
+                              </span>
+                            </div>
+
+                            <div>
+                              <p className="font-semibold">
+                                {interacao.assunto ||
+                                  "Sem assunto"}
+                              </p>
+
+                              {interacao.descricao && (
+                                <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">
+                                  {
+                                    interacao.descricao
+                                  }
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+                              <div className="flex gap-2">
+                                <Calendar className="mt-0.5 h-4 w-4" />
+
+                                <div>
+                                  <p className="text-xs text-muted-foreground">
+                                    Registrada em
+                                  </p>
+
+                                  <p>
+                                    {formatarData(
+                                      interacao.data
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <User className="mt-0.5 h-4 w-4" />
+
+                                <div>
+                                  <p className="text-xs text-muted-foreground">
+                                    Autor
+                                  </p>
+
+                                  <p>
+                                    {interacao.criadoPor
+                                      ?.nome ||
+                                      "—"}
+                                  </p>
+
+                                  {interacao.criadoPor
+                                    ?.perfil && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {
+                                        interacao.criadoPor.perfil
+                                      }
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div>
+                                <p className="text-xs text-muted-foreground">
+                                  Próximo acompanhamento
+                                </p>
+
+                                <p>
+                                  {formatarData(
+                                    interacao.proximoContatoEm
+                                  )}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-xs text-muted-foreground">
+                                  Responsável
+                                </p>
+
+                                <p>
+                                  {interacao.responsavel
+                                    ?.nome ||
+                                    "—"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {interacao.resultado && (
+                              <div className="rounded-md bg-muted/40 p-3">
+                                <p className="text-xs font-medium">
+                                  Resultado
+                                </p>
+
+                                <p className="mt-1 whitespace-pre-wrap text-sm">
+                                  {
+                                    interacao.resultado
+                                  }
+                                </p>
+                              </div>
+                            )}
+
+                            {interacao.proximosPasso && (
+                              <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                                <p className="text-xs font-medium text-amber-800">
+                                  Próximos passos
+                                </p>
+
+                                <p className="mt-1 whitespace-pre-wrap text-sm text-amber-900">
+                                  {
+                                    interacao.proximosPasso
+                                  }
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              router.push(
+                                `/interacoes/${interacao.id}`
+                              )
+                            }
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+
+                            Ver
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  }
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -740,10 +1307,8 @@ export default function RepresentadaPage() {
           </CardHeader>
 
           <CardContent>
-            <p className="text-slate-700 whitespace-pre-line leading-relaxed">
-              {representada.observacoes ||
-                "Sem observações"}
-            </p>
+            {representada.observacoes ||
+              "Nenhuma observação cadastrada."}
           </CardContent>
         </Card>
       </div>

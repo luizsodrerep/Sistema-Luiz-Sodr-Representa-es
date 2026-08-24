@@ -25,14 +25,21 @@ import {
 } from "@/components/ui/button"
 
 import {
+  formatarCodigoInteracao,
+} from "@/lib/interacoes/codigo"
+
+import {
   AlertCircle,
   ArrowRight,
   Building2,
   Calendar,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   ClipboardList,
   Clock,
   Factory,
+  History,
   Loader2,
   Mail,
   MessageSquare,
@@ -70,8 +77,9 @@ type UsuarioResumo = {
 
 type Interacao = {
   id: string
-  data: string
+  numeroSequencial: number
 
+  data: string
   tipo: string
 
   assunto: string | null
@@ -95,7 +103,53 @@ type Interacao = {
   atualizadoEm: string
 }
 
-const corTipo: Record<string, string> = {
+type SnapshotInteracao = {
+  id?: string
+  numeroSequencial?: number
+
+  tipo?: string | null
+  assunto?: string | null
+  descricao?: string | null
+  resultado?: string | null
+  proximosPasso?: string | null
+
+  proximoContatoEm?: string | null
+  statusFollowUp?: string | null
+
+  clienteId?: string | null
+  representadaId?: string | null
+  responsavelId?: string | null
+
+  atualizadoEm?: string | null
+}
+
+type HistoricoItem = {
+  id: string
+  acao: string
+  criadoEm: string
+
+  usuario: UsuarioResumo | null
+
+  dadosAntes:
+    | SnapshotInteracao
+    | null
+
+  dadosDepois:
+    | SnapshotInteracao
+    | null
+}
+
+type HistoricoResponse = {
+  interacaoId: string
+  numeroSequencial: number
+  totalAlteracoes: number
+  historico: HistoricoItem[]
+}
+
+const corTipo: Record<
+  string,
+  string
+> = {
   WhatsApp:
     "bg-green-100 text-green-800",
 
@@ -163,12 +217,138 @@ function foiEditada(
     return false
   }
 
-  /*
-   * Evita marcar como editada apenas
-   * pela diferença mínima natural
-   * existente no momento da criação.
-   */
-  return atualizado - criado > 2000
+  return (
+    atualizado - criado >
+    2000
+  )
+}
+
+function valorLegivel(
+  campo: string,
+  valor: unknown
+) {
+  if (
+    valor === null ||
+    valor === undefined ||
+    valor === ""
+  ) {
+    return "—"
+  }
+
+  if (
+    campo ===
+      "proximoContatoEm" &&
+    typeof valor ===
+      "string"
+  ) {
+    return formatarData(
+      valor
+    )
+  }
+
+  return String(valor)
+}
+
+const nomesCampos: Record<
+  string,
+  string
+> = {
+  tipo:
+    "Tipo",
+
+  assunto:
+    "Assunto",
+
+  descricao:
+    "Descrição",
+
+  resultado:
+    "Resultado",
+
+  proximosPasso:
+    "Próximos passos",
+
+  proximoContatoEm:
+    "Próximo acompanhamento",
+
+  statusFollowUp:
+    "Status",
+
+  clienteId:
+    "Cliente",
+
+  representadaId:
+    "Representada",
+
+  responsavelId:
+    "Responsável",
+}
+
+function obterAlteracoes(
+  item: HistoricoItem
+) {
+  const antes =
+    item.dadosAntes ||
+    {}
+
+  const depois =
+    item.dadosDepois ||
+    {}
+
+  const campos =
+    Object.keys(
+      nomesCampos
+    )
+
+  return campos
+    .filter(
+      (
+        campo
+      ) => {
+        const chave =
+          campo as keyof SnapshotInteracao
+
+        return (
+          antes[
+            chave
+          ] !==
+          depois[
+            chave
+          ]
+        )
+      }
+    )
+    .map(
+      (
+        campo
+      ) => {
+        const chave =
+          campo as keyof SnapshotInteracao
+
+        return {
+          campo:
+            nomesCampos[
+              campo
+            ],
+
+          antes:
+            valorLegivel(
+              campo,
+              antes[
+                chave
+              ]
+            ),
+
+          depois:
+            valorLegivel(
+              campo,
+              depois[
+                chave
+              ]
+            ),
+        }
+      }
+    )
 }
 
 export default function InteracaoDetalhesPage({
@@ -178,7 +358,8 @@ export default function InteracaoDetalhesPage({
     id: string
   }>
 }) {
-  const { id } = use(params)
+  const { id } =
+    use(params)
 
   const [
     interacao,
@@ -189,17 +370,46 @@ export default function InteracaoDetalhesPage({
     )
 
   const [
+    historico,
+    setHistorico,
+  ] =
+    useState<HistoricoItem[]>(
+      []
+    )
+
+  const [
     loading,
     setLoading,
-  ] = useState(true)
+  ] =
+    useState(true)
+
+  const [
+    loadingHistorico,
+    setLoadingHistorico,
+  ] =
+    useState(true)
 
   const [
     erro,
     setErro,
   ] =
-    useState<string | null>(
-      null
-    )
+    useState<
+      string | null
+    >(null)
+
+  const [
+    erroHistorico,
+    setErroHistorico,
+  ] =
+    useState<
+      string | null
+    >(null)
+
+  const [
+    historicoAberto,
+    setHistoricoAberto,
+  ] =
+    useState(false)
 
   useEffect(() => {
     async function carregar() {
@@ -211,8 +421,11 @@ export default function InteracaoDetalhesPage({
           await fetch(
             `/api/interacoes/${id}`,
             {
-              method: "GET",
-              cache: "no-store",
+              method:
+                "GET",
+
+              cache:
+                "no-store",
             }
           )
 
@@ -223,7 +436,9 @@ export default function InteracaoDetalhesPage({
               () => null
             )
 
-        if (!response.ok) {
+        if (
+          !response.ok
+        ) {
           setErro(
             data?.message ||
               "Não foi possível carregar a interação."
@@ -240,11 +455,89 @@ export default function InteracaoDetalhesPage({
           "Erro ao carregar interação. Tente novamente."
         )
       } finally {
-        setLoading(false)
+        setLoading(
+          false
+        )
       }
     }
 
     carregar()
+  }, [id])
+
+  useEffect(() => {
+    async function carregarHistorico() {
+      try {
+        setLoadingHistorico(
+          true
+        )
+
+        setErroHistorico(
+          null
+        )
+
+        const response =
+          await fetch(
+            `/api/interacoes/${id}/historico`,
+            {
+              method:
+                "GET",
+
+              cache:
+                "no-store",
+            }
+          )
+
+        const data:
+          | HistoricoResponse
+          | {
+              message?: string
+            } =
+          await response
+            .json()
+            .catch(
+              () => ({
+                message:
+                  "Resposta inválida.",
+              })
+            )
+
+        if (
+          !response.ok
+        ) {
+          setErroHistorico(
+            "message" in
+              data &&
+              data.message
+              ? data.message
+              : "Não foi possível carregar o histórico."
+          )
+
+          return
+        }
+
+        if (
+          "historico" in
+            data &&
+          Array.isArray(
+            data.historico
+          )
+        ) {
+          setHistorico(
+            data.historico
+          )
+        }
+      } catch {
+        setErroHistorico(
+          "Erro ao carregar histórico de alterações."
+        )
+      } finally {
+        setLoadingHistorico(
+          false
+        )
+      }
+    }
+
+    carregarHistorico()
   }, [id])
 
   if (loading) {
@@ -291,8 +584,18 @@ export default function InteracaoDetalhesPage({
       interacao.atualizadoEm
     )
 
+  const codigo =
+    formatarCodigoInteracao(
+      interacao.numeroSequencial
+    )
+
   const origemCliente =
-    interacao.cliente !== null
+    interacao.cliente !==
+    null
+
+  const origemRepresentada =
+    interacao.representada !==
+    null
 
   const nomeOrigem =
     interacao.cliente
@@ -307,6 +610,19 @@ export default function InteracaoDetalhesPage({
             .nome
         : "Origem não disponível"
 
+  const tipoOrigem =
+    origemCliente
+      ? "Cliente"
+      : origemRepresentada
+        ? "Representada"
+        : "Registro"
+
+  const ultimaEdicao =
+    historico.length >
+    0
+      ? historico[0]
+      : null
+
   return (
     <PageLayout title="Detalhes da Interação">
       <NavigationButtons
@@ -314,12 +630,41 @@ export default function InteracaoDetalhesPage({
         backHref="/interacoes"
       />
 
-      <div className="mb-3 mt-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="mb-4 mt-3 rounded-lg border bg-slate-50 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Código da interação
+            </p>
+
+            <p className="mt-1 font-mono text-xl font-bold text-slate-900">
+              {codigo}
+            </p>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              Identificação permanente deste registro.
+            </p>
+          </div>
+
+          <div className="rounded-md border bg-white px-3 py-2 text-xs text-muted-foreground">
+            Sequencial interno:{" "}
+            <span className="font-semibold text-slate-700">
+              {
+                interacao.numeroSequencial
+              }
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {origemCliente ? (
             <Building2 className="h-5 w-5 shrink-0 text-blue-600" />
-          ) : (
+          ) : origemRepresentada ? (
             <Factory className="h-5 w-5 shrink-0 text-orange-600" />
+          ) : (
+            <ClipboardList className="h-5 w-5 shrink-0 text-muted-foreground" />
           )}
 
           <div className="min-w-0">
@@ -328,9 +673,7 @@ export default function InteracaoDetalhesPage({
             </p>
 
             <p className="text-xs text-muted-foreground">
-              {origemCliente
-                ? "Cliente"
-                : "Representada"}
+              {tipoOrigem}
             </p>
           </div>
 
@@ -342,7 +685,9 @@ export default function InteracaoDetalhesPage({
               "bg-gray-100 text-gray-800"
             }`}
           >
-            {interacao.tipo}
+            {
+              interacao.tipo
+            }
           </span>
 
           {editada && (
@@ -382,7 +727,11 @@ export default function InteracaoDetalhesPage({
             </CardTitle>
 
             <CardDescription>
-              Histórico comercial preservado.
+              Histórico comercial preservado sob o código{" "}
+              <span className="font-mono font-medium">
+                {codigo}
+              </span>
+              .
             </CardDescription>
           </CardHeader>
 
@@ -475,15 +824,13 @@ export default function InteracaoDetalhesPage({
 
                 <div className="mt-1 whitespace-pre-wrap rounded-md border bg-blue-50 p-3 text-sm">
                   {
-                    interacao
-                      .proximosPasso
+                    interacao.proximosPasso
                   }
                 </div>
               </div>
             )}
 
-            {interacao
-              .proximoContatoEm && (
+            {interacao.proximoContatoEm && (
               <div>
                 <p className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-4 w-4 text-orange-600" />
@@ -494,33 +841,26 @@ export default function InteracaoDetalhesPage({
                 <div className="mt-1 rounded-md border bg-amber-50 p-3">
                   <p className="text-sm font-medium">
                     {formatarData(
-                      interacao
-                        .proximoContatoEm
+                      interacao.proximoContatoEm
                     )}
                   </p>
 
                   <p className="text-xs text-muted-foreground">
                     Status:{" "}
                     {
-                      interacao
-                        .statusFollowUp
+                      interacao.statusFollowUp
                     }
                   </p>
 
-                  {interacao
-                    .responsavel && (
+                  {interacao.responsavel && (
                     <p className="mt-1 text-xs text-muted-foreground">
                       Responsável:{" "}
                       {
-                        interacao
-                          .responsavel
-                          .nome
+                        interacao.responsavel.nome
                       }{" "}
                       —{" "}
                       {
-                        interacao
-                          .responsavel
-                          .perfil
+                        interacao.responsavel.perfil
                       }
                     </p>
                   )}
@@ -528,32 +868,205 @@ export default function InteracaoDetalhesPage({
               </div>
             )}
 
-            {!interacao.assunto &&
-              !interacao.descricao &&
-              !interacao.resultado &&
-              !interacao.proximosPasso &&
-              !interacao.proximoContatoEm && (
-                <p className="text-sm italic text-muted-foreground">
-                  Nenhum detalhe adicional registrado.
-                </p>
-              )}
-
             <div className="border-t pt-3 text-xs text-muted-foreground">
               <p>
+                Código:{" "}
+                <span className="font-mono font-medium text-slate-700">
+                  {codigo}
+                </span>
+              </p>
+
+              <p className="mt-1">
                 Criada em:{" "}
                 {formatarData(
                   interacao.criadoEm
                 )}
+                {" — "}
+                {interacao.criadoPor
+                  ?.nome ||
+                  "Usuário não identificado"}
               </p>
 
               {editada && (
-                <p className="mt-1 font-medium text-amber-700">
-                  Editada em:{" "}
-                  {formatarData(
-                    interacao
-                      .atualizadoEm
+                <>
+                  <p className="mt-1 font-medium text-amber-700">
+                    Última edição:{" "}
+                    {formatarData(
+                      interacao.atualizadoEm
+                    )}
+
+                    {ultimaEdicao
+                      ?.usuario
+                      ? ` — ${ultimaEdicao.usuario.nome} — ${ultimaEdicao.usuario.perfil}`
+                      : ""}
+                  </p>
+
+                  <p className="mt-1 text-muted-foreground">
+                    Total de alterações registradas:{" "}
+                    <strong>
+                      {
+                        historico.length
+                      }
+                    </strong>
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="border-t pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-between"
+                onClick={() =>
+                  setHistoricoAberto(
+                    (
+                      atual
+                    ) =>
+                      !atual
+                  )
+                }
+              >
+                <span className="flex items-center gap-2">
+                  <History className="h-4 w-4" />
+
+                  Histórico de alterações (
+                  {
+                    historico.length
+                  }
+                  )
+                </span>
+
+                {historicoAberto ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+
+              {historicoAberto && (
+                <div className="mt-3 space-y-3">
+                  {loadingHistorico ? (
+                    <div className="flex items-center gap-2 rounded-md border p-4 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+
+                      Carregando histórico...
+                    </div>
+                  ) : erroHistorico ? (
+                    <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                      {
+                        erroHistorico
+                      }
+                    </div>
+                  ) : historico.length ===
+                    0 ? (
+                    <div className="rounded-md border p-4 text-sm text-muted-foreground">
+                      Nenhuma alteração registrada.
+                    </div>
+                  ) : (
+                    historico.map(
+                      (
+                        item,
+                        index
+                      ) => {
+                        const alteracoes =
+                          obterAlteracoes(
+                            item
+                          )
+
+                        return (
+                          <div
+                            key={
+                              item.id
+                            }
+                            className="rounded-md border bg-slate-50 p-4"
+                          >
+                            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="text-sm font-semibold">
+                                  Alteração{" "}
+                                  {
+                                    historico.length -
+                                    index
+                                  }
+                                </p>
+
+                                <p className="text-xs text-muted-foreground">
+                                  {item.usuario
+                                    ?.nome ||
+                                    "Usuário não identificado"}
+                                  {" — "}
+                                  {item.usuario
+                                    ?.perfil ||
+                                    "—"}
+                                </p>
+                              </div>
+
+                              <p className="text-xs font-medium text-slate-600">
+                                {formatarData(
+                                  item.criadoEm
+                                )}
+                              </p>
+                            </div>
+
+                            {alteracoes.length >
+                            0 ? (
+                              <div className="mt-3 space-y-2">
+                                {alteracoes.map(
+                                  (
+                                    alteracao,
+                                    alteracaoIndex
+                                  ) => (
+                                    <div
+                                      key={`${item.id}-${alteracaoIndex}`}
+                                      className="rounded-md bg-white p-3 text-sm"
+                                    >
+                                      <p className="font-medium">
+                                        {
+                                          alteracao.campo
+                                        }
+                                      </p>
+
+                                      <div className="mt-1 grid gap-1 text-xs sm:grid-cols-2">
+                                        <div>
+                                          <span className="text-muted-foreground">
+                                            Antes:{" "}
+                                          </span>
+
+                                          <span>
+                                            {
+                                              alteracao.antes
+                                            }
+                                          </span>
+                                        </div>
+
+                                        <div>
+                                          <span className="text-muted-foreground">
+                                            Depois:{" "}
+                                          </span>
+
+                                          <span>
+                                            {
+                                              alteracao.depois
+                                            }
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            ) : (
+                              <p className="mt-3 text-xs text-muted-foreground">
+                                Alteração registrada sem diferença operacional identificada nos campos exibidos.
+                              </p>
+                            )}
+                          </div>
+                        )
+                      }
+                    )
                   )}
-                </p>
+                </div>
               )}
             </div>
           </CardContent>
@@ -564,7 +1077,9 @@ export default function InteracaoDetalhesPage({
             <CardTitle>
               {origemCliente
                 ? "Dados do Cliente"
-                : "Dados da Representada"}
+                : origemRepresentada
+                  ? "Dados da Representada"
+                  : "Origem"}
             </CardTitle>
 
             <CardDescription>
@@ -582,28 +1097,20 @@ export default function InteracaoDetalhesPage({
 
                   <p className="text-sm font-medium">
                     {
-                      interacao
-                        .cliente
-                        .razaoSocial
+                      interacao.cliente.razaoSocial
                     }
                   </p>
 
-                  {interacao
-                    .cliente
-                    .nomeFantasia && (
+                  {interacao.cliente.nomeFantasia && (
                     <p className="text-xs text-muted-foreground">
                       {
-                        interacao
-                          .cliente
-                          .nomeFantasia
+                        interacao.cliente.nomeFantasia
                       }
                     </p>
                   )}
                 </div>
 
-                {interacao
-                  .cliente
-                  .contato && (
+                {interacao.cliente.contato && (
                   <div>
                     <p className="text-xs text-muted-foreground">
                       Contato
@@ -611,23 +1118,17 @@ export default function InteracaoDetalhesPage({
 
                     <p className="text-sm">
                       {
-                        interacao
-                          .cliente
-                          .contato
+                        interacao.cliente.contato
                       }
 
-                      {interacao
-                        .cliente
-                        .cargo
+                      {interacao.cliente.cargo
                         ? ` — ${interacao.cliente.cargo}`
                         : ""}
                     </p>
                   </div>
                 )}
 
-                {interacao
-                  .cliente
-                  .whatsapp && (
+                {interacao.cliente.whatsapp && (
                   <div>
                     <p className="text-xs text-muted-foreground">
                       WhatsApp
@@ -636,9 +1137,7 @@ export default function InteracaoDetalhesPage({
                     <div className="flex items-center gap-2">
                       <p className="text-sm">
                         {
-                          interacao
-                            .cliente
-                            .whatsapp
+                          interacao.cliente.whatsapp
                         }
                       </p>
 
@@ -656,9 +1155,7 @@ export default function InteracaoDetalhesPage({
                   </div>
                 )}
 
-                {interacao
-                  .cliente
-                  .telefone && (
+                {interacao.cliente.telefone && (
                   <div>
                     <p className="text-xs text-muted-foreground">
                       Telefone
@@ -667,9 +1164,7 @@ export default function InteracaoDetalhesPage({
                     <div className="flex items-center gap-2">
                       <p className="text-sm">
                         {
-                          interacao
-                            .cliente
-                            .telefone
+                          interacao.cliente.telefone
                         }
                       </p>
 
@@ -685,9 +1180,7 @@ export default function InteracaoDetalhesPage({
                   </div>
                 )}
 
-                {interacao
-                  .cliente
-                  .email && (
+                {interacao.cliente.email && (
                   <div>
                     <p className="text-xs text-muted-foreground">
                       E-mail
@@ -696,9 +1189,7 @@ export default function InteracaoDetalhesPage({
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm">
                         {
-                          interacao
-                            .cliente
-                            .email
+                          interacao.cliente.email
                         }
                       </p>
 
@@ -735,16 +1226,12 @@ export default function InteracaoDetalhesPage({
 
                   <p className="text-sm font-medium">
                     {
-                      interacao
-                        .representada
-                        .nome
+                      interacao.representada.nome
                     }
                   </p>
                 </div>
 
-                {interacao
-                  .representada
-                  .cnpj && (
+                {interacao.representada.cnpj && (
                   <div>
                     <p className="text-xs text-muted-foreground">
                       CNPJ
@@ -752,17 +1239,13 @@ export default function InteracaoDetalhesPage({
 
                     <p className="text-sm">
                       {
-                        interacao
-                          .representada
-                          .cnpj
+                        interacao.representada.cnpj
                       }
                     </p>
                   </div>
                 )}
 
-                {interacao
-                  .representada
-                  .contatoPrincipal && (
+                {interacao.representada.contatoPrincipal && (
                   <div>
                     <p className="text-xs text-muted-foreground">
                       Contato
@@ -770,17 +1253,13 @@ export default function InteracaoDetalhesPage({
 
                     <p className="text-sm">
                       {
-                        interacao
-                          .representada
-                          .contatoPrincipal
+                        interacao.representada.contatoPrincipal
                       }
                     </p>
                   </div>
                 )}
 
-                {interacao
-                  .representada
-                  .whatsappPrincipal && (
+                {interacao.representada.whatsappPrincipal && (
                   <div>
                     <p className="text-xs text-muted-foreground">
                       WhatsApp
@@ -789,9 +1268,7 @@ export default function InteracaoDetalhesPage({
                     <div className="flex items-center gap-2">
                       <p className="text-sm">
                         {
-                          interacao
-                            .representada
-                            .whatsappPrincipal
+                          interacao.representada.whatsappPrincipal
                         }
                       </p>
 
@@ -809,9 +1286,7 @@ export default function InteracaoDetalhesPage({
                   </div>
                 )}
 
-                {interacao
-                  .representada
-                  .telefonePrincipal && (
+                {interacao.representada.telefonePrincipal && (
                   <div>
                     <p className="text-xs text-muted-foreground">
                       Telefone
@@ -820,9 +1295,7 @@ export default function InteracaoDetalhesPage({
                     <div className="flex items-center gap-2">
                       <p className="text-sm">
                         {
-                          interacao
-                            .representada
-                            .telefonePrincipal
+                          interacao.representada.telefonePrincipal
                         }
                       </p>
 
@@ -838,9 +1311,7 @@ export default function InteracaoDetalhesPage({
                   </div>
                 )}
 
-                {interacao
-                  .representada
-                  .emailPrincipal && (
+                {interacao.representada.emailPrincipal && (
                   <div>
                     <p className="text-xs text-muted-foreground">
                       E-mail
@@ -849,9 +1320,7 @@ export default function InteracaoDetalhesPage({
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm">
                         {
-                          interacao
-                            .representada
-                            .emailPrincipal
+                          interacao.representada.emailPrincipal
                         }
                       </p>
 
@@ -863,6 +1332,19 @@ export default function InteracaoDetalhesPage({
                     </div>
                   </div>
                 )}
+
+                <Link
+                  href={`/representadas/${interacao.representada.id}`}
+                >
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <Factory className="mr-2 h-4 w-4" />
+
+                    Ver Representada
+                  </Button>
+                </Link>
               </>
             )}
 

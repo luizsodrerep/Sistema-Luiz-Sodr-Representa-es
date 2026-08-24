@@ -35,6 +35,10 @@ import {
 } from "@/components/ui/tabs"
 
 import {
+  formatarCodigoInteracao,
+} from "@/lib/interacoes/codigo"
+
+import {
   AlertCircle,
   Building2,
   Calendar,
@@ -71,9 +75,9 @@ type UsuarioResumo = {
 
 type Interacao = {
   id: string
+  numeroSequencial: number
 
   data: string
-
   tipo: string
 
   assunto: string | null
@@ -97,7 +101,10 @@ type Interacao = {
   atualizadoEm: string
 }
 
-const corTipo: Record<string, string> = {
+const corTipo: Record<
+  string,
+  string
+> = {
   WhatsApp:
     "bg-green-100 text-green-800",
 
@@ -124,8 +131,8 @@ const TIPOS_ABA: Record<
 
 type FiltroSituacao =
   | "todas"
-  | "pendentes"
-  | "acompanhar"
+  | "vencidas"
+  | "a-vencer"
   | "finalizadas"
   | "sem-acompanhamento"
 
@@ -204,11 +211,16 @@ function obterOrigem(
     }
   }
 
-  if (interacao.representada) {
+  if (
+    interacao.representada
+  ) {
     return {
-      tipo: "Representada",
+      tipo:
+        "Representada",
+
       nome:
-        interacao.representada
+        interacao
+          .representada
           .nome,
     }
   }
@@ -236,110 +248,180 @@ function foiEditada(
 
   if (
     Number.isNaN(criado) ||
-    Number.isNaN(atualizado)
+    Number.isNaN(
+      atualizado
+    )
   ) {
     return false
   }
 
-  return atualizado - criado > 2000
+  return (
+    atualizado - criado >
+    2000
+  )
+}
+
+function estaFinalizada(
+  interacao: Interacao
+) {
+  return (
+    interacao.statusFollowUp ===
+    "Finalizado"
+  )
+}
+
+function semAcompanhamento(
+  interacao: Interacao
+) {
+  return (
+    interacao.statusFollowUp ===
+      "Sem acompanhamento" ||
+    !interacao.proximoContatoEm
+  )
+}
+
+function estaVencida(
+  interacao: Interacao
+) {
+  if (
+    estaFinalizada(
+      interacao
+    ) ||
+    semAcompanhamento(
+      interacao
+    ) ||
+    !interacao.proximoContatoEm
+  ) {
+    return false
+  }
+
+  const proximo =
+    new Date(
+      interacao.proximoContatoEm
+    ).getTime()
+
+  if (
+    Number.isNaN(
+      proximo
+    )
+  ) {
+    return false
+  }
+
+  return (
+    proximo <=
+    Date.now()
+  )
+}
+
+function estaAVencer(
+  interacao: Interacao
+) {
+  if (
+    estaFinalizada(
+      interacao
+    ) ||
+    semAcompanhamento(
+      interacao
+    ) ||
+    !interacao.proximoContatoEm
+  ) {
+    return false
+  }
+
+  const proximo =
+    new Date(
+      interacao.proximoContatoEm
+    ).getTime()
+
+  if (
+    Number.isNaN(
+      proximo
+    )
+  ) {
+    return false
+  }
+
+  return (
+    proximo >
+    Date.now()
+  )
 }
 
 function correspondeSituacao(
   interacao: Interacao,
   filtro: FiltroSituacao
 ) {
-  if (filtro === "todas") {
-    return true
-  }
-
-  if (filtro === "finalizadas") {
-    return (
-      interacao.statusFollowUp ===
-      "Finalizado"
-    )
-  }
-
-  if (
-    filtro ===
-    "sem-acompanhamento"
+  switch (
+    filtro
   ) {
-    return (
-      interacao.statusFollowUp ===
-        "Sem acompanhamento" ||
-      !interacao.proximoContatoEm
-    )
+    case "todas":
+      return true
+
+    case "vencidas":
+      return estaVencida(
+        interacao
+      )
+
+    case "a-vencer":
+      return estaAVencer(
+        interacao
+      )
+
+    case "finalizadas":
+      return estaFinalizada(
+        interacao
+      )
+
+    case "sem-acompanhamento":
+      return (
+        !estaFinalizada(
+          interacao
+        ) &&
+        semAcompanhamento(
+          interacao
+        )
+      )
+
+    default:
+      return true
   }
-
-  if (filtro === "acompanhar") {
-    return (
-      interacao.statusFollowUp ===
-        "Em acompanhamento" ||
-      interacao.statusFollowUp ===
-        "Aberto"
-    )
-  }
-
-  if (filtro === "pendentes") {
-    if (
-      interacao.statusFollowUp ===
-        "Finalizado" ||
-      interacao.statusFollowUp ===
-        "Sem acompanhamento"
-    ) {
-      return false
-    }
-
-    if (
-      !interacao.proximoContatoEm
-    ) {
-      return false
-    }
-
-    const proximo =
-      new Date(
-        interacao.proximoContatoEm
-      ).getTime()
-
-    const agora =
-      Date.now()
-
-    return (
-      !Number.isNaN(proximo) &&
-      proximo <= agora
-    )
-  }
-
-  return true
 }
 
 export default function InteracoesPage() {
   const [
     interacoes,
     setInteracoes,
-  ] = useState<Interacao[]>([])
+  ] =
+    useState<Interacao[]>(
+      []
+    )
 
   const [
     loading,
     setLoading,
-  ] = useState(true)
+  ] =
+    useState(true)
 
   const [
     erro,
     setErro,
   ] =
-    useState<string | null>(
-      null
-    )
+    useState<
+      string | null
+    >(null)
 
   const [
     searchTerm,
     setSearchTerm,
-  ] = useState("")
+  ] =
+    useState("")
 
   const [
     abaAtiva,
     setAbaAtiva,
-  ] = useState("todas")
+  ] =
+    useState("todas")
 
   const [
     filtroSituacao,
@@ -353,21 +435,29 @@ export default function InteracoesPage() {
     useCallback(
       async (
         aba: string,
-        silencioso = false
+        silencioso =
+          false
       ) => {
-        if (!silencioso) {
-          setLoading(true)
+        if (
+          !silencioso
+        ) {
+          setLoading(
+            true
+          )
         }
 
         setErro(null)
 
         try {
           const tipo =
-            TIPOS_ABA[aba]
+            TIPOS_ABA[
+              aba
+            ]
 
           const params =
             tipo &&
-            tipo !== "todas"
+            tipo !==
+              "todas"
               ? `?tipo=${encodeURIComponent(
                   tipo
                 )}`
@@ -377,12 +467,17 @@ export default function InteracoesPage() {
             await fetch(
               `/api/interacoes${params}`,
               {
-                method: "GET",
-                cache: "no-store",
+                method:
+                  "GET",
+
+                cache:
+                  "no-store",
               }
             )
 
-          if (!response.ok) {
+          if (
+            !response.ok
+          ) {
             throw new Error(
               "Falha ao consultar interações."
             )
@@ -413,8 +508,12 @@ export default function InteracoesPage() {
             "Não foi possível carregar as interações."
           )
         } finally {
-          if (!silencioso) {
-            setLoading(false)
+          if (
+            !silencioso
+          ) {
+            setLoading(
+              false
+            )
           }
         }
       },
@@ -460,7 +559,9 @@ export default function InteracoesPage() {
           .toLowerCase()
 
       return interacoes.filter(
-        (interacao) => {
+        (
+          interacao
+        ) => {
           if (
             !correspondeSituacao(
               interacao,
@@ -480,14 +581,43 @@ export default function InteracoesPage() {
             )
 
           const autor =
-            interacao.criadoPor
-              ?.nome || ""
+            interacao
+              .criadoPor
+              ?.nome ||
+            ""
 
           const perfil =
-            interacao.criadoPor
-              ?.perfil || ""
+            interacao
+              .criadoPor
+              ?.perfil ||
+            ""
+
+          const codigo =
+            formatarCodigoInteracao(
+              interacao.numeroSequencial
+            ).toLowerCase()
+
+          const numeroPuro =
+            String(
+              interacao.numeroSequencial
+            )
+
+          const numeroPreenchido =
+            numeroPuro.padStart(
+              6,
+              "0"
+            )
 
           return (
+            codigo.includes(
+              termo
+            ) ||
+            numeroPuro.includes(
+              termo
+            ) ||
+            numeroPreenchido.includes(
+              termo
+            ) ||
             origem.nome
               .toLowerCase()
               .includes(
@@ -513,25 +643,30 @@ export default function InteracoesPage() {
               .includes(
                 termo
               ) ||
-            (interacao.assunto
-              ?.toLowerCase()
-              .includes(
-                termo
-              ) ??
-              false) ||
-            (interacao.descricao
-              ?.toLowerCase()
-              .includes(
-                termo
-              ) ??
-              false) ||
-            (interacao
-              .proximosPasso
-              ?.toLowerCase()
-              .includes(
-                termo
-              ) ??
-              false)
+            (
+              interacao.assunto
+                ?.toLowerCase()
+                .includes(
+                  termo
+                ) ??
+              false
+            ) ||
+            (
+              interacao.descricao
+                ?.toLowerCase()
+                .includes(
+                  termo
+                ) ??
+              false
+            ) ||
+            (
+              interacao.proximosPasso
+                ?.toLowerCase()
+                .includes(
+                  termo
+                ) ??
+              false
+            )
           )
         }
       )
@@ -547,43 +682,37 @@ export default function InteracoesPage() {
         todas:
           interacoes.length,
 
-        pendentes:
+        vencidas:
           interacoes.filter(
-            (interacao) =>
-              correspondeSituacao(
-                interacao,
-                "pendentes"
-              )
+            estaVencida
           ).length,
 
-        acompanhar:
+        aVencer:
           interacoes.filter(
-            (interacao) =>
-              correspondeSituacao(
-                interacao,
-                "acompanhar"
-              )
+            estaAVencer
           ).length,
 
         finalizadas:
           interacoes.filter(
-            (interacao) =>
-              correspondeSituacao(
-                interacao,
-                "finalizadas"
-              )
+            estaFinalizada
           ).length,
 
         semAcompanhamento:
           interacoes.filter(
-            (interacao) =>
-              correspondeSituacao(
-                interacao,
-                "sem-acompanhamento"
+            (
+              interacao
+            ) =>
+              !estaFinalizada(
+                interacao
+              ) &&
+              semAcompanhamento(
+                interacao
               )
           ).length,
       }
-    }, [interacoes])
+    }, [
+      interacoes,
+    ])
 
   function renderLista() {
     if (loading) {
@@ -651,7 +780,9 @@ export default function InteracoesPage() {
     return (
       <div className="space-y-2">
         {interacoesFiltradas.map(
-          (interacao) => {
+          (
+            interacao
+          ) => {
             const origem =
               obterOrigem(
                 interacao
@@ -663,6 +794,11 @@ export default function InteracoesPage() {
                 interacao.atualizadoEm
               )
 
+            const codigo =
+              formatarCodigoInteracao(
+                interacao.numeroSequencial
+              )
+
             return (
               <div
                 key={
@@ -670,6 +806,29 @@ export default function InteracoesPage() {
                 }
                 className="rounded-md border p-3 transition hover:bg-muted/20"
               >
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/interacoes/${interacao.id}`}
+                      className="rounded-md border bg-slate-50 px-2 py-1 font-mono text-xs font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                    >
+                      {
+                        codigo
+                      }
+                    </Link>
+
+                    <span className="text-xs text-muted-foreground">
+                      Identificação permanente
+                    </span>
+                  </div>
+
+                  {editada && (
+                    <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                      Editada
+                    </span>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.25fr_1.35fr_1.05fr_1.15fr_auto] lg:items-center">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -684,8 +843,9 @@ export default function InteracoesPage() {
                       )}
 
                       <div className="min-w-0">
-                        <p
-                          className="truncate text-sm font-medium"
+                        <Link
+                          href={`/interacoes/${interacao.id}`}
+                          className="block truncate text-sm font-semibold text-slate-900 transition hover:text-blue-700 hover:underline"
                           title={
                             origem.nome
                           }
@@ -693,7 +853,7 @@ export default function InteracoesPage() {
                           {
                             origem.nome
                           }
-                        </p>
+                        </Link>
 
                         <p className="text-xs text-muted-foreground">
                           {
@@ -713,8 +873,7 @@ export default function InteracoesPage() {
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                           corTipo[
-                            interacao
-                              .tipo
+                            interacao.tipo
                           ] ??
                           "bg-gray-100 text-gray-800"
                         }`}
@@ -723,12 +882,6 @@ export default function InteracoesPage() {
                           interacao.tipo
                         }
                       </span>
-
-                      {editada && (
-                        <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                          Editada
-                        </span>
-                      )}
                     </div>
 
                     <p
@@ -742,19 +895,16 @@ export default function InteracoesPage() {
                         "Sem assunto"}
                     </p>
 
-                    {interacao
-                      .proximosPasso && (
+                    {interacao.proximosPasso && (
                       <p
                         className="mt-1 truncate text-xs text-muted-foreground"
                         title={
-                          interacao
-                            .proximosPasso
+                          interacao.proximosPasso
                         }
                       >
                         Próximo passo:{" "}
                         {
-                          interacao
-                            .proximosPasso
+                          interacao.proximosPasso
                         }
                       </p>
                     )}
@@ -773,15 +923,13 @@ export default function InteracoesPage() {
 
                     <div className="mt-1">
                       <p className="truncate text-xs font-medium">
-                        {interacao
-                          .criadoPor
+                        {interacao.criadoPor
                           ?.nome ||
                           "Usuário não identificado"}
                       </p>
 
                       <p className="text-[10px] text-muted-foreground">
-                        {interacao
-                          .criadoPor
+                        {interacao.criadoPor
                           ?.perfil ||
                           "—"}
                       </p>
@@ -797,15 +945,13 @@ export default function InteracoesPage() {
 
                         <p className="text-xs">
                           {formatarData(
-                            interacao
-                              .proximoContatoEm
+                            interacao.proximoContatoEm
                           )}
                         </p>
 
                         <p className="text-[10px] text-muted-foreground">
                           {
-                            interacao
-                              .statusFollowUp
+                            interacao.statusFollowUp
                           }
                         </p>
                       </>
@@ -853,7 +999,7 @@ export default function InteracoesPage() {
 
             <Input
               type="search"
-              placeholder="Buscar interação..."
+              placeholder="Código, cliente, assunto..."
               className="h-8 w-full pl-7 text-xs"
               value={
                 searchTerm
@@ -862,8 +1008,7 @@ export default function InteracoesPage() {
                 event
               ) =>
                 setSearchTerm(
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
             />
@@ -898,7 +1043,9 @@ export default function InteracoesPage() {
       </div>
 
       <Tabs
-        value={abaAtiva}
+        value={
+          abaAtiva
+        }
         className="w-full"
         onValueChange={
           setAbaAtiva
@@ -943,125 +1090,143 @@ export default function InteracoesPage() {
 
         {Object.keys(
           TIPOS_ABA
-        ).map((aba) => (
-          <TabsContent
-            key={aba}
-            value={aba}
-            className="mt-2"
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Histórico de Interações
-                </CardTitle>
+        ).map(
+          (
+            aba
+          ) => (
+            <TabsContent
+              key={
+                aba
+              }
+              value={
+                aba
+              }
+              className="mt-2"
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    Histórico de Interações
+                  </CardTitle>
 
-                <CardDescription>
-                  {
-                    interacoesFiltradas.length
-                  }{" "}
-                  registro(s) exibido(s).
-                  Atualização automática a cada 15 segundos.
-                </CardDescription>
+                  <CardDescription>
+                    {
+                      interacoesFiltradas.length
+                    }{" "}
+                    registro(s) exibido(s).
+                    Atualização automática a cada 15 segundos.
+                  </CardDescription>
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={
-                      filtroSituacao ===
-                      "todas"
-                        ? "default"
-                        : "outline"
-                    }
-                    onClick={() =>
-                      setFiltroSituacao(
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={
+                        filtroSituacao ===
                         "todas"
-                      )
-                    }
-                  >
-                    Todas ({contadores.todas})
-                  </Button>
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() =>
+                        setFiltroSituacao(
+                          "todas"
+                        )
+                      }
+                    >
+                      Todas ({
+                        contadores.todas
+                      })
+                    </Button>
 
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={
-                      filtroSituacao ===
-                      "pendentes"
-                        ? "default"
-                        : "outline"
-                    }
-                    onClick={() =>
-                      setFiltroSituacao(
-                        "pendentes"
-                      )
-                    }
-                  >
-                    Pendentes ({contadores.pendentes})
-                  </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={
+                        filtroSituacao ===
+                        "vencidas"
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() =>
+                        setFiltroSituacao(
+                          "vencidas"
+                        )
+                      }
+                    >
+                      Vencidas ({
+                        contadores.vencidas
+                      })
+                    </Button>
 
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={
-                      filtroSituacao ===
-                      "acompanhar"
-                        ? "default"
-                        : "outline"
-                    }
-                    onClick={() =>
-                      setFiltroSituacao(
-                        "acompanhar"
-                      )
-                    }
-                  >
-                    Acompanhar ({contadores.acompanhar})
-                  </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={
+                        filtroSituacao ===
+                        "a-vencer"
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() =>
+                        setFiltroSituacao(
+                          "a-vencer"
+                        )
+                      }
+                    >
+                      A vencer ({
+                        contadores.aVencer
+                      })
+                    </Button>
 
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={
-                      filtroSituacao ===
-                      "finalizadas"
-                        ? "default"
-                        : "outline"
-                    }
-                    onClick={() =>
-                      setFiltroSituacao(
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={
+                        filtroSituacao ===
                         "finalizadas"
-                      )
-                    }
-                  >
-                    Finalizadas ({contadores.finalizadas})
-                  </Button>
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() =>
+                        setFiltroSituacao(
+                          "finalizadas"
+                        )
+                      }
+                    >
+                      Finalizadas ({
+                        contadores.finalizadas
+                      })
+                    </Button>
 
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={
-                      filtroSituacao ===
-                      "sem-acompanhamento"
-                        ? "default"
-                        : "outline"
-                    }
-                    onClick={() =>
-                      setFiltroSituacao(
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={
+                        filtroSituacao ===
                         "sem-acompanhamento"
-                      )
-                    }
-                  >
-                    Sem acompanhamento ({contadores.semAcompanhamento})
-                  </Button>
-                </div>
-              </CardHeader>
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() =>
+                        setFiltroSituacao(
+                          "sem-acompanhamento"
+                        )
+                      }
+                    >
+                      Sem acompanhamento ({
+                        contadores.semAcompanhamento
+                      })
+                    </Button>
+                  </div>
+                </CardHeader>
 
-              <CardContent>
-                {renderLista()}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
+                <CardContent>
+                  {renderLista()}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )
+        )}
       </Tabs>
     </PageLayout>
   )

@@ -19,7 +19,8 @@ function filtroCarteiraPreposto(
         escritorioId,
         OR: [
           {
-            responsavelPrincipalId: usuarioId,
+            responsavelPrincipalId:
+              usuarioId,
           },
           {
             participantes: {
@@ -53,6 +54,102 @@ function filtroAcessoInteracao(
   }
 }
 
+function textoOpcional(
+  valor: unknown
+) {
+  return typeof valor === "string" &&
+    valor.trim() !== ""
+    ? valor.trim()
+    : null
+}
+
+function snapshotInteracao(
+  interacao: {
+    id: string
+    numeroSequencial: number
+    escritorioId: string | null
+
+    data: Date
+
+    clienteId: string | null
+    representadaId: string | null
+    vendaId: string | null
+
+    criadoPorId: string | null
+    responsavelId: string | null
+
+    tipo: string
+
+    assunto: string | null
+    descricao: string | null
+    resultado: string | null
+    proximosPasso: string | null
+
+    proximoContatoEm: Date | null
+    statusFollowUp: string
+
+    criadoEm: Date
+    atualizadoEm: Date
+  }
+) {
+  return {
+    id: interacao.id,
+
+    numeroSequencial:
+      interacao.numeroSequencial,
+
+    escritorioId:
+      interacao.escritorioId,
+
+    data:
+      interacao.data.toISOString(),
+
+    clienteId:
+      interacao.clienteId,
+
+    representadaId:
+      interacao.representadaId,
+
+    vendaId:
+      interacao.vendaId,
+
+    criadoPorId:
+      interacao.criadoPorId,
+
+    responsavelId:
+      interacao.responsavelId,
+
+    tipo:
+      interacao.tipo,
+
+    assunto:
+      interacao.assunto,
+
+    descricao:
+      interacao.descricao,
+
+    resultado:
+      interacao.resultado,
+
+    proximosPasso:
+      interacao.proximosPasso,
+
+    proximoContatoEm:
+      interacao.proximoContatoEm
+        ? interacao.proximoContatoEm.toISOString()
+        : null,
+
+    statusFollowUp:
+      interacao.statusFollowUp,
+
+    criadoEm:
+      interacao.criadoEm.toISOString(),
+
+    atualizadoEm:
+      interacao.atualizadoEm.toISOString(),
+  }
+}
+
 export async function GET(
   request: Request,
   {
@@ -64,61 +161,71 @@ export async function GET(
   }
 ) {
   try {
-    const sessao = await exigirSessao()
-    const { id } = await params
+    const sessao =
+      await exigirSessao()
+
+    const { id } =
+      await params
 
     const interacao =
-      await prisma.interacao.findFirst({
-        where: filtroAcessoInteracao(
-          sessao.escritorioId,
-          sessao.usuarioId,
-          sessao.perfil,
-          id
-        ),
+      await prisma.interacao.findFirst(
+        {
+          where:
+            filtroAcessoInteracao(
+              sessao.escritorioId,
+              sessao.usuarioId,
+              sessao.perfil,
+              id
+            ),
 
-        include: {
-          cliente: {
-            select: {
-              id: true,
-              razaoSocial: true,
-              nomeFantasia: true,
-              whatsapp: true,
-              telefone: true,
-              email: true,
-              contato: true,
-              cargo: true,
+          include: {
+            cliente: {
+              select: {
+                id: true,
+                razaoSocial: true,
+                nomeFantasia: true,
+                whatsapp: true,
+                telefone: true,
+                email: true,
+                contato: true,
+                cargo: true,
+              },
+            },
+
+            representada: {
+              select: {
+                id: true,
+                nome: true,
+                cnpj: true,
+                contatoPrincipal:
+                  true,
+                emailPrincipal:
+                  true,
+                telefonePrincipal:
+                  true,
+                whatsappPrincipal:
+                  true,
+              },
+            },
+
+            criadoPor: {
+              select: {
+                id: true,
+                nome: true,
+                perfil: true,
+              },
+            },
+
+            responsavel: {
+              select: {
+                id: true,
+                nome: true,
+                perfil: true,
+              },
             },
           },
-
-          representada: {
-            select: {
-              id: true,
-              nome: true,
-              cnpj: true,
-              contatoPrincipal: true,
-              emailPrincipal: true,
-              telefonePrincipal: true,
-              whatsappPrincipal: true,
-            },
-          },
-
-          criadoPor: {
-            select: {
-              id: true,
-              nome: true,
-              perfil: true,
-            },
-          },
-
-          responsavel: {
-            select: {
-              id: true,
-              nome: true,
-              perfil: true,
-            },
-          },
-        },
-      })
+        }
+      )
 
     if (!interacao) {
       return NextResponse.json(
@@ -126,19 +233,29 @@ export async function GET(
           message:
             "Interação não encontrada ou sem permissão de acesso.",
         },
-        { status: 404 }
+        {
+          status: 404,
+        }
       )
     }
 
-    return NextResponse.json(interacao)
+    return NextResponse.json(
+      interacao
+    )
   } catch (error) {
     if (
       error instanceof Error &&
-      error.message === "NAO_AUTENTICADO"
+      error.message ===
+        "NAO_AUTENTICADO"
     ) {
       return NextResponse.json(
-        { message: "Não autenticado" },
-        { status: 401 }
+        {
+          message:
+            "Não autenticado",
+        },
+        {
+          status: 401,
+        }
       )
     }
 
@@ -152,7 +269,9 @@ export async function GET(
         message:
           "Erro ao buscar interação.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     )
   }
 }
@@ -168,27 +287,35 @@ export async function PUT(
   }
 ) {
   try {
-    const sessao = await exigirSessao()
-    const { id } = await params
-    const body = await request.json()
+    const sessao =
+      await exigirSessao()
 
+    const { id } =
+      await params
+
+    const body =
+      await request.json()
+
+    /*
+     * Carregamos o estado integral antes
+     * da alteração.
+     *
+     * Esse objeto será utilizado tanto
+     * para autorização quanto para o
+     * snapshot de auditoria.
+     */
     const interacaoExistente =
-      await prisma.interacao.findFirst({
-        where: filtroAcessoInteracao(
-          sessao.escritorioId,
-          sessao.usuarioId,
-          sessao.perfil,
-          id
-        ),
-
-        select: {
-          id: true,
-          clienteId: true,
-          representadaId: true,
-          criadoPorId: true,
-          data: true,
-        },
-      })
+      await prisma.interacao.findFirst(
+        {
+          where:
+            filtroAcessoInteracao(
+              sessao.escritorioId,
+              sessao.usuarioId,
+              sessao.perfil,
+              id
+            ),
+        }
+      )
 
     if (!interacaoExistente) {
       return NextResponse.json(
@@ -196,44 +323,59 @@ export async function PUT(
           message:
             "Interação não encontrada ou sem permissão de acesso.",
         },
-        { status: 404 }
+        {
+          status: 404,
+        }
       )
     }
 
     const clienteId =
-      typeof body.clienteId === "string" &&
+      typeof body.clienteId ===
+        "string" &&
       body.clienteId.trim() !== ""
         ? body.clienteId.trim()
         : null
 
     const representadaId =
-      typeof body.representadaId === "string" &&
+      typeof body.representadaId ===
+        "string" &&
       body.representadaId.trim() !== ""
         ? body.representadaId.trim()
         : null
 
-    if (!clienteId && !representadaId) {
+    if (
+      !clienteId &&
+      !representadaId
+    ) {
       return NextResponse.json(
         {
           message:
             "A interação precisa permanecer vinculada a um cliente ou representada.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
     }
 
-    if (clienteId && representadaId) {
+    if (
+      clienteId &&
+      representadaId
+    ) {
       return NextResponse.json(
         {
           message:
             "A interação não pode ser vinculada simultaneamente a cliente e representada.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
     }
 
     if (
-      typeof body.tipo !== "string" ||
+      typeof body.tipo !==
+        "string" ||
       body.tipo.trim() === ""
     ) {
       return NextResponse.json(
@@ -241,43 +383,52 @@ export async function PUT(
           message:
             "Tipo de interação é obrigatório.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
     }
 
     if (clienteId) {
       const cliente =
-        await prisma.cliente.findFirst({
-          where: {
-            id: clienteId,
-            escritorioId:
-              sessao.escritorioId,
+        await prisma.cliente.findFirst(
+          {
+            where: {
+              id: clienteId,
 
-            ...(sessao.perfil === "Preposto"
-              ? {
-                  OR: [
-                    {
-                      responsavelPrincipalId:
-                        sessao.usuarioId,
-                    },
-                    {
-                      participantes: {
-                        some: {
-                          usuarioId:
-                            sessao.usuarioId,
-                          ativa: true,
-                        },
+              escritorioId:
+                sessao.escritorioId,
+
+              ...(sessao.perfil ===
+              "Preposto"
+                ? {
+                    OR: [
+                      {
+                        responsavelPrincipalId:
+                          sessao.usuarioId,
                       },
-                    },
-                  ],
-                }
-              : {}),
-          },
+                      {
+                        participantes:
+                          {
+                            some: {
+                              usuarioId:
+                                sessao.usuarioId,
 
-          select: {
-            id: true,
-          },
-        })
+                              ativa:
+                                true,
+                            },
+                          },
+                      },
+                    ],
+                  }
+                : {}),
+            },
+
+            select: {
+              id: true,
+            },
+          }
+        )
 
       if (!cliente) {
         return NextResponse.json(
@@ -285,34 +436,45 @@ export async function PUT(
             message:
               "Cliente não encontrado ou sem permissão de acesso.",
           },
-          { status: 403 }
+          {
+            status: 403,
+          }
         )
       }
     }
 
     if (representadaId) {
-      if (sessao.perfil === "Preposto") {
+      if (
+        sessao.perfil ===
+        "Preposto"
+      ) {
         return NextResponse.json(
           {
             message:
               "Seu perfil não possui permissão para alterar interações institucionais com representadas.",
           },
-          { status: 403 }
+          {
+            status: 403,
+          }
         )
       }
 
       const representada =
-        await prisma.representada.findFirst({
-          where: {
-            id: representadaId,
-            escritorioId:
-              sessao.escritorioId,
-          },
+        await prisma.representada.findFirst(
+          {
+            where: {
+              id:
+                representadaId,
 
-          select: {
-            id: true,
-          },
-        })
+              escritorioId:
+                sessao.escritorioId,
+            },
+
+            select: {
+              id: true,
+            },
+          }
+        )
 
       if (!representada) {
         return NextResponse.json(
@@ -320,21 +482,26 @@ export async function PUT(
             message:
               "Representada não encontrada ou sem permissão de acesso.",
           },
-          { status: 403 }
+          {
+            status: 403,
+          }
         )
       }
     }
 
-    let proximoContatoEm: Date | null =
-      null
+    let proximoContatoEm:
+      Date | null = null
 
     if (
       typeof body.proximoContatoEm ===
         "string" &&
-      body.proximoContatoEm.trim() !== ""
+      body.proximoContatoEm.trim() !==
+        ""
     ) {
       const dataProximoContato =
-        new Date(body.proximoContatoEm)
+        new Date(
+          body.proximoContatoEm
+        )
 
       if (
         Number.isNaN(
@@ -346,7 +513,9 @@ export async function PUT(
             message:
               "Data do próximo acompanhamento é inválida.",
           },
-          { status: 400 }
+          {
+            status: 400,
+          }
         )
       }
 
@@ -370,119 +539,215 @@ export async function PUT(
         "Sem acompanhamento" &&
       proximoContatoEm
     ) {
-      statusFollowUp = "Aberto"
+      statusFollowUp =
+        "Aberto"
     }
 
     if (
-      statusFollowUp !== "Finalizado" &&
+      statusFollowUp !==
+        "Finalizado" &&
       !proximoContatoEm
     ) {
       statusFollowUp =
         "Sem acompanhamento"
     }
 
+    const responsavelId =
+      sessao.perfil ===
+      "Preposto"
+        ? sessao.usuarioId
+        : typeof body.responsavelId ===
+              "string" &&
+            body.responsavelId.trim() !==
+              ""
+          ? body.responsavelId.trim()
+          : sessao.usuarioId
+
     /*
-     * Data/hora original e autor
-     * permanecem imutáveis.
+     * IMPORTANTE:
      *
-     * A edição altera apenas conteúdo,
-     * vínculo e acompanhamento.
+     * numeroSequencial,
+     * criadoPorId e data original
+     * NÃO fazem parte deste update.
+     *
+     * Assim, uma edição nunca gera
+     * um novo código comercial e
+     * nunca altera autoria/data original.
+     */
+    const resultado =
+      await prisma.$transaction(
+        async (
+          tx
+        ) => {
+          const antes =
+            snapshotInteracao(
+              interacaoExistente
+            )
+
+          const interacao =
+            await tx.interacao.update(
+              {
+                where: {
+                  id:
+                    interacaoExistente.id,
+                },
+
+                data: {
+                  clienteId,
+                  representadaId,
+
+                  tipo:
+                    body.tipo.trim(),
+
+                  assunto:
+                    textoOpcional(
+                      body.assunto
+                    ),
+
+                  descricao:
+                    textoOpcional(
+                      body.descricao
+                    ),
+
+                  resultado:
+                    textoOpcional(
+                      body.resultado
+                    ),
+
+                  proximosPasso:
+                    textoOpcional(
+                      body.proximosPasso
+                    ),
+
+                  proximoContatoEm,
+
+                  statusFollowUp,
+
+                  responsavelId,
+                },
+              }
+            )
+
+          const depois =
+            snapshotInteracao(
+              interacao
+            )
+
+          /*
+           * Auditoria e edição pertencem
+           * à mesma transação.
+           *
+           * Se o INSERT da auditoria falhar,
+           * o UPDATE da interação é revertido.
+           */
+          await tx.auditoria.create(
+            {
+              data: {
+                escritorioId:
+                  sessao.escritorioId,
+
+                usuarioId:
+                  sessao.usuarioId,
+
+                entidade:
+                  "Interacao",
+
+                entidadeId:
+                  interacao.id,
+
+                acao:
+                  "EDICAO",
+
+                dadosAntes:
+                  antes,
+
+                dadosDepois:
+                  depois,
+              },
+            }
+          )
+
+          return interacao
+        }
+      )
+
+    /*
+     * Após a transação, fazemos apenas
+     * leitura para montar a resposta
+     * completa da API.
      */
     const interacao =
-      await prisma.interacao.update({
-        where: {
-          id: interacaoExistente.id,
+      await prisma.interacao.findUnique(
+        {
+          where: {
+            id:
+              resultado.id,
+          },
+
+          include: {
+            cliente: {
+              select: {
+                id: true,
+                razaoSocial: true,
+                nomeFantasia: true,
+              },
+            },
+
+            representada: {
+              select: {
+                id: true,
+                nome: true,
+              },
+            },
+
+            criadoPor: {
+              select: {
+                id: true,
+                nome: true,
+                perfil: true,
+              },
+            },
+
+            responsavel: {
+              select: {
+                id: true,
+                nome: true,
+                perfil: true,
+              },
+            },
+          },
+        }
+      )
+
+    if (!interacao) {
+      return NextResponse.json(
+        {
+          message:
+            "Interação atualizada, mas não foi possível recarregar o registro.",
         },
+        {
+          status: 500,
+        }
+      )
+    }
 
-        data: {
-          clienteId,
-          representadaId,
-
-          tipo: body.tipo.trim(),
-
-          assunto:
-            typeof body.assunto ===
-              "string" &&
-            body.assunto.trim() !== ""
-              ? body.assunto.trim()
-              : null,
-
-          descricao:
-            typeof body.descricao ===
-              "string" &&
-            body.descricao.trim() !== ""
-              ? body.descricao.trim()
-              : null,
-
-          resultado:
-            typeof body.resultado ===
-              "string" &&
-            body.resultado.trim() !== ""
-              ? body.resultado.trim()
-              : null,
-
-          proximosPasso:
-            typeof body.proximosPasso ===
-              "string" &&
-            body.proximosPasso.trim() !==
-              ""
-              ? body.proximosPasso.trim()
-              : null,
-
-          proximoContatoEm,
-
-          statusFollowUp,
-
-          responsavelId:
-            sessao.perfil === "Preposto"
-              ? sessao.usuarioId
-              : body.responsavelId ||
-                sessao.usuarioId,
-        },
-
-        include: {
-          cliente: {
-            select: {
-              id: true,
-              razaoSocial: true,
-              nomeFantasia: true,
-            },
-          },
-
-          representada: {
-            select: {
-              id: true,
-              nome: true,
-            },
-          },
-
-          criadoPor: {
-            select: {
-              id: true,
-              nome: true,
-              perfil: true,
-            },
-          },
-
-          responsavel: {
-            select: {
-              id: true,
-              nome: true,
-              perfil: true,
-            },
-          },
-        },
-      })
-
-    return NextResponse.json(interacao)
+    return NextResponse.json(
+      interacao
+    )
   } catch (error) {
     if (
       error instanceof Error &&
-      error.message === "NAO_AUTENTICADO"
+      error.message ===
+        "NAO_AUTENTICADO"
     ) {
       return NextResponse.json(
-        { message: "Não autenticado" },
-        { status: 401 }
+        {
+          message:
+            "Não autenticado",
+        },
+        {
+          status: 401,
+        }
       )
     }
 
@@ -496,14 +761,17 @@ export async function PUT(
         message:
           "Erro ao atualizar interação.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     )
   }
 }
 
 /*
- * Exclusão definitiva ficará reservada
- * ao futuro mecanismo auditado do Diretor.
+ * Exclusão definitiva permanece
+ * reservada ao mecanismo auditado
+ * do Diretor.
  *
  * Até essa implementação estar pronta,
  * a API bloqueia exclusão física.
@@ -517,16 +785,24 @@ export async function DELETE() {
         message:
           "Exclusão temporariamente bloqueada. Utilize a edição para corrigir o registro.",
       },
-      { status: 405 }
+      {
+        status: 405,
+      }
     )
   } catch (error) {
     if (
       error instanceof Error &&
-      error.message === "NAO_AUTENTICADO"
+      error.message ===
+        "NAO_AUTENTICADO"
     ) {
       return NextResponse.json(
-        { message: "Não autenticado" },
-        { status: 401 }
+        {
+          message:
+            "Não autenticado",
+        },
+        {
+          status: 401,
+        }
       )
     }
 
@@ -535,7 +811,9 @@ export async function DELETE() {
         message:
           "Operação não permitida.",
       },
-      { status: 405 }
+      {
+        status: 405,
+      }
     )
   }
 }

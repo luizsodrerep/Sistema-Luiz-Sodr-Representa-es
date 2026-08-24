@@ -104,7 +104,7 @@ model Usuario {
 
   nome String
 
-  email String @unique
+  email String  @unique
   login String? @unique
 
   senhaHash String?
@@ -124,8 +124,8 @@ model Usuario {
 
   escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
 
-  clientesOriginados   Cliente[] @relation("ClienteOriginadoPor")
-  clientesResponsavel  Cliente[] @relation("ClienteResponsavelPrincipal")
+  clientesOriginados    Cliente[]             @relation("ClienteOriginadoPor")
+  clientesResponsavel   Cliente[]             @relation("ClienteResponsavelPrincipal")
   participacoesClientes ClienteParticipacao[]
 
   vendasCriadas     Venda[] @relation("VendaCriadaPor")
@@ -225,7 +225,7 @@ model ClienteParticipacao {
 
   papel String?
 
-  inicioEm DateTime @default(now())
+  inicioEm DateTime  @default(now())
   fimEm    DateTime?
 
   ativa Boolean @default(true)
@@ -432,7 +432,7 @@ model RegraComercialRepresentada {
 model Venda {
   id String @id @default(cuid())
 
-  escritorioId       String?
+  escritorioId        String?
   empresaEscritorioId String?
 
   data DateTime
@@ -739,8 +739,8 @@ model ContaBancaria {
   usuarioTitular Usuario? @relation("ContaTitularUsuario", fields: [usuarioTitularId], references: [id], onDelete: SetNull)
 
   recebimentosRepresentadas RepresentadaContaRecebimento[]
-  notasComissao              NFComissao[]
-  financeiros                Financeiro[]
+  notasComissao             NFComissao[]
+  financeiros               Financeiro[]
 
   @@index([escritorioId])
   @@index([empresaEscritorioId])
@@ -786,6 +786,8 @@ model RepresentadaContaRecebimento {
 
 model Interacao {
   id String @id @default(cuid())
+
+  numeroSequencial Int @unique @default(autoincrement())
 
   escritorioId String?
 
