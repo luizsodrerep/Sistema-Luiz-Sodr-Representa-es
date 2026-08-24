@@ -29,6 +29,10 @@ import {
 } from "@/lib/interacoes/codigo"
 
 import {
+  formatarCodigoOrcamento,
+} from "@/lib/orcamentos/codigo"
+
+import {
   AlertCircle,
   ArrowRight,
   Building2,
@@ -39,12 +43,14 @@ import {
   ClipboardList,
   Clock,
   Factory,
+  FileText,
   History,
   Loader2,
   Mail,
   MessageSquare,
   Pencil,
   Phone,
+  PlusCircle,
   User,
 } from "lucide-react"
 
@@ -146,6 +152,31 @@ type HistoricoResponse = {
   historico: HistoricoItem[]
 }
 
+type OrcamentoResumo = {
+  id: string
+  numeroSequencial: number
+
+  data: string
+  validadeEm: string
+
+  valorTotal: number
+
+  status: string
+
+  representada: {
+    id: string
+    nome: string
+  }
+
+  responsavel:
+    | {
+        id: string
+        nome: string
+        perfil: string
+      }
+    | null
+}
+
 const corTipo: Record<
   string,
   string
@@ -194,6 +225,70 @@ function formatarData(
       minute: "2-digit",
     }
   )
+}
+
+function formatarDataSimples(
+  valor: string | null
+) {
+  if (!valor) {
+    return "—"
+  }
+
+  const data =
+    new Date(valor)
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return "—"
+  }
+
+  return data.toLocaleDateString(
+    "pt-BR"
+  )
+}
+
+function formatarMoeda(
+  valor: number
+) {
+  return valor.toLocaleString(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL",
+    }
+  )
+}
+
+function classeStatusOrcamento(
+  status: string
+) {
+  if (
+    status ===
+    "Aprovado"
+  ) {
+    return "bg-green-100 text-green-800"
+  }
+
+  if (
+    status ===
+    "Vencido"
+  ) {
+    return "bg-red-100 text-red-800"
+  }
+
+  if (
+    status ===
+      "Recusado" ||
+    status ===
+      "Cancelado"
+  ) {
+    return "bg-slate-200 text-slate-700"
+  }
+
+  return "bg-amber-100 text-amber-800"
 }
 
 function foiEditada(
@@ -378,6 +473,14 @@ export default function InteracaoDetalhesPage({
     )
 
   const [
+    orcamentos,
+    setOrcamentos,
+  ] =
+    useState<
+      OrcamentoResumo[]
+    >([])
+
+  const [
     loading,
     setLoading,
   ] =
@@ -386,6 +489,12 @@ export default function InteracaoDetalhesPage({
   const [
     loadingHistorico,
     setLoadingHistorico,
+  ] =
+    useState(true)
+
+  const [
+    loadingOrcamentos,
+    setLoadingOrcamentos,
   ] =
     useState(true)
 
@@ -400,6 +509,14 @@ export default function InteracaoDetalhesPage({
   const [
     erroHistorico,
     setErroHistorico,
+  ] =
+    useState<
+      string | null
+    >(null)
+
+  const [
+    erroOrcamentos,
+    setErroOrcamentos,
   ] =
     useState<
       string | null
@@ -538,6 +655,70 @@ export default function InteracaoDetalhesPage({
     }
 
     carregarHistorico()
+  }, [id])
+
+  useEffect(() => {
+    async function carregarOrcamentos() {
+      try {
+        setLoadingOrcamentos(
+          true
+        )
+
+        setErroOrcamentos(
+          null
+        )
+
+        const response =
+          await fetch(
+            `/api/orcamentos?interacaoOrigemId=${encodeURIComponent(
+              id
+            )}`,
+            {
+              method:
+                "GET",
+
+              cache:
+                "no-store",
+            }
+          )
+
+        const data =
+          await response
+            .json()
+            .catch(
+              () => null
+            )
+
+        if (
+          !response.ok
+        ) {
+          setErroOrcamentos(
+            data?.message ||
+              "Não foi possível carregar os orçamentos desta interação."
+          )
+
+          return
+        }
+
+        setOrcamentos(
+          Array.isArray(
+            data
+          )
+            ? data
+            : []
+        )
+      } catch {
+        setErroOrcamentos(
+          "Erro ao carregar os orçamentos desta interação."
+        )
+      } finally {
+        setLoadingOrcamentos(
+          false
+        )
+      }
+    }
+
+    carregarOrcamentos()
   }, [id])
 
   if (loading) {
@@ -697,18 +878,34 @@ export default function InteracaoDetalhesPage({
           )}
         </div>
 
-        <Link
-          href={`/interacoes/${id}/editar`}
-        >
-          <Button
-            variant="outline"
-            size="sm"
-          >
-            <Pencil className="mr-2 h-4 w-4" />
+        <div className="flex flex-wrap gap-2">
+          {interacao.cliente && (
+            <Link
+              href={`/orcamentos/novo?interacaoId=${interacao.id}`}
+            >
+              <Button
+                size="sm"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
 
-            Editar
-          </Button>
-        </Link>
+                Criar Orçamento
+              </Button>
+            </Link>
+          )}
+
+          <Link
+            href={`/interacoes/${id}/editar`}
+          >
+            <Button
+              variant="outline"
+              size="sm"
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+
+              Editar
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {erro && (
@@ -1359,6 +1556,184 @@ export default function InteracaoDetalhesPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+
+                Orçamentos desta Interação
+              </CardTitle>
+
+              <CardDescription className="mt-1">
+                Propostas comerciais originadas diretamente de{" "}
+                <span className="font-mono font-medium">
+                  {codigo}
+                </span>
+                .
+              </CardDescription>
+            </div>
+
+            {interacao.cliente && (
+              <Link
+                href={`/orcamentos/novo?interacaoId=${interacao.id}`}
+              >
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+
+                  Criar Orçamento
+                </Button>
+              </Link>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          {!interacao.cliente ? (
+            <div className="rounded-md border bg-slate-50 p-4 text-sm text-muted-foreground">
+              Esta interação está vinculada diretamente a uma Representada. Para gerar um orçamento comercial é necessário partir de uma interação vinculada ao Cliente, pois todo orçamento exige Cliente + Representada.
+            </div>
+          ) : loadingOrcamentos ? (
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+
+              Carregando orçamentos...
+            </div>
+          ) : erroOrcamentos ? (
+            <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              {
+                erroOrcamentos
+              }
+            </div>
+          ) : orcamentos.length ===
+            0 ? (
+            <div className="rounded-md border border-dashed p-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Ainda não existe orçamento originado desta interação.
+              </p>
+
+              <Link
+                href={`/orcamentos/novo?interacaoId=${interacao.id}`}
+              >
+                <Button
+                  className="mt-3"
+                  variant="outline"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+
+                  Gerar primeiro orçamento
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {orcamentos.map(
+                (
+                  orcamento
+                ) => {
+                  const codigoOrcamento =
+                    formatarCodigoOrcamento(
+                      orcamento.numeroSequencial
+                    )
+
+                  return (
+                    <div
+                      key={
+                        orcamento.id
+                      }
+                      className="rounded-lg border bg-white p-4"
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                              href={`/orcamentos/${orcamento.id}`}
+                              className="font-mono text-sm font-bold text-blue-700 hover:underline"
+                            >
+                              {
+                                codigoOrcamento
+                              }
+                            </Link>
+
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-medium ${classeStatusOrcamento(
+                                orcamento.status
+                              )}`}
+                            >
+                              {
+                                orcamento.status
+                              }
+                            </span>
+                          </div>
+
+                          <div className="mt-2">
+                            <p className="text-xs text-muted-foreground">
+                              Representada
+                            </p>
+
+                            <Link
+                              href={`/representadas/${orcamento.representada.id}`}
+                              className="text-sm font-medium text-blue-700 hover:underline"
+                            >
+                              {
+                                orcamento.representada.nome
+                              }
+                            </Link>
+                          </div>
+
+                          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+                            <span>
+                              Emitido:{" "}
+                              {formatarDataSimples(
+                                orcamento.data
+                              )}
+                            </span>
+
+                            <span>
+                              Validade:{" "}
+                              {formatarDataSimples(
+                                orcamento.validadeEm
+                              )}
+                            </span>
+
+                            <span>
+                              Responsável:{" "}
+                              {orcamento.responsavel
+                                ?.nome ||
+                                "—"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2 md:items-end">
+                          <p className="text-lg font-bold">
+                            {formatarMoeda(
+                              orcamento.valorTotal
+                            )}
+                          </p>
+
+                          <Link
+                            href={`/orcamentos/${orcamento.id}`}
+                          >
+                            <Button
+                              size="sm"
+                              variant="outline"
+                            >
+                              Ver Orçamento
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </PageLayout>
   )
 }

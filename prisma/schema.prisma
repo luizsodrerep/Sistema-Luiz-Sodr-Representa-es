@@ -33,6 +33,7 @@ model Escritorio {
   representadas   Representada[]
   vendas          Venda[]
   interacoes      Interacao[]
+  orcamentos      Orcamento[]
   contasBancarias ContaBancaria[]
   financeiros     Financeiro[]
   obrigacoes      ObrigacaoOperacional[]
@@ -128,11 +129,15 @@ model Usuario {
   clientesResponsavel   Cliente[]             @relation("ClienteResponsavelPrincipal")
   participacoesClientes ClienteParticipacao[]
 
-  vendasCriadas     Venda[] @relation("VendaCriadaPor")
-  vendasResponsavel Venda[] @relation("VendaResponsavel")
+  vendasCriadas     Venda[]       @relation("VendaCriadaPor")
+  vendasResponsavel Venda[]       @relation("VendaResponsavel")
+  vendaEventos      VendaEvento[]
 
   interacoesCriadas     Interacao[] @relation("InteracaoCriadaPor")
   interacoesResponsavel Interacao[] @relation("InteracaoResponsavel")
+
+  orcamentosCriados     Orcamento[] @relation("OrcamentoCriadoPor")
+  orcamentosResponsavel Orcamento[] @relation("OrcamentoResponsavel")
 
   contasBancariasTitular ContaBancaria[] @relation("ContaTitularUsuario")
 
@@ -201,6 +206,7 @@ model Cliente {
   participantes ClienteParticipacao[]
 
   interacoes       Interacao[]
+  orcamentos       Orcamento[]
   vendas           Venda[]
   regrasComerciais RegraComercialRepresentada[]
   financeiros      Financeiro[]
@@ -309,6 +315,7 @@ model Representada {
   regrasComerciais  RegraComercialRepresentada[]
   vendas            Venda[]
   interacoes        Interacao[]
+  orcamentos        Orcamento[]
   notasComissao     NFComissao[]
   contasRecebimento RepresentadaContaRecebimento[]
   financeiros       Financeiro[]
@@ -432,6 +439,10 @@ model RegraComercialRepresentada {
 model Venda {
   id String @id @default(cuid())
 
+  // Identificacao permanente do CRM:
+  // VEN-000001, VEN-000002 etc.
+  numeroSequencial Int @unique @default(autoincrement())
+
   escritorioId        String?
   empresaEscritorioId String?
 
@@ -442,10 +453,14 @@ model Venda {
 
   regraComercialId String?
 
+  // Vinculo opcional com o Orcamento que originou a Venda.
+  // Unique impede que o mesmo Orcamento gere duas Vendas.
+  orcamentoOrigemId String? @unique
+
   criadoPorId   String?
   responsavelId String?
 
-  // Identificacao
+  // Identificacoes comerciais externas
   numeroPedidoInterno      String?
   numeroPedido             String?
   numeroPedidoRepresentada String?
@@ -501,6 +516,8 @@ model Venda {
 
   regraComercial RegraComercialRepresentada? @relation(fields: [regraComercialId], references: [id], onDelete: Restrict)
 
+  orcamentoOrigem Orcamento? @relation("VendaOrcamentoOrigem", fields: [orcamentoOrigemId], references: [id], onDelete: Restrict)
+
   criadoPor Usuario? @relation("VendaCriadaPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
 
   responsavel Usuario? @relation("VendaResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
@@ -509,6 +526,7 @@ model Venda {
   comissoes    ComissaoMovimento[]
   interacoes   Interacao[]
   financeiros  Financeiro[]
+  eventos      VendaEvento[]
 
   @@index([escritorioId])
   @@index([empresaEscritorioId])
@@ -519,6 +537,58 @@ model Venda {
   @@index([responsavelId])
   @@index([data])
   @@index([status])
+}
+
+// ======================================================
+// EVENTOS DA VENDA
+// Historico operacional generico.
+// Permite registrar envio, recebimento, confirmacao,
+// pedido registrado, contato e outros eventos,
+// independentemente do canal utilizado pela Representada.
+// ======================================================
+
+model VendaEvento {
+  id String @id @default(cuid())
+
+  vendaId   String
+  usuarioId String?
+
+  data DateTime @default(now())
+
+  // Exemplos:
+  // Pedido enviado
+  // Recebimento confirmado
+  // Pedido registrado
+  // Contato com Representada
+  // Outro
+  tipo String
+
+  // Exemplos:
+  // E-mail
+  // WhatsApp
+  // Ligacao
+  // Portal
+  // Presencial
+  // Outro
+  canal String?
+
+  // Numero de pedido, protocolo, referencia de e-mail,
+  // nome do contato ou outra identificacao externa.
+  referencia String?
+
+  descricao String?
+
+  criadoEm DateTime @default(now())
+
+  venda Venda @relation(fields: [vendaId], references: [id], onDelete: Restrict)
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([vendaId])
+  @@index([usuarioId])
+  @@index([data])
+  @@index([tipo])
+  @@index([canal])
 }
 
 // ======================================================
@@ -828,6 +898,8 @@ model Interacao {
 
   responsavel Usuario? @relation("InteracaoResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
 
+  orcamentos Orcamento[]
+
   @@index([escritorioId])
   @@index([clienteId])
   @@index([representadaId])
@@ -837,6 +909,83 @@ model Interacao {
   @@index([data])
   @@index([proximoContatoEm])
   @@index([statusFollowUp])
+}
+
+// ======================================================
+// ORCAMENTOS / PROPOSTAS COMERCIAIS
+// Nascem de uma necessidade comercial.
+// Podem estar vinculados a uma Interacao.
+// Nao geram Venda apenas por existirem.
+// A Venda nasce somente apos o aceite/aprovacao do cliente.
+// Nao geram Financeiro ou Comissao automaticamente.
+// Validade padrao de 7 dias e calculada pela aplicacao.
+// ======================================================
+
+model Orcamento {
+  id String @id @default(cuid())
+
+  numeroSequencial Int @unique @default(autoincrement())
+
+  escritorioId String
+
+  interacaoOrigemId String?
+
+  clienteId      String
+  representadaId String
+
+  criadoPorId   String?
+  responsavelId String?
+
+  data DateTime
+
+  validadeEm DateTime
+
+  valorTotal Float
+
+  condicaoPagamento String?
+
+  descricao String?
+
+  status String @default("Pendente")
+
+  enviadoEm DateTime?
+
+  finalizadoEm DateTime?
+
+  motivoFinalizacao String?
+
+  arquivoUrl String?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+
+  interacaoOrigem Interacao? @relation(fields: [interacaoOrigemId], references: [id], onDelete: SetNull)
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  representada Representada @relation(fields: [representadaId], references: [id], onDelete: Restrict)
+
+  criadoPor Usuario? @relation("OrcamentoCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  responsavel Usuario? @relation("OrcamentoResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
+
+  vendaGerada Venda? @relation("VendaOrcamentoOrigem")
+
+  @@index([escritorioId])
+  @@index([interacaoOrigemId])
+  @@index([clienteId])
+  @@index([representadaId])
+  @@index([criadoPorId])
+  @@index([responsavelId])
+  @@index([data])
+  @@index([validadeEm])
+  @@index([status])
+  @@index([enviadoEm])
+  @@index([finalizadoEm])
 }
 
 // ======================================================

@@ -6,14 +6,17 @@ import {
   useMemo,
   useState,
 } from "react"
+
 import Link from "next/link"
 
 import {
   PageLayout,
 } from "@/components/page-layout"
+
 import {
   NavigationButtons,
 } from "@/components/navigation-buttons"
+
 import {
   Card,
   CardContent,
@@ -21,12 +24,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+
 import {
   Button,
 } from "@/components/ui/button"
+
 import {
   Input,
 } from "@/components/ui/input"
+
 import {
   Tabs,
   TabsContent,
@@ -45,6 +51,7 @@ import {
   ClipboardList,
   Eye,
   Factory,
+  FileText,
   Loader2,
   Mail,
   MessageSquare,
@@ -203,6 +210,7 @@ function obterOrigem(
   if (interacao.cliente) {
     return {
       tipo: "Cliente",
+
       nome:
         interacao.cliente
           .nomeFantasia ||
@@ -763,16 +771,29 @@ export default function InteracoesPage() {
             Nenhuma interação encontrada para este filtro.
           </span>
 
-          <Link href="/interacoes/nova">
-            <Button
-              variant="outline"
-              size="sm"
-            >
-              <Plus className="mr-2 h-4 w-4" />
+          <div className="flex flex-wrap gap-2">
+            <Link href="/orcamentos/novo">
+              <Button
+                variant="outline"
+                size="sm"
+              >
+                <FileText className="mr-2 h-4 w-4" />
 
-              Nova Interação
-            </Button>
-          </Link>
+                Novo Orçamento
+              </Button>
+            </Link>
+
+            <Link href="/interacoes/nova">
+              <Button
+                variant="outline"
+                size="sm"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+
+                Nova Interação
+              </Button>
+            </Link>
+          </div>
         </div>
       )
     }
@@ -1030,16 +1051,30 @@ export default function InteracoesPage() {
           </Button>
         </div>
 
-        <Link href="/interacoes/nova">
-          <Button
-            size="sm"
-            className="h-8 gap-1 text-xs"
-          >
-            <Plus className="h-3 w-3" />
+        <div className="flex flex-wrap gap-2">
+          <Link href="/orcamentos/novo">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1 text-xs"
+            >
+              <FileText className="h-3 w-3" />
 
-            Nova Interação
-          </Button>
-        </Link>
+              Novo Orçamento
+            </Button>
+          </Link>
+
+          <Link href="/interacoes/nova">
+            <Button
+              size="sm"
+              className="h-8 gap-1 text-xs"
+            >
+              <Plus className="h-3 w-3" />
+
+              Nova Interação
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Tabs
