@@ -200,24 +200,36 @@ Branch:
 
 Commit funcional validado mais recente:
 
+`3d1e999`
+
+Mensagem:
+
+`feat: consolida regras comerciais faturamento e fluxo de vendas`
+
+Push para GitHub concluído com sucesso em 27/08/2026.
+
+Esse checkpoint consolida:
+
+-   ajustes de regras comerciais de Representadas;
+-   condições de pagamento;
+-   fluxo operacional da Venda;
+-   envio oficial único à Representada;
+-   confirmação da Representada;
+-   registro de número oficial do pedido;
+-   alteração/divergência pós-envio como evento rastreável;
+-   início do módulo Faturamento;
+-   API de Faturamentos;
+-   tela de Faturamentos;
+-   sincronização estrutural entre banco PostgreSQL e `schema.prisma`;
+-   migration `20260827_sincroniza_faturamento_titulos_comissoes`.
+
+Checkpoint funcional anterior:
+
 `de78c932810979b9796434d1cc7651b093d8de25`
 
 Mensagem:
 
 `feat: conclui fluxo comercial de orcamentos e vendas`
-
-Push para GitHub concluído com sucesso em 24/08/2026.
-
-Esse checkpoint consolida o fluxo comercial até o recebimento/confirmacao
-pela Representada, incluindo:
-
--   Orçamentos;
--   vínculo Orçamento → Venda;
--   numeração sequencial de Vendas;
--   eventos operacionais da Venda;
--   rastreabilidade Interação → Orçamento → Venda;
--   telas e APIs correspondentes;
--   migrations associadas.
 
 Checkpoint funcional anterior:
 
@@ -263,7 +275,7 @@ Mensagem:
 
 ## 10. Estado de validação técnica atual
 
-Validação do lote do checkpoint `de78c93`:
+Validação do lote do checkpoint `3d1e999`:
 
 `npx tsc --noEmit`
 
@@ -277,44 +289,48 @@ Executado:
 
 Resultado:
 
--   nenhuma inconsistência técnica reportada;
--   houve apenas aviso de normalização LF → CRLF no Windows para arquivos
-    Prisma/migrations, sem impacto funcional.
+-   nenhuma inconsistência de whitespace;
+-   apenas avisos LF → CRLF no Windows em `.gitignore` e `prisma/schema.prisma`, sem impacto funcional.
 
-Executado:
+Prisma:
 
-`npm run build`
+-   versão preservada em `5.22.0`;
+-   `npx prisma generate` executado com sucesso;
+-   Prisma Client gerado com sucesso.
 
-Resultado:
+Banco:
 
--   build concluído com sucesso;
--   Next.js 15.2.4;
--   `Compiled successfully`;
--   45/45 páginas estáticas geradas;
--   rotas dinâmicas processadas;
--   APIs de Orçamentos e Vendas processadas;
--   rota `/api/vendas/[id]/eventos` processada;
--   Middleware compilado com 38.8 kB.
+-   PostgreSQL 16.13;
+-   14 migrations reconhecidas;
+-   migration `20260827_sincroniza_faturamento_titulos_comissoes` aplicada com sucesso;
+-   `npx prisma migrate status` retornou `Database schema is up to date!`;
+-   `npx prisma migrate diff --from-schema-datasource prisma\schema.prisma --to-schema-datamodel prisma\schema.prisma --exit-code` retornou `No difference detected.`
 
-Observação:
+Git:
 
-O build informa:
+-   commit `3d1e999` criado;
+-   push para `origin/main` concluído;
+-   `git status --short` vazio após o push.
 
--   `Skipping validation of types`
--   `Skipping linting`
+Validação funcional real:
 
-A tipagem foi validada separadamente com `npx tsc --noEmit`.
+-   `VEN-000001` aberta sem erro P2022 após sincronização do banco;
+-   envio oficial único registrado;
+-   status alterado para `Aguardando confirmação`;
+-   confirmação da Representada registrada;
+-   status alterado para `Confirmado`;
+-   número oficial do pedido Massari/Mercos registrado;
+-   histórico preservou autoria da criação e das ações posteriores.
 
-Lint ainda permanece pendente para lote técnico próprio.
+Build completo de produção:
 
-Testes funcionais do lote:
+-   último build completo validado permanece o do checkpoint anterior;
+-   novo build completo não foi repetido neste lote;
+-   deve ser executado em lote técnico futuro antes de marco de produção.
 
--   login e sessão real utilizados;
--   Orçamentos carregados e editados sem erro 500;
--   Vendas carregadas sem erro 500;
--   eventos de Venda registrados com resposta HTTP 201;
--   confirmação de recebimento pela Representada validada na operação;
--   rastreabilidade visual e operacional validada.
+Lint:
+
+-   permanece pendente.
 
 ------------------------------------------------------------------------
 
@@ -407,8 +423,8 @@ Estado atual:
 
 -   schema válido;
 -   Prisma Client 5.22.0 gerado;
--   banco PostgreSQL sincronizado;
--   13 migrations reconhecidas pelo Prisma.
+-   PostgreSQL sincronizado;
+-   14 migrations reconhecidas e aplicadas.
 
 Migration estrutural histórica relevante:
 
@@ -419,6 +435,30 @@ Migrations adicionadas no fechamento de Orçamentos/Vendas:
 -   `prisma/migrations/20260824161435_add_orcamentos/migration.sql`
 -   `prisma/migrations/20260824180420_link_venda_orcamento/migration.sql`
 -   `prisma/migrations/20260824191552_add_venda_sequencial_eventos/migration.sql`
+
+Migration de consolidação de 27/08/2026:
+
+`prisma/migrations/20260827_sincroniza_faturamento_titulos_comissoes/migration.sql`
+
+Essa migration consolidou no banco estruturas já previstas no schema, incluindo:
+
+-   `TituloVendaBaixa`;
+-   `ComissaoParcela`;
+-   `numeroSequencial` em Faturamento, TituloVenda, ComissaoMovimento e NFComissao;
+-   `numeroTituloExterno` em TituloVenda;
+-   novos vínculos e campos em ComissaoMovimento;
+-   campos adicionais em NFComissao;
+-   `origem` e `origemExterna` em Financeiro;
+-   índices e foreign keys correspondentes.
+
+Ocorrência técnica da migration:
+
+-   a primeira tentativa encontrou BOM UTF-8 no arquivo SQL;
+-   o BOM foi removido;
+-   a migration foi marcada como rolled back;
+-   `npx prisma migrate deploy` reaplicou a migration com sucesso;
+-   `npx prisma migrate status` confirmou banco atualizado;
+-   `migrate diff` confirmou ausência de diferença entre banco e schema.
 
 Estrutura integrada contempla, entre outras entidades:
 
@@ -436,7 +476,9 @@ Estrutura integrada contempla, entre outras entidades:
 -   VendaEvento
 -   Faturamento
 -   TituloVenda
+-   TituloVendaBaixa
 -   ComissaoMovimento
+-   ComissaoParcela
 -   NFComissao
 -   ContaBancaria
 -   RepresentadaContaRecebimento
@@ -449,40 +491,43 @@ Regras estruturais consolidadas:
 -   `Interacao.numeroSequencial` usa `autoincrement()`;
 -   `Orcamento.numeroSequencial` usa `autoincrement()`;
 -   `Venda.numeroSequencial` usa `autoincrement()`;
--   `Venda.orcamentoOrigemId` é único, impedindo que um mesmo orçamento
-    gere duas vendas;
--   `VendaEvento` preserva o histórico operacional de envio, recebimento,
-    confirmação, pedido registrado e contatos;
--   `Cliente.codigo` continua sendo `String? @unique` e é gerado pela
-    aplicação no padrão `CLI-000001`.
+-   `Venda.orcamentoOrigemId` é único;
+-   `VendaEvento` preserva histórico operacional;
+-   `Cliente.codigo` continua sendo `String? @unique` e é gerado pela aplicação no padrão `CLI-000001`;
+-   Títulos possuem identificação interna própria e número externo opcional;
+-   baixas de títulos são separadas do título principal;
+-   parcelas de comissão possuem estrutura própria.
+
+Regra permanente:
+
+-   não atualizar a versão do Prisma durante a fase atual sem necessidade técnica comprovada;
+-   não executar `db push` para substituir migration oficial;
+-   migrations SQL devem permanecer em UTF-8 sem BOM.
 
 ------------------------------------------------------------------------
 
-## 14. Arquivo temporário Prisma
+## 14. Arquivos temporários Prisma e diagnósticos
 
-Existe localmente:
+Estado atualizado em 27/08/2026:
 
-`prisma/proposed_schema_diff.sql`
+Os arquivos temporários usados durante diagnóstico estrutural foram removidos após cumprirem sua função:
 
-Esse arquivo foi usado como artefato de comparação do Prisma.
+-   `banco_atual_diagnostico.prisma`
+-   `diagnostico_banco_para_schema.sql`
+-   `prisma/proposed_schema_diff.sql`
 
-Ele NÃO foi incluído nos checkpoints Git/GitHub.
+Portanto, referências históricas anteriores dizendo que
+`prisma/proposed_schema_diff.sql` deveria permanecer local estão
+SUPERADAS pelo checkpoint `3d1e999`.
 
-Estado local após o checkpoint `de78c93`:
+Regra atual:
 
-`?? prisma/proposed_schema_diff.sql`
+-   não recriar diagnósticos sem necessidade;
+-   não versionar arquivos temporários;
+-   não tratar diagnóstico como migration;
+-   migrations oficiais permanecem exclusivamente em `prisma/migrations/`.
 
-Isso é proposital.
-
-Regras permanentes:
-
--   não executar;
--   não tratar como migration oficial;
--   não adicionar ao Git;
--   não excluir sem nova análise técnica explícita.
-
-As migrations oficiais são exclusivamente as existentes em
-`prisma/migrations/` e já reconhecidas pelo Prisma.
+Backup PostgreSQL é tratado separadamente no capítulo 34.
 
 ------------------------------------------------------------------------
 
@@ -1024,29 +1069,33 @@ estrutural.
 
 ## 25. Front-end --- ordem funcional atualizada
 
-Estado funcional consolidado em 24/08/2026:
+Estado funcional consolidado em 27/08/2026:
 
 1.  Autenticação, sessão e controle de acesso — implantados e em uso.
 2.  Clientes — liberado para operação real.
-3.  Representadas — liberado para operação real no escopo já concluído.
+3.  Representadas — liberado para operação real no escopo concluído, com pendências específicas registradas.
 4.  Interações — liberado para operação real.
 5.  Orçamentos — liberado para operação real.
-6.  Vendas — liberado até envio/recebimento/confirmacao pela Representada.
-7.  Próximo módulo: Faturamento.
-8.  Depois: Títulos/Vencimentos.
-9.  Depois: Comissões.
-10. Financeiro.
-11. Contabilidade.
-12. Agenda real.
-13. Relatórios/Dashboard reais.
-14. Identidade visual profissional em lote próprio.
+6.  Vendas — fluxo comercial real validado até envio oficial, confirmação e número oficial da Representada.
+7.  Faturamento — estrutura iniciada; API e tela criadas; ainda não encerrado.
+8.  Próximo foco: concluir Faturamento real.
+9.  Depois: Títulos/Vencimentos.
+10. Depois: Comissões.
+11. Financeiro.
+12. Contabilidade.
+13. Agenda real.
+14. Relatórios/Dashboard reais.
+15. Identidade visual profissional em lote próprio.
 
-Regras comerciais da Representada devem alimentar Orçamentos/Vendas,
-sem criar regra única artificial para todas as Representadas.
+Regras comerciais da Representada devem alimentar Orçamentos/Vendas sem
+criar regra artificial única para todas as Representadas.
 
-Faturamento e Comissões não devem ser forçados para dentro do módulo
-Vendas. A responsabilidade de Vendas termina quando o pedido está
-formalmente registrado e confirmado pela Representada.
+A responsabilidade principal do módulo Vendas termina quando o pedido
+está comercialmente registrado e confirmado pela Representada.
+
+Encadeamento oficial:
+
+`INT → ORC → VEN → FATURAMENTO → TÍTULOS → COMISSÕES → FINANCEIRO`
 
 ------------------------------------------------------------------------
 
@@ -1060,11 +1109,13 @@ Ao iniciar nova conversa, usar como referência:
 
 Mensagem recomendada:
 
-"Leia o DOCUMENTO_MESTRE_CRM.md e continue exatamente do checkpoint
-`de78c93`. Este documento é a fonte oficial de continuidade do projeto.
-Não refaça Clientes, Representadas, Interações, Orçamentos ou Vendas.
-A próxima frente é Faturamento → Títulos → Comissões, usando a base real
-que começará a ser alimentada pela Paula."
+"Leia o DOCUMENTO_MESTRE_CRM.md atualizado até o checkpoint `3d1e999`.
+Este documento é a fonte oficial de continuidade do projeto. Não refaça
+Clientes, Representadas, Interações, Orçamentos ou o fluxo comercial já
+validado da VEN-000001. Continue exatamente de Faturamento →
+Títulos/Vencimentos → Comissões. Preserve todas as pendências registradas
+nos capítulos 34 e 35. Não altere Prisma/schema sem necessidade funcional
+comprovada e validação prévia."
 
 Não depender exclusivamente da memória automática.
 
@@ -1090,30 +1141,29 @@ projeto.
 
 Estado técnico:
 
-**ESTÁVEL E LIBERADO PARA INÍCIO DA OPERAÇÃO COMERCIAL REAL NOS MÓDULOS
-CONCLUÍDOS**
+**ESTÁVEL NOS MÓDULOS COMERCIAIS JÁ VALIDADOS E EM EVOLUÇÃO PARA
+FATURAMENTO / TÍTULOS / COMISSÕES**
 
 Último checkpoint funcional:
 
-`de78c932810979b9796434d1cc7651b093d8de25`
+`3d1e999`
 
 Mensagem:
 
-`feat: conclui fluxo comercial de orcamentos e vendas`
+`feat: consolida regras comerciais faturamento e fluxo de vendas`
 
 Validações do lote:
 
 -   TypeScript: OK — 0 erros;
 -   `git diff --check`: OK;
--   Build: OK;
--   45/45 páginas estáticas geradas;
--   Middleware: compilado;
--   Prisma: válido;
+-   Prisma: 5.22.0 preservado;
 -   Prisma Client: gerado;
--   13 migrations aplicadas;
+-   14 migrations aplicadas;
 -   banco sincronizado;
+-   `migrate diff`: nenhuma diferença;
 -   Git commit: criado;
--   GitHub push: concluído.
+-   GitHub push: concluído;
+-   working tree: limpo após push.
 
 Módulos liberados para dados reais:
 
@@ -1122,123 +1172,115 @@ Módulos liberados para dados reais:
 -   Interações;
 -   Orçamentos;
 -   Vendas;
--   registro de envio do pedido à Representada;
--   confirmação de recebimento;
--   registro posterior de número/referência da Representada;
--   histórico de eventos da Venda.
+-   envio oficial único do pedido;
+-   confirmação da Representada;
+-   número oficial do pedido da Representada;
+-   histórico operacional e auditoria de autoria.
 
-Numeração operacional a partir da base limpa:
+Primeira Venda real validada:
 
--   Cliente: `CLI-000001`;
--   Interação: `INT-000001`;
--   Orçamento: `ORC-000001`;
--   Venda: `VEN-000001`.
+`VEN-000001`
 
-Base comercial fictícia:
+Fluxo real validado:
 
--   zerada em 24/08/2026;
--   Clientes: 0;
--   Representadas: 0;
--   Interações: 0;
--   Orçamentos: 0;
--   Vendas: 0;
--   Eventos de Venda: 0;
--   Faturamentos: 0;
--   Títulos: 0;
--   Movimentos de comissão: 0;
--   NFs de comissão: 0;
--   Financeiros: 0.
+`INT-000001 → ORC-000001 → VEN-000001`
 
-Estrutura preservada:
+Venda criada por:
 
--   1 Escritório ativo;
--   Luiz Fernando — Diretor ativo;
--   Paula — Administrativo ativo;
--   migrations;
--   schema Prisma;
--   autenticação e autorização.
+-   Paula — Administrativo.
 
-Procedimento operacional inicial para Paula:
+Envio e ações posteriores executadas por:
 
--   cadastrar Clientes e Representadas manualmente;
--   não utilizar importação em lote nesta fase;
--   registrar Interações reais;
--   gerar Orçamentos reais;
--   transformar Orçamento aprovado em Venda;
--   registrar envio e confirmação da Representada;
--   não inventar Interação/Orçamento para vendas históricas que não
-    passaram por esses passos no CRM;
--   vendas históricas de junho, julho e agosto podem ser lançadas como
-    Venda direta/retroativa quando esse for o fato real.
+-   Luiz Fernando — Diretor.
 
-Importação em lote de Clientes:
+Pedido oficial da Massari/Mercos:
 
--   a rota existe;
--   não integra o procedimento operacional inicial;
--   por decisão operacional, Paula foi orientada a não utilizar;
--   qualquer futura utilização deve ser previamente validada.
+`Pedido #14330 de 25.08.26`
+
+Referência:
+
+`14330`
+
+Canal:
+
+`Portal`
+
+Regra de autoria:
+
+-   quem cria a Venda permanece registrado;
+-   quem executa cada evento posterior também permanece registrado;
+-   usuário autorizado pode dar continuidade ao processo criado por outro usuário.
 
 Ainda pendente:
 
--   Faturamento;
+-   conclusão do Faturamento;
 -   Títulos/Vencimentos;
 -   Comissões;
 -   Financeiro;
 -   conclusão das contas bancárias/recebimento;
 -   formalização das contas 01/02/03;
+-   exceções comerciais temporárias por cliente;
+-   divergência pós-envio em cenário real;
+-   segurança da tela de login;
+-   segregação de obrigações por usuário/perfil;
 -   Agenda real;
 -   Relatórios/Dashboard reais;
 -   lint;
 -   auditoria das vulnerabilidades npm;
--   identidade visual futura;
--   Manual Operacional da Paula.
+-   identidade visual;
+-   Manual Operacional.
 
 ------------------------------------------------------------------------
 
 ## 29. Próximo passo exato
 
-NÃO repetir os módulos já fechados:
+NÃO repetir os módulos já validados:
 
 -   Clientes;
 -   Representadas;
 -   Interações;
 -   Orçamentos;
--   Vendas.
+-   fluxo comercial já validado de Vendas.
+
+NÃO atualizar Prisma.
 
 NÃO executar nova migration ou alteração de schema sem necessidade
 funcional comprovada e validação prévia.
 
 NÃO executar `npm audit fix` automaticamente.
 
-NÃO adicionar `prisma/proposed_schema_diff.sql` ao Git.
-
 NÃO executar novamente o setup inicial.
+
+NÃO adicionar backups ao Git.
 
 Próxima fase técnica:
 
-1.  iniciar o módulo Faturamento a partir das Vendas reais;
-2.  permitir uma Venda gerar uma ou várias NFs;
-3.  tratar faturamento parcial, saldo e cortes;
-4.  derivar Títulos/Vencimentos das condições efetivamente faturadas;
-5.  integrar Comissões ao Faturamento e às regras comerciais vigentes;
-6.  confrontar o cálculo do sistema com comissões reais já recebidas;
-7.  preservar diferenças entre comissão prevista, devida, recebida,
-    estornada, recuperada e ajustada;
-8.  somente depois avançar para Financeiro.
+1.  revisar o estado atual de `app/faturamentos/page.tsx`;
+2.  revisar `app/api/faturamentos/route.ts`;
+3.  utilizar Vendas reais confirmadas como base;
+4.  registrar primeiro Faturamento real somente após validação da lógica;
+5.  suportar uma ou várias NFs por Venda;
+6.  tratar faturamento parcial, saldo, corte e motivo do corte;
+7.  derivar Títulos/Vencimentos da NF e condição de pagamento;
+8.  separar previsão de vencimento, prorrogação e fato real;
+9.  suportar baixas totais e parciais;
+10. controlar atraso/inadimplência de forma informativa;
+11. integrar Comissões ao evento correto de reconhecimento;
+12. confrontar cálculo do sistema com comissões reais já recebidas;
+13. somente depois avançar para Financeiro.
 
 Dados retroativos:
 
--   poderão ser inseridos para junho, julho e agosto;
+-   podem ser usados;
 -   devem refletir fatos reais;
--   serão úteis para validar Faturamento e Comissões;
--   não reconstruir eventos inexistentes apenas para completar fluxo.
+-   não inventar Interações/Orçamentos inexistentes;
+-   preservar datas reais.
 
 Manual Operacional:
 
--   registrar como pendência formal;
--   criar inicialmente uma versão Fase 1 apenas para os módulos já
-    liberados à Paula;
--   o manual completo fica para o encerramento dos demais módulos.
+-   permanece pendência formal;
+-   não deve interromper a evolução dos módulos;
+-   material de tela real deve ser preservado para futura elaboração.
 
 ------------------------------------------------------------------------
 
@@ -1620,7 +1662,7 @@ Fluxo consolidado:
 3.  primeiro envio à Representada é registrado;
 4.  status passa para `Aguardando confirmação`;
 5.  ação principal passa a ser confirmar recebimento;
-6.  novos envios continuam permitidos como eventos adicionais;
+6.  REGRA HISTÓRICA SUPERADA EM 27/08/2026: novos envios eram permitidos como eventos adicionais; a regra atual permite apenas um envio oficial inicial;
 7.  confirmação pode usar E-mail, WhatsApp, Ligação, Portal, Presencial
     ou Outro;
 8.  referência/número/protocolo é opcional conforme o processo real da
@@ -1651,9 +1693,12 @@ Campos principais:
 -   descrição;
 -   usuário responsável.
 
-Eventos múltiplos de envio são válidos quando refletem a operação real.
-A interface deve deixar claro que, após o primeiro envio, a próxima ação
-principal é a confirmação do recebimento.
+REGRA HISTÓRICA SUPERADA EM 27/08/2026:
+
+Eventos múltiplos de envio deixaram de ser tratados como novos envios
+normais. A regra atual preserva um único envio oficial inicial. Fatos
+posteriores devem ser classificados como confirmação, número oficial,
+contato ou alteração/divergência pós-envio.
 
 ### 33.5 Limite de responsabilidade do módulo Vendas
 
@@ -1804,11 +1849,300 @@ Estratégia:
 
 `git status --short` esperado:
 
-`?? prisma/proposed_schema_diff.sql`
+Estado histórico superado pelo checkpoint `3d1e999`.
 
-Nenhum outro arquivo temporário deve permanecer.
+Os arquivos temporários de diagnóstico foram removidos em 27/08/2026.
+O estado atual está documentado no capítulo 14.
 
-O arquivo `prisma/proposed_schema_diff.sql` continua protegido pelas
-regras do capítulo 14.
+------------------------------------------------------------------------
+
+## 34. Consolidação de 27/08/2026 --- banco, faturamento e fluxo real de Venda
+
+### 34.1 Backup local do PostgreSQL
+
+Antes da consolidação estrutural foi criado e validado backup local:
+
+`backups/crm_luiz_sodre_antes_consolidacao_2026-08-27.backup`
+
+Validação:
+
+-   arquivo existente;
+-   tamanho confirmado;
+-   `pg_restore -l` conseguiu listar o conteúdo;
+-   backup criado com PostgreSQL 16.13.
+
+Regra:
+
+-   `/backups/` está no `.gitignore`;
+-   backup NÃO deve ser versionado;
+-   não utilizar cópias paralelas do projeto como linha oficial de desenvolvimento;
+-   GitHub continua sendo a fonte oficial do código.
+
+### 34.2 Regra de envio oficial da Venda
+
+Cada Venda possui UM único envio oficial inicial à Representada.
+
+Fluxo atual:
+
+1.  Venda nasce em `Aguardando envio`;
+2.  envio oficial é registrado uma única vez;
+3.  status passa para `Aguardando confirmação`;
+4.  não existe segundo “envio normal”;
+5.  backend também bloqueia duplicidade;
+6.  fatos posteriores devem ser classificados corretamente.
+
+### 34.3 Confirmação da Representada
+
+A confirmação:
+
+-   só pode existir após envio oficial;
+-   deve possuir referência ou descrição real;
+-   deve ser única;
+-   muda a Venda para `Confirmado`;
+-   não deve criar artificialmente data de envio inexistente.
+
+### 34.4 Número oficial do pedido
+
+O número oficial da Representada:
+
+-   deve ser registrado como dado estruturado;
+-   não deve ser sobrescrito silenciosamente;
+-   eventual correção deve virar alteração/divergência;
+-   deve preservar exatamente o identificador real da Representada.
+
+### 34.5 Alteração / divergência pós-envio
+
+Após o envio oficial:
+
+-   mudança relevante não cria novo envio normal;
+-   não cria nova Venda automaticamente;
+-   não apaga o histórico original;
+-   deve ser registrada como `Alteração pós-envio`;
+-   descrição é obrigatória;
+-   referência é opcional quando existir;
+-   cada ocorrência deve permanecer no histórico.
+
+Pendência:
+
+-   testar cenário real após confirmação;
+-   definir efeito de eventual reenvio corretivo;
+-   definir impacto em Faturamento, Títulos e Comissões.
+
+### 34.6 Condições de pagamento
+
+Formato operacional:
+
+-   21
+-   21-28
+-   21-28-35
+-   21-28-35-42
+-   etc.
+
+Condição `0`:
+
+-   somente negociação à vista.
+
+Regra:
+
+-   condições padrão devem preferencialmente ficar na Representada;
+-   condição especial pode ser registrada na negociação específica;
+-   futura interface deve restringir entrada a números e formatar separação automaticamente.
+
+### 34.7 Títulos e vencimentos
+
+Controle de Títulos é interno ao escritório.
+
+Nem todas as Representadas fornecem número externo.
+
+Portanto:
+
+-   CRM pode usar `TIT-xxxxxx`;
+-   número externo é opcional;
+-   NF de venda é referência operacional principal.
+
+O sistema deve distinguir:
+
+-   vencimento previsto;
+-   vencimento prorrogado;
+-   pagamento real;
+-   atraso;
+-   inadimplência;
+-   baixa total;
+-   baixa parcial.
+
+Previsão nunca deve ser tratada como fato definitivo.
+
+### 34.8 Regra específica por cliente
+
+Situação operacional identificada:
+
+-   cliente pode ser especial hoje e deixar de ser;
+-   outro cliente pode passar a ser especial futuramente.
+
+Regra conceitual:
+
+-   não inflar Representada com dezenas de regras temporárias;
+-   regra padrão pertence à Representada;
+-   exceção de cliente precisa ter tratamento próprio;
+-   histórico e vigência precisam ser preservados.
+
+Pendência arquitetural:
+
+-   definir modelagem de exceções por cliente;
+-   impacto em Orçamento, Venda, Faturamento e Comissão;
+-   não alterar Prisma antes de análise própria.
+
+### 34.9 Segurança da tela de login
+
+Pendência crítica:
+
+Foi observado lembrete/obrigação operacional aparecendo antes da autenticação.
+
+Regra final:
+
+-   nenhuma informação interna deve aparecer antes do login;
+-   após login, obrigações devem respeitar escritório, usuário, perfil e escopo;
+-   Preposto não deve ver pendências privadas de Diretoria ou Administrativo.
+
+Essa correção deve ter lote próprio de segurança.
+
+### 34.10 Interface e ergonomia
+
+A tela de Venda foi reorganizada para uma caixa clara de ação comercial.
+
+Pendência visual:
+
+-   diferenciar por cor:
+    -   confirmação;
+    -   divergência;
+    -   registro documental;
+-   manter semântica consistente no CRM;
+-   usar telas reais como material para futuro Manual Operacional.
+
+Mercos/Massari pode ser usado apenas como referência de ergonomia, não como sistema a ser copiado.
+
+------------------------------------------------------------------------
+
+## 35. Pendências oficiais para próximas conversas
+
+### 35.1 Prioridade imediata
+
+1.  concluir Faturamento;
+2.  validar lançamento real de NF;
+3.  faturamento parcial;
+4.  saldo;
+5.  cortes;
+6.  condição de pagamento;
+7.  gerar/controlar Títulos;
+8.  previsão x vencimento real;
+9.  prorrogação;
+10. baixa parcial/total;
+11. inadimplência informativa;
+12. integrar reconhecimento de Comissão.
+
+### 35.2 Comissões
+
+Desenvolver/validar:
+
+-   prevista;
+-   devida;
+-   recebida;
+-   estornada;
+-   recuperada;
+-   ajuste;
+-   faturamento x liquidez;
+-   competência;
+-   parcelas;
+-   NF de comissão;
+-   exigência ou não de NF;
+-   contas de recebimento;
+-   confronto com relatórios reais das Representadas.
+
+### 35.3 Vendas
+
+Pendências:
+
+-   testar divergência pós-envio em caso real;
+-   testar consequência após pedido confirmado;
+-   definir reenvio corretivo;
+-   manter envio oficial único;
+-   refinar cores e semântica dos botões.
+
+### 35.4 Segurança
+
+Pendências críticas:
+
+-   remover informação interna da tela pré-login;
+-   filtrar alertas pós-login por usuário/perfil/escritório;
+-   validar Preposto real;
+-   testar isolamento prático entre usuários;
+-   revisar futuras APIs para RBAC + escopo.
+
+### 35.5 Clientes e regras especiais
+
+Pendência:
+
+-   modelar exceções comerciais temporárias por cliente;
+-   histórico;
+-   vigência;
+-   integração com Orçamento, Venda, Faturamento e Comissão.
+
+### 35.6 Representadas
+
+Pendências:
+
+-   concluir `ContaBancaria`;
+-   formalizar Contas 01/02/03;
+-   prioridade;
+-   finalidade;
+-   possível rateio futuro;
+-   testes adicionais com dados reais.
+
+### 35.7 Infraestrutura e qualidade
+
+Pendências:
+
+-   lint;
+-   auditoria das vulnerabilidades npm;
+-   não executar `npm audit fix` automaticamente;
+-   novo build completo em lote técnico;
+-   identidade visual profissional;
+-   favicon/logotipo;
+-   Manual Operacional;
+-   Agenda real;
+-   Relatórios reais;
+-   Dashboard real.
+
+------------------------------------------------------------------------
+
+## 36. Próximo ponto oficial de continuidade
+
+Checkpoint oficial:
+
+`3d1e999`
+
+Próxima frente:
+
+`FATURAMENTO → TÍTULOS/VENCIMENTOS → COMISSÕES`
+
+Ao iniciar nova conversa:
+
+1.  ler este Documento Mestre;
+2.  não refazer módulos já validados;
+3.  revisar `app/faturamentos/page.tsx`;
+4.  revisar `app/api/faturamentos/route.ts`;
+5.  usar Vendas reais confirmadas como base;
+6.  não alterar Prisma/schema sem necessidade funcional comprovada;
+7.  preservar todas as pendências do capítulo 35.
+
+Mensagem de abertura recomendada:
+
+"Leia o DOCUMENTO_MESTRE_CRM.md atualizado até o checkpoint `3d1e999`.
+Esse é o estado oficial do CRM Luiz Sodré Representações. Não refaça
+Clientes, Representadas, Interações, Orçamentos ou o fluxo comercial já
+validado da VEN-000001. Continue exatamente de Faturamento →
+Títulos/Vencimentos → Comissões. Preserve as pendências registradas nos
+capítulos 34 e 35 e não altere Prisma/schema sem necessidade funcional
+comprovada."
 
 ------------------------------------------------------------------------
