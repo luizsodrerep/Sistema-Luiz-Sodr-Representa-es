@@ -23,6 +23,7 @@ import {
   MailCheck,
   Pencil,
   RefreshCw,
+  ShoppingCart,
   XCircle,
 } from "lucide-react"
 
@@ -82,6 +83,16 @@ type InteracaoOrigem = {
   data: string
 }
 
+type VendaGerada = {
+  id: string
+  numeroSequencial: number
+  status: string
+  data: string
+  pedidoEnviadoEm: string | null
+  confirmadoEm: string | null
+  numeroPedidoRepresentada: string | null
+}
+
 type Orcamento = {
   id: string
   numeroSequencial: number
@@ -113,6 +124,8 @@ type Orcamento = {
 
   criadoPor: UsuarioResumo | null
   responsavel: UsuarioResumo | null
+
+  vendaGerada: VendaGerada | null
 }
 
 type HistoricoItem = {
@@ -208,6 +221,14 @@ function formatarCodigoInteracao(
   numero: number
 ) {
   return `INT-${String(
+    numero
+  ).padStart(6, "0")}`
+}
+
+function formatarCodigoVenda(
+  numero: number
+) {
+  return `VEN-${String(
     numero
   ).padStart(6, "0")}`
 }
@@ -494,7 +515,7 @@ export default function OrcamentoDetalhesPage({
         enviadoEm:
           new Date().toISOString(),
       },
-      "Orçamento marcado como enviado."
+      "Orçamento marcado como enviado ao cliente."
     )
   }
 
@@ -504,7 +525,7 @@ export default function OrcamentoDetalhesPage({
         status:
           "Aprovado",
       },
-      "Orçamento aprovado."
+      "Orçamento aprovado pelo cliente. Agora gere a Venda e confira os dados antes de salvar."
     )
   }
 
@@ -640,17 +661,19 @@ export default function OrcamentoDetalhesPage({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/orcamentos/${orcamento.id}/editar`}
-          >
-            <Button
-              variant="outline"
+          {!orcamento.vendaGerada && (
+            <Link
+              href={`/orcamentos/${orcamento.id}/editar`}
             >
-              <Pencil className="mr-2 h-4 w-4" />
+              <Button
+                variant="outline"
+              >
+                <Pencil className="mr-2 h-4 w-4" />
 
-              Editar
-            </Button>
-          </Link>
+                Editar
+              </Button>
+            </Link>
+          )}
 
           <Button
             variant="outline"
@@ -944,10 +967,43 @@ export default function OrcamentoDetalhesPage({
                 </>
               )}
 
+              {orcamento.status ===
+                "Aprovado" &&
+                !orcamento.vendaGerada && (
+                  <Link
+                    href={`/vendas/nova?orcamentoId=${orcamento.id}`}
+                  >
+                    <Button type="button">
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+
+                      Gerar Venda
+                    </Button>
+                  </Link>
+                )}
+
+              {orcamento.vendaGerada && (
+                <Link
+                  href={`/vendas/${orcamento.vendaGerada.id}`}
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                  >
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+
+                    Abrir{" "}
+                    {formatarCodigoVenda(
+                      orcamento.vendaGerada.numeroSequencial
+                    )}
+                  </Button>
+                </Link>
+              )}
+
               {orcamento.status !==
                 "Pendente" &&
                 orcamento.status !==
-                  "Vencido" && (
+                  "Vencido" &&
+                !orcamento.vendaGerada && (
                   <Button
                     type="button"
                     variant="outline"
@@ -1069,7 +1125,7 @@ export default function OrcamentoDetalhesPage({
 
               <div>
                 <p className="text-xs text-muted-foreground">
-                  Enviado em
+                  Enviado ao cliente em
                 </p>
 
                 <p className="text-sm">
@@ -1100,6 +1156,30 @@ export default function OrcamentoDetalhesPage({
                   <p className="text-sm">
                     {
                       orcamento.motivoFinalizacao
+                    }
+                  </p>
+                </div>
+              )}
+
+              {orcamento.vendaGerada && (
+                <div className="border-t pt-3">
+                  <p className="text-xs text-muted-foreground">
+                    Venda vinculada
+                  </p>
+
+                  <Link
+                    href={`/vendas/${orcamento.vendaGerada.id}`}
+                    className="mt-1 inline-block font-mono font-bold text-blue-700 hover:underline"
+                  >
+                    {formatarCodigoVenda(
+                      orcamento.vendaGerada.numeroSequencial
+                    )}
+                  </Link>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Status:{" "}
+                    {
+                      orcamento.vendaGerada.status
                     }
                   </p>
                 </div>
@@ -1196,18 +1276,54 @@ export default function OrcamentoDetalhesPage({
             </CardHeader>
 
             <CardContent>
-              {orcamento.status ===
-              "Aprovado" ? (
-                <div className="rounded-md border bg-green-50 p-3 text-sm text-green-800">
-                  <CheckCircle2 className="mr-2 inline h-4 w-4" />
+              {orcamento.vendaGerada ? (
+                <div className="space-y-3">
+                  <div className="rounded-md border bg-blue-50 p-3 text-sm text-blue-800">
+                    <ShoppingCart className="mr-2 inline h-4 w-4" />
 
-                  Orçamento aprovado. A conversão em Venda será feita no módulo Vendas.
+                    Este orçamento já gerou a Venda{" "}
+                    <strong>
+                      {formatarCodigoVenda(
+                        orcamento.vendaGerada.numeroSequencial
+                      )}
+                    </strong>
+                    .
+                  </div>
+
+                  <Link
+                    href={`/vendas/${orcamento.vendaGerada.id}`}
+                    className="block"
+                  >
+                    <Button className="w-full">
+                      Abrir Venda
+                    </Button>
+                  </Link>
+                </div>
+              ) : orcamento.status ===
+                "Aprovado" ? (
+                <div className="space-y-3">
+                  <div className="rounded-md border bg-green-50 p-3 text-sm text-green-800">
+                    <CheckCircle2 className="mr-2 inline h-4 w-4" />
+
+                    Cliente aprovou o orçamento. Gere a Venda, confira os dados e depois registre o envio à Representada.
+                  </div>
+
+                  <Link
+                    href={`/vendas/nova?orcamentoId=${orcamento.id}`}
+                    className="block"
+                  >
+                    <Button className="w-full">
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+
+                      Gerar Venda
+                    </Button>
+                  </Link>
                 </div>
               ) : (
                 <div className="rounded-md border bg-slate-50 p-3 text-sm text-muted-foreground">
                   <Clock3 className="mr-2 inline h-4 w-4" />
 
-                  O orçamento ainda não gera Venda, Financeiro ou Comissão automaticamente.
+                  Primeiro registre o envio ao cliente e, quando houver aprovação real, marque o Orçamento como Aprovado.
                 </div>
               )}
             </CardContent>

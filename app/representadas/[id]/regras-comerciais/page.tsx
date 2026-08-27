@@ -1,7 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import {
+  useEffect,
+  useState,
+} from "react"
+
+import {
+  useParams,
+  useRouter,
+} from "next/navigation"
+
 import {
   ArrowLeft,
   Loader2,
@@ -11,16 +19,28 @@ import {
   X,
 } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import {
+  Button,
+} from "@/components/ui/button"
+
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+
+import {
+  Input,
+} from "@/components/ui/input"
+
+import {
+  Label,
+} from "@/components/ui/label"
+
+import {
+  Textarea,
+} from "@/components/ui/textarea"
 
 type Cliente = {
   id: string
@@ -76,6 +96,9 @@ type Representada = {
   id: string
   nome: string
   codigo: string | null
+  regraReconhecimentoComissao: string | null
+  fechamentoComissao: string | null
+  pagamentoComissao: string | null
 }
 
 type Faixa = {
@@ -134,40 +157,68 @@ function converterDataParaInput(
     return ""
   }
 
-  const data = new Date(valor)
+  const data =
+    new Date(valor)
 
-  if (Number.isNaN(data.getTime())) {
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
     return ""
   }
 
-  return data.toISOString().slice(0, 10)
+  return data
+    .toISOString()
+    .slice(
+      0,
+      10
+    )
 }
 
-function formatarData(valor: string | null) {
+function formatarData(
+  valor: string | null
+) {
   if (!valor) {
     return "-"
   }
 
-  const data = new Date(valor)
+  const data =
+    new Date(valor)
 
-  if (Number.isNaN(data.getTime())) {
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
     return "-"
   }
 
   return new Intl.DateTimeFormat(
     "pt-BR"
-  ).format(data)
+  ).format(
+    data
+  )
 }
 
-function formatarValor(valor: number | null) {
-  if (valor === null) {
+function formatarValor(
+  valor: number | null
+) {
+  if (
+    valor === null
+  ) {
     return "-"
   }
 
-  return valor.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  })
+  return valor.toLocaleString(
+    "pt-BR",
+    {
+      style:
+        "currency",
+      currency:
+        "BRL",
+    }
+  )
 }
 
 function parseFaixas(
@@ -175,164 +226,277 @@ function parseFaixas(
 ): Faixa[] {
   if (!valor) {
     return [
-      { desconto: "", comissao: "" },
+      {
+        desconto: "",
+        comissao: "",
+      },
     ]
   }
 
   try {
-    const resultado = JSON.parse(valor)
+    const resultado =
+      JSON.parse(
+        valor
+      )
 
     if (
-      Array.isArray(resultado) &&
-      resultado.length > 0
+      Array.isArray(
+        resultado
+      ) &&
+      resultado.length >
+        0
     ) {
       return resultado
     }
   } catch {
     return [
-      { desconto: "", comissao: "" },
+      {
+        desconto: "",
+        comissao: "",
+      },
     ]
   }
 
   return [
-    { desconto: "", comissao: "" },
+    {
+      desconto: "",
+      comissao: "",
+    },
   ]
 }
 
 export default function RegrasComerciaisPage() {
-  const params = useParams()
-  const router = useRouter()
+  const params =
+    useParams()
 
-  const idParam = params.id
+  const router =
+    useRouter()
+
+  const idParam =
+    params.id
 
   const representadaId =
-    typeof idParam === "string"
+    typeof idParam ===
+    "string"
       ? idParam
-      : Array.isArray(idParam)
+      : Array.isArray(
+            idParam
+          )
         ? idParam[0]
         : undefined
 
-  const [representada, setRepresentada] =
-    useState<Representada | null>(null)
+  const [
+    representada,
+    setRepresentada,
+  ] =
+    useState<Representada | null>(
+      null
+    )
 
-  const [clientes, setClientes] =
-    useState<Cliente[]>([])
+  const [
+    clientes,
+    setClientes,
+  ] =
+    useState<Cliente[]>(
+      []
+    )
 
-  const [contratos, setContratos] =
-    useState<Contrato[]>([])
+  const [
+    contratos,
+    setContratos,
+  ] =
+    useState<Contrato[]>(
+      []
+    )
 
-  const [regras, setRegras] =
-    useState<RegraComercial[]>([])
+  const [
+    regras,
+    setRegras,
+  ] =
+    useState<RegraComercial[]>(
+      []
+    )
 
-  const [form, setForm] =
-    useState<FormRegra>(FORM_INICIAL)
+  const [
+    form,
+    setForm,
+  ] =
+    useState<FormRegra>(
+      FORM_INICIAL
+    )
 
-  const [faixas, setFaixas] =
+  const [
+    faixas,
+    setFaixas,
+  ] =
     useState<Faixa[]>([
-      { desconto: "", comissao: "" },
+      {
+        desconto: "",
+        comissao: "",
+      },
     ])
 
-  const [regraEditandoId, setRegraEditandoId] =
-    useState<string | null>(null)
+  const [
+    regraEditandoId,
+    setRegraEditandoId,
+  ] =
+    useState<
+      string | null
+    >(null)
 
-  const [carregando, setCarregando] =
+  const [
+    carregando,
+    setCarregando,
+  ] =
     useState(true)
 
-  const [salvando, setSalvando] =
+  const [
+    salvando,
+    setSalvando,
+  ] =
     useState(false)
 
-  const [erro, setErro] =
-    useState<string | null>(null)
+  const [
+    erro,
+    setErro,
+  ] =
+    useState<
+      string | null
+    >(null)
 
   useEffect(() => {
-    if (!representadaId) {
+    if (
+      !representadaId
+    ) {
       setErro(
         "ID da representada não encontrado."
       )
-      setCarregando(false)
+
+      setCarregando(
+        false
+      )
+
       return
     }
 
     async function carregarDados() {
       try {
-        setCarregando(true)
-        setErro(null)
+        setCarregando(
+          true
+        )
+
+        setErro(
+          null
+        )
 
         const [
           respostaRepresentada,
           respostaRegras,
           respostaContratos,
           respostaClientes,
-        ] = await Promise.all([
-          fetch(
-            `/api/representadas/${representadaId}`
-          ),
-          fetch(
-            `/api/representadas/${representadaId}/regras-comerciais`
-          ),
-          fetch(
-            `/api/representadas/${representadaId}/contratos`
-          ),
-          fetch("/api/clientes"),
-        ])
+        ] =
+          await Promise.all([
+            fetch(
+              `/api/representadas/${representadaId}`
+            ),
 
-        if (!respostaRepresentada.ok) {
+            fetch(
+              `/api/representadas/${representadaId}/regras-comerciais`
+            ),
+
+            fetch(
+              `/api/representadas/${representadaId}/contratos`
+            ),
+
+            fetch(
+              "/api/clientes"
+            ),
+          ])
+
+        if (
+          !respostaRepresentada.ok
+        ) {
           throw new Error(
             "Erro ao carregar representada."
           )
         }
 
-        if (!respostaRegras.ok) {
+        if (
+          !respostaRegras.ok
+        ) {
           throw new Error(
             "Erro ao carregar regras comerciais."
           )
         }
 
-        if (!respostaContratos.ok) {
+        if (
+          !respostaContratos.ok
+        ) {
           throw new Error(
             "Erro ao carregar contratos."
           )
         }
 
-        if (!respostaClientes.ok) {
+        if (
+          !respostaClientes.ok
+        ) {
           throw new Error(
             "Erro ao carregar clientes."
           )
         }
 
-        const dadosRepresentada: Representada =
+        const dadosRepresentada:
+          Representada =
           await respostaRepresentada.json()
 
-        const dadosRegras: RegraComercial[] =
+        const dadosRegras:
+          RegraComercial[] =
           await respostaRegras.json()
 
-        const dadosContratos: Contrato[] =
+        const dadosContratos:
+          Contrato[] =
           await respostaContratos.json()
 
-        const dadosClientes: Cliente[] =
+        const dadosClientes:
+          Cliente[] =
           await respostaClientes.json()
 
         setRepresentada(
           dadosRepresentada
         )
 
-        setRegras(dadosRegras)
-        setContratos(dadosContratos)
-        setClientes(dadosClientes)
+        setRegras(
+          dadosRegras
+        )
+
+        setContratos(
+          dadosContratos
+        )
+
+        setClientes(
+          dadosClientes
+        )
       } catch (error) {
         const mensagem =
-          error instanceof Error
+          error instanceof
+          Error
             ? error.message
             : "Erro ao carregar dados."
 
-        setErro(mensagem)
+        setErro(
+          mensagem
+        )
       } finally {
-        setCarregando(false)
+        setCarregando(
+          false
+        )
       }
     }
 
     carregarDados()
-  }, [representadaId])
+  }, [
+    representadaId,
+  ])
 
   function atualizarCampo<
     K extends keyof FormRegra,
@@ -340,18 +504,28 @@ export default function RegrasComerciaisPage() {
     campo: K,
     valor: FormRegra[K]
   ) {
-    setForm((anterior) => ({
-      ...anterior,
-      [campo]: valor,
-    }))
+    setForm(
+      (
+        anterior
+      ) => ({
+        ...anterior,
+
+        [campo]:
+          valor,
+      })
+    )
 
     if (erro) {
-      setErro(null)
+      setErro(
+        null
+      )
     }
   }
 
   function limparFormulario() {
-    setForm(FORM_INICIAL)
+    setForm(
+      FORM_INICIAL
+    )
 
     setFaixas([
       {
@@ -360,62 +534,99 @@ export default function RegrasComerciaisPage() {
       },
     ])
 
-    setRegraEditandoId(null)
-    setErro(null)
+    setRegraEditandoId(
+      null
+    )
+
+    setErro(
+      null
+    )
   }
 
   function editarRegra(
-    regra: RegraComercial
+    regra:
+      RegraComercial
   ) {
-    setRegraEditandoId(regra.id)
+    setRegraEditandoId(
+      regra.id
+    )
 
     setForm({
-      nome: regra.nome,
+      nome:
+        regra.nome,
+
       tipoEscopo:
-        regra.tipoEscopo || "Padrao",
+        regra.tipoEscopo ||
+        "Padrao",
+
       clienteId:
-        regra.clienteId || "",
+        regra.clienteId ||
+        "",
+
       contratoId:
-        regra.contratoId || "",
+        regra.contratoId ||
+        "",
+
       vigenciaInicio:
         converterDataParaInput(
           regra.vigenciaInicio
         ),
+
       vigenciaFim:
         converterDataParaInput(
           regra.vigenciaFim
         ),
-      ativa: regra.ativa,
+
+      ativa:
+        regra.ativa,
+
       pedidoMinimo:
         regra.pedidoMinimo?.toString() ||
         "",
+
       minimoParcela:
         regra.minimoParcela?.toString() ||
         "",
+
       prazoEntregaDias:
         regra.prazoEntregaDias?.toString() ||
         "",
+
       prazoFaturamentoDias:
         regra.prazoFaturamentoDias?.toString() ||
         "",
+
       frete:
-        regra.frete || "",
+        regra.frete ||
+        "",
+
       regiao:
-        regra.regiao || "",
+        regra.regiao ||
+        "",
+
       tipoComissao:
-        regra.tipoComissao || "fixa",
+        regra.tipoComissao ||
+        "fixa",
+
       percentualComissao:
         regra.percentualComissao?.toString() ||
         "",
+
       reconhecimentoComissao:
         regra.reconhecimentoComissao ||
         "",
+
       fechamentoComissao:
-        regra.fechamentoComissao || "",
+        regra.fechamentoComissao ||
+        "",
+
       pagamentoComissao:
-        regra.pagamentoComissao || "",
+        regra.pagamentoComissao ||
+        "",
+
       observacoes:
-        regra.observacoes || "",
+        regra.observacoes ||
+        "",
     })
 
     setFaixas(
@@ -426,120 +637,172 @@ export default function RegrasComerciaisPage() {
 
     window.scrollTo({
       top: 0,
-      behavior: "smooth",
+      behavior:
+        "smooth",
     })
   }
 
   async function recarregarRegras() {
-    if (!representadaId) {
+    if (
+      !representadaId
+    ) {
       return
     }
 
-    const resposta = await fetch(
-      `/api/representadas/${representadaId}/regras-comerciais`
-    )
+    const resposta =
+      await fetch(
+        `/api/representadas/${representadaId}/regras-comerciais`
+      )
 
-    if (!resposta.ok) {
+    if (
+      !resposta.ok
+    ) {
       throw new Error(
         "Erro ao atualizar regras comerciais."
       )
     }
 
-    const dados: RegraComercial[] =
+    const dados:
+      RegraComercial[] =
       await resposta.json()
 
-    setRegras(dados)
+    setRegras(
+      dados
+    )
   }
 
   function atualizarFaixa(
     index: number,
-    campo: keyof Faixa,
+    campo:
+      keyof Faixa,
     valor: string
   ) {
-    setFaixas((anteriores) =>
-      anteriores.map(
-        (faixa, indice) =>
-          indice === index
-            ? {
-                ...faixa,
-                [campo]: valor,
-              }
-            : faixa
-      )
+    setFaixas(
+      (
+        anteriores
+      ) =>
+        anteriores.map(
+          (
+            faixa,
+            indice
+          ) =>
+            indice ===
+            index
+              ? {
+                  ...faixa,
+
+                  [campo]:
+                    valor,
+                }
+              : faixa
+        )
     )
   }
 
   function adicionarFaixa() {
-    setFaixas((anteriores) => [
-      ...anteriores,
-      {
-        desconto: "",
-        comissao: "",
-      },
-    ])
+    setFaixas(
+      (
+        anteriores
+      ) => [
+        ...anteriores,
+
+        {
+          desconto: "",
+          comissao: "",
+        },
+      ]
+    )
   }
 
-  function removerFaixa(index: number) {
-    setFaixas((anteriores) => {
-      if (anteriores.length <= 1) {
-        return anteriores
-      }
+  function removerFaixa(
+    index: number
+  ) {
+    setFaixas(
+      (
+        anteriores
+      ) => {
+        if (
+          anteriores.length <=
+          1
+        ) {
+          return anteriores
+        }
 
-      return anteriores.filter(
-        (_, indice) =>
-          indice !== index
-      )
-    })
+        return anteriores.filter(
+          (
+            _,
+            indice
+          ) =>
+            indice !==
+            index
+        )
+      }
+    )
   }
 
   async function salvarRegra(
-    event: React.FormEvent
+    event:
+      React.FormEvent
   ) {
     event.preventDefault()
 
-    if (!representadaId) {
+    if (
+      !representadaId
+    ) {
       setErro(
         "ID da representada não encontrado."
       )
-      return
-    }
 
-    if (!form.nome.trim()) {
-      setErro(
-        "Informe o nome da regra comercial."
-      )
-      return
-    }
-
-    if (!form.vigenciaInicio) {
-      setErro(
-        "Informe o início da vigência."
-      )
       return
     }
 
     if (
-      form.tipoEscopo === "Padrao" &&
+      !form.nome.trim()
+    ) {
+      setErro(
+        "Informe o nome da regra comercial."
+      )
+
+      return
+    }
+
+    if (
+      !form.vigenciaInicio
+    ) {
+      setErro(
+        "Informe o início da vigência."
+      )
+
+      return
+    }
+
+    if (
+      form.tipoEscopo ===
+        "Padrao" &&
       form.clienteId
     ) {
       setErro(
         "Regra padrão não deve possuir cliente específico."
       )
+
       return
     }
 
     if (
-      form.tipoEscopo !== "Padrao" &&
+      form.tipoEscopo !==
+        "Padrao" &&
       !form.clienteId
     ) {
       setErro(
         "Selecione o cliente para uma regra específica."
       )
+
       return
     }
 
     if (
-      form.tipoComissao === "fixa" &&
+      form.tipoComissao ===
+        "fixa" &&
       (
         !form.percentualComissao ||
         Number(
@@ -550,30 +813,44 @@ export default function RegrasComerciaisPage() {
       setErro(
         "Informe o percentual da comissão fixa."
       )
+
       return
     }
 
     if (
-      form.tipoComissao === "variada"
+      form.tipoComissao ===
+      "variada"
     ) {
       const faixasValidas =
         faixas.every(
-          (faixa) =>
-            faixa.desconto.trim() !== "" &&
-            faixa.comissao.trim() !== ""
+          (
+            faixa
+          ) =>
+            faixa.desconto.trim() !==
+              "" &&
+            faixa.comissao.trim() !==
+              ""
         )
 
-      if (!faixasValidas) {
+      if (
+        !faixasValidas
+      ) {
         setErro(
           "Preencha desconto e comissão em todas as faixas."
         )
+
         return
       }
     }
 
     try {
-      setSalvando(true)
-      setErro(null)
+      setSalvando(
+        true
+      )
+
+      setErro(
+        null
+      )
 
       const payload = {
         nome:
@@ -583,53 +860,65 @@ export default function RegrasComerciaisPage() {
           form.tipoEscopo,
 
         clienteId:
-          form.tipoEscopo === "Padrao"
+          form.tipoEscopo ===
+          "Padrao"
             ? null
-            : form.clienteId || null,
+            : form.clienteId ||
+              null,
 
         contratoId:
-          form.contratoId || null,
+          form.contratoId ||
+          null,
 
         vigenciaInicio:
           form.vigenciaInicio,
 
         vigenciaFim:
-          form.vigenciaFim || null,
+          form.vigenciaFim ||
+          null,
 
         ativa:
           form.ativa,
 
         pedidoMinimo:
-          form.pedidoMinimo || null,
+          form.pedidoMinimo ||
+          null,
 
         minimoParcela:
-          form.minimoParcela || null,
+          form.minimoParcela ||
+          null,
 
         prazoEntregaDias:
-          form.prazoEntregaDias || null,
+          form.prazoEntregaDias ||
+          null,
 
         prazoFaturamentoDias:
           form.prazoFaturamentoDias ||
           null,
 
         frete:
-          form.frete || null,
+          form.frete ||
+          null,
 
         regiao:
-          form.regiao || null,
+          form.regiao ||
+          null,
 
         tipoComissao:
           form.tipoComissao,
 
         percentualComissao:
-          form.tipoComissao === "fixa"
+          form.tipoComissao ===
+          "fixa"
             ? form.percentualComissao
             : null,
 
         faixasComissao:
           form.tipoComissao ===
           "variada"
-            ? JSON.stringify(faixas)
+            ? JSON.stringify(
+                faixas
+              )
             : null,
 
         reconhecimentoComissao:
@@ -645,7 +934,8 @@ export default function RegrasComerciaisPage() {
           null,
 
         observacoes:
-          form.observacoes || null,
+          form.observacoes ||
+          null,
       }
 
       const url =
@@ -653,24 +943,33 @@ export default function RegrasComerciaisPage() {
           ? `/api/representadas/${representadaId}/regras-comerciais/${regraEditandoId}`
           : `/api/representadas/${representadaId}/regras-comerciais`
 
-      const resposta = await fetch(url, {
-        method:
-          regraEditandoId
-            ? "PUT"
-            : "POST",
+      const resposta =
+        await fetch(
+          url,
+          {
+            method:
+              regraEditandoId
+                ? "PUT"
+                : "POST",
 
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-        body: JSON.stringify(payload),
-      })
+            body:
+              JSON.stringify(
+                payload
+              ),
+          }
+        )
 
       const dados =
         await resposta.json()
 
-      if (!resposta.ok) {
+      if (
+        !resposta.ok
+      ) {
         throw new Error(
           dados.message ||
             "Erro ao salvar regra comercial."
@@ -682,27 +981,39 @@ export default function RegrasComerciaisPage() {
       limparFormulario()
     } catch (error) {
       const mensagem =
-        error instanceof Error
+        error instanceof
+        Error
           ? error.message
           : "Erro ao salvar regra comercial."
 
-      setErro(mensagem)
+      setErro(
+        mensagem
+      )
     } finally {
-      setSalvando(false)
+      setSalvando(
+        false
+      )
     }
   }
 
   async function excluirRegra(
-    regra: RegraComercial
+    regra:
+      RegraComercial
   ) {
-    if (!representadaId) {
+    if (
+      !representadaId
+    ) {
       return
     }
 
-    if (regra._count.vendas > 0) {
+    if (
+      regra._count.vendas >
+      0
+    ) {
       alert(
         "Esta regra já foi utilizada em vendas e não pode ser excluída."
       )
+
       return
     }
 
@@ -711,22 +1022,28 @@ export default function RegrasComerciaisPage() {
         `Excluir a regra "${regra.nome}"?`
       )
 
-    if (!confirmado) {
+    if (
+      !confirmado
+    ) {
       return
     }
 
     try {
-      const resposta = await fetch(
-        `/api/representadas/${representadaId}/regras-comerciais/${regra.id}`,
-        {
-          method: "DELETE",
-        }
-      )
+      const resposta =
+        await fetch(
+          `/api/representadas/${representadaId}/regras-comerciais/${regra.id}`,
+          {
+            method:
+              "DELETE",
+          }
+        )
 
       const dados =
         await resposta.json()
 
-      if (!resposta.ok) {
+      if (
+        !resposta.ok
+      ) {
         throw new Error(
           dados.message ||
             "Erro ao excluir regra comercial."
@@ -736,32 +1053,41 @@ export default function RegrasComerciaisPage() {
       await recarregarRegras()
 
       if (
-        regraEditandoId === regra.id
+        regraEditandoId ===
+        regra.id
       ) {
         limparFormulario()
       }
     } catch (error) {
       const mensagem =
-        error instanceof Error
+        error instanceof
+        Error
           ? error.message
           : "Erro ao excluir regra comercial."
 
-      alert(mensagem)
+      alert(
+        mensagem
+      )
     }
   }
 
-  if (carregando) {
+  if (
+    carregando
+  ) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
+
           Carregando regras comerciais...
         </div>
       </div>
     )
   }
 
-  if (!representadaId) {
+  if (
+    !representadaId
+  ) {
     return (
       <div className="p-6">
         ID da representada não encontrado.
@@ -769,9 +1095,13 @@ export default function RegrasComerciaisPage() {
     )
   }
 
+  const regraPadrao =
+    form.tipoEscopo ===
+    "Padrao"
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="mx-auto max-w-7xl space-y-6 p-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Button
@@ -783,7 +1113,8 @@ export default function RegrasComerciaisPage() {
                 )
               }
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="mr-2 h-4 w-4" />
+
               Voltar
             </Button>
 
@@ -795,6 +1126,7 @@ export default function RegrasComerciaisPage() {
               <p className="text-sm text-muted-foreground">
                 {representada?.nome ||
                   "Representada"}
+
                 {representada?.codigo
                   ? ` • ${representada.codigo}`
                   : ""}
@@ -803,8 +1135,10 @@ export default function RegrasComerciaisPage() {
           </div>
 
           <div className="text-sm text-muted-foreground">
-            {regras.length} regra
-            {regras.length === 1
+            {regras.length}{" "}
+            regra
+            {regras.length ===
+            1
               ? ""
               : "s"}
           </div>
@@ -827,9 +1161,12 @@ export default function RegrasComerciaisPage() {
                   onClick={
                     limparFormulario
                   }
-                  disabled={salvando}
+                  disabled={
+                    salvando
+                  }
                 >
-                  <X className="h-4 w-4 mr-1" />
+                  <X className="mr-1 h-4 w-4" />
+
                   Cancelar edição
                 </Button>
               )}
@@ -838,31 +1175,46 @@ export default function RegrasComerciaisPage() {
 
           <CardContent>
             <form
-              onSubmit={salvarRegra}
+              onSubmit={
+                salvarRegra
+              }
               className="space-y-5"
             >
               {erro && (
-                <div className="border border-red-200 bg-red-50 text-red-700 rounded-md p-3 text-sm">
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                   {erro}
                 </div>
               )}
 
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="md:col-span-2 space-y-1">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-1 md:col-span-2">
                   <Label htmlFor="nome">
                     Nome da regra *
                   </Label>
 
                   <Input
                     id="nome"
-                    value={form.nome}
-                    onChange={(event) =>
+                    value={
+                      form.nome
+                    }
+                    onChange={(
+                      event
+                    ) =>
                       atualizarCampo(
                         "nome",
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
-                    disabled={salvando}
+                    disabled={
+                      salvando
+                    }
+                    placeholder={
+                      regraPadrao
+                        ? "Ex.: Regra padrão Massari"
+                        : "Ex.: Regra especial Cliente X"
+                    }
                   />
                 </div>
 
@@ -878,19 +1230,26 @@ export default function RegrasComerciaisPage() {
                         ? "ativa"
                         : "inativa"
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       atualizarCampo(
                         "ativa",
-                        event.target.value ===
+                        event
+                          .target
+                          .value ===
                           "ativa"
                       )
                     }
-                    disabled={salvando}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    disabled={
+                      salvando
+                    }
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
                     <option value="ativa">
                       Ativa
                     </option>
+
                     <option value="inativa">
                       Inativa
                     </option>
@@ -898,10 +1257,42 @@ export default function RegrasComerciaisPage() {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
+              <div
+                className={`rounded-lg border p-4 ${
+                  regraPadrao
+                    ? "border-blue-200 bg-blue-50"
+                    : "border-amber-200 bg-amber-50"
+                }`}
+              >
+                <p
+                  className={`font-semibold ${
+                    regraPadrao
+                      ? "text-blue-900"
+                      : "text-amber-900"
+                  }`}
+                >
+                  {regraPadrao
+                    ? "Regra padrão da Representada"
+                    : "Regra específica para um Cliente"}
+                </p>
+
+                <p
+                  className={`mt-1 text-sm ${
+                    regraPadrao
+                      ? "text-blue-800"
+                      : "text-amber-800"
+                  }`}
+                >
+                  {regraPadrao
+                    ? "Esta regra será utilizada como condição comercial geral da Representada para todos os clientes que não possuam uma regra específica."
+                    : "Esta regra será utilizada somente para o cliente selecionado e prevalecerá sobre a regra padrão da Representada para esse cliente."}
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-1">
                   <Label htmlFor="tipoEscopo">
-                    Escopo
+                    Tipo da regra *
                   </Label>
 
                   <select
@@ -909,14 +1300,23 @@ export default function RegrasComerciaisPage() {
                     value={
                       form.tipoEscopo
                     }
-                    onChange={(event) => {
+                    onChange={(
+                      event
+                    ) => {
                       const valor =
-                        event.target.value
+                        event
+                          .target
+                          .value
 
                       setForm(
-                        (anterior) => ({
+                        (
+                          anterior
+                        ) => ({
                           ...anterior,
-                          tipoEscopo: valor,
+
+                          tipoEscopo:
+                            valor,
+
                           clienteId:
                             valor ===
                             "Padrao"
@@ -924,22 +1324,41 @@ export default function RegrasComerciaisPage() {
                               : anterior.clienteId,
                         })
                       )
+
+                      if (
+                        erro
+                      ) {
+                        setErro(
+                          null
+                        )
+                      }
                     }}
-                    disabled={salvando}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    disabled={
+                      salvando
+                    }
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
                     <option value="Padrao">
-                      Padrão
+                      Padrão — todos os clientes
                     </option>
+
                     <option value="Cliente">
                       Cliente específico
                     </option>
                   </select>
+
+                  <p className="text-xs text-muted-foreground">
+                    {regraPadrao
+                      ? "Use para as condições normais da Representada."
+                      : "Use somente quando este cliente possuir condição diferente da regra padrão."}
+                  </p>
                 </div>
 
                 <div className="space-y-1">
                   <Label htmlFor="clienteId">
-                    Cliente
+                    {regraPadrao
+                      ? "Cliente — não se aplica"
+                      : "Cliente específico *"}
                   </Label>
 
                   <select
@@ -947,35 +1366,57 @@ export default function RegrasComerciaisPage() {
                     value={
                       form.clienteId
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       atualizarCampo(
                         "clienteId",
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
                     disabled={
                       salvando ||
-                      form.tipoEscopo ===
-                        "Padrao"
+                      regraPadrao
                     }
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    className={`h-10 w-full rounded-md border border-input px-3 text-sm ${
+                      regraPadrao
+                        ? "cursor-not-allowed bg-gray-100 text-gray-500"
+                        : "bg-background"
+                    }`}
                   >
                     <option value="">
-                      Selecione
+                      {regraPadrao
+                        ? "Todos os clientes"
+                        : "Selecione o cliente"}
                     </option>
 
-                    {clientes.map(
-                      (cliente) => (
-                        <option
-                          key={cliente.id}
-                          value={cliente.id}
-                        >
-                          {cliente.nomeFantasia ||
-                            cliente.razaoSocial}
-                        </option>
-                      )
-                    )}
+                    {!regraPadrao &&
+                      clientes.map(
+                        (
+                          cliente
+                        ) => (
+                          <option
+                            key={
+                              cliente.id
+                            }
+                            value={
+                              cliente.id
+                            }
+                          >
+                            {cliente.nomeFantasia ||
+                              cliente.razaoSocial}
+                          </option>
+                        )
+                      )}
                   </select>
+
+                  <p className="text-xs text-muted-foreground">
+                    {regraPadrao
+                      ? "Nenhum cliente deve ser selecionado em uma regra padrão."
+                      : "Obrigatório. Esta regra valerá somente para o cliente escolhido."}
+                  </p>
                 </div>
 
                 <div className="space-y-1">
@@ -988,26 +1429,41 @@ export default function RegrasComerciaisPage() {
                     value={
                       form.contratoId
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       atualizarCampo(
                         "contratoId",
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
-                    disabled={salvando}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    disabled={
+                      salvando
+                    }
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
                     <option value="">
                       Sem contrato
                     </option>
 
                     {contratos.map(
-                      (contrato) => (
+                      (
+                        contrato
+                      ) => (
                         <option
-                          key={contrato.id}
-                          value={contrato.id}
+                          key={
+                            contrato.id
+                          }
+                          value={
+                            contrato.id
+                          }
                         >
-                          {contrato.tipoFormalizacao}
+                          {
+                            contrato.tipoFormalizacao
+                          }
+
                           {contrato.descricao
                             ? ` - ${contrato.descricao}`
                             : ""}
@@ -1018,7 +1474,7 @@ export default function RegrasComerciaisPage() {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1">
                   <Label htmlFor="vigenciaInicio">
                     Início da vigência *
@@ -1030,13 +1486,19 @@ export default function RegrasComerciaisPage() {
                     value={
                       form.vigenciaInicio
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       atualizarCampo(
                         "vigenciaInicio",
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
-                    disabled={salvando}
+                    disabled={
+                      salvando
+                    }
                   />
                 </div>
 
@@ -1051,18 +1513,24 @@ export default function RegrasComerciaisPage() {
                     value={
                       form.vigenciaFim
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       atualizarCampo(
                         "vigenciaFim",
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
-                    disabled={salvando}
+                    disabled={
+                      salvando
+                    }
                   />
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-1">
                   <Label htmlFor="pedidoMinimo">
                     Pedido mínimo
@@ -1076,13 +1544,19 @@ export default function RegrasComerciaisPage() {
                     value={
                       form.pedidoMinimo
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       atualizarCampo(
                         "pedidoMinimo",
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
-                    disabled={salvando}
+                    disabled={
+                      salvando
+                    }
                   />
                 </div>
 
@@ -1099,13 +1573,19 @@ export default function RegrasComerciaisPage() {
                     value={
                       form.minimoParcela
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       atualizarCampo(
                         "minimoParcela",
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
-                    disabled={salvando}
+                    disabled={
+                      salvando
+                    }
                   />
                 </div>
 
@@ -1122,13 +1602,19 @@ export default function RegrasComerciaisPage() {
                     value={
                       form.prazoEntregaDias
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       atualizarCampo(
                         "prazoEntregaDias",
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
-                    disabled={salvando}
+                    disabled={
+                      salvando
+                    }
                   />
                 </div>
 
@@ -1145,18 +1631,24 @@ export default function RegrasComerciaisPage() {
                     value={
                       form.prazoFaturamentoDias
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       atualizarCampo(
                         "prazoFaturamentoDias",
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
-                    disabled={salvando}
+                    disabled={
+                      salvando
+                    }
                   />
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1">
                   <Label htmlFor="frete">
                     Frete
@@ -1164,14 +1656,22 @@ export default function RegrasComerciaisPage() {
 
                   <Input
                     id="frete"
-                    value={form.frete}
-                    onChange={(event) =>
+                    value={
+                      form.frete
+                    }
+                    onChange={(
+                      event
+                    ) =>
                       atualizarCampo(
                         "frete",
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
-                    disabled={salvando}
+                    disabled={
+                      salvando
+                    }
                   />
                 </div>
 
@@ -1182,20 +1682,28 @@ export default function RegrasComerciaisPage() {
 
                   <Input
                     id="regiao"
-                    value={form.regiao}
-                    onChange={(event) =>
+                    value={
+                      form.regiao
+                    }
+                    onChange={(
+                      event
+                    ) =>
                       atualizarCampo(
                         "regiao",
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
-                    disabled={salvando}
+                    disabled={
+                      salvando
+                    }
                   />
                 </div>
               </div>
 
-              <div className="border rounded-lg p-4 space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-4 rounded-lg border p-4">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-1">
                     <Label htmlFor="tipoComissao">
                       Tipo de comissão
@@ -1206,18 +1714,25 @@ export default function RegrasComerciaisPage() {
                       value={
                         form.tipoComissao
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         atualizarCampo(
                           "tipoComissao",
-                          event.target.value
+                          event
+                            .target
+                            .value
                         )
                       }
-                      disabled={salvando}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                      disabled={
+                        salvando
+                      }
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                     >
                       <option value="fixa">
                         Fixa
                       </option>
+
                       <option value="variada">
                         Variada
                       </option>
@@ -1239,13 +1754,19 @@ export default function RegrasComerciaisPage() {
                         value={
                           form.percentualComissao
                         }
-                        onChange={(event) =>
+                        onChange={(
+                          event
+                        ) =>
                           atualizarCampo(
                             "percentualComissao",
-                            event.target.value
+                            event
+                              .target
+                              .value
                           )
                         }
-                        disabled={salvando}
+                        disabled={
+                          salvando
+                        }
                       />
                     </div>
                   )}
@@ -1255,10 +1776,15 @@ export default function RegrasComerciaisPage() {
                   "variada" && (
                   <div className="space-y-3">
                     {faixas.map(
-                      (faixa, index) => (
+                      (
+                        faixa,
+                        index
+                      ) => (
                         <div
-                          key={index}
-                          className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end"
+                          key={
+                            index
+                          }
+                          className="grid grid-cols-1 items-end gap-3 md:grid-cols-[1fr_1fr_auto]"
                         >
                           <div className="space-y-1">
                             <Label>
@@ -1277,7 +1803,8 @@ export default function RegrasComerciaisPage() {
                                 atualizarFaixa(
                                   index,
                                   "desconto",
-                                  event.target
+                                  event
+                                    .target
                                     .value
                                 )
                               }
@@ -1304,7 +1831,8 @@ export default function RegrasComerciaisPage() {
                                 atualizarFaixa(
                                   index,
                                   "comissao",
-                                  event.target
+                                  event
+                                    .target
                                     .value
                                 )
                               }
@@ -1324,7 +1852,8 @@ export default function RegrasComerciaisPage() {
                             }
                             disabled={
                               salvando ||
-                              faixas.length <= 1
+                              faixas.length <=
+                                1
                             }
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1340,74 +1869,64 @@ export default function RegrasComerciaisPage() {
                       onClick={
                         adicionarFaixa
                       }
-                      disabled={salvando}
+                      disabled={
+                        salvando
+                      }
                     >
-                      <Plus className="h-4 w-4 mr-1" />
+                      <Plus className="mr-1 h-4 w-4" />
+
                       Adicionar faixa
                     </Button>
                   </div>
                 )}
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="reconhecimentoComissao">
-                    Reconhecimento
-                  </Label>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-3">
+                  <p className="font-semibold text-slate-900">
+                    Política de comissão da Representada
+                  </p>
 
-                  <Input
-                    id="reconhecimentoComissao"
-                    value={
-                      form.reconhecimentoComissao
-                    }
-                    onChange={(event) =>
-                      atualizarCampo(
-                        "reconhecimentoComissao",
-                        event.target.value
-                      )
-                    }
-                    disabled={salvando}
-                  />
+                  <p className="mt-1 text-sm text-slate-600">
+                    Estas informações são herdadas do cadastro da Representada e não podem ser alteradas por uma Regra Comercial.
+                  </p>
                 </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor="fechamentoComissao">
-                    Fechamento
-                  </Label>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <p className="text-sm text-slate-500">
+                      Comissão calculada sobre
+                    </p>
 
-                  <Input
-                    id="fechamentoComissao"
-                    value={
-                      form.fechamentoComissao
-                    }
-                    onChange={(event) =>
-                      atualizarCampo(
-                        "fechamentoComissao",
-                        event.target.value
-                      )
-                    }
-                    disabled={salvando}
-                  />
-                </div>
+                    <p className="font-medium text-slate-900">
+                      {representada?.regraReconhecimentoComissao ||
+                        "Não informado"}
+                    </p>
+                  </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor="pagamentoComissao">
-                    Pagamento
-                  </Label>
+                  <div>
+                    <p className="text-sm text-slate-500">
+                      Fechamento da comissão
+                    </p>
 
-                  <Input
-                    id="pagamentoComissao"
-                    value={
-                      form.pagamentoComissao
-                    }
-                    onChange={(event) =>
-                      atualizarCampo(
-                        "pagamentoComissao",
-                        event.target.value
-                      )
-                    }
-                    disabled={salvando}
-                  />
+                    <p className="font-medium text-slate-900">
+                      {representada?.fechamentoComissao
+                        ? `Dia ${representada.fechamentoComissao}`
+                        : "Não informado"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500">
+                      Pagamento da comissão
+                    </p>
+
+                    <p className="font-medium text-slate-900">
+                      {representada?.pagamentoComissao
+                        ? `Dia ${representada.pagamentoComissao}`
+                        : "Não informado"}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -1421,32 +1940,41 @@ export default function RegrasComerciaisPage() {
                   value={
                     form.observacoes
                   }
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     atualizarCampo(
                       "observacoes",
-                      event.target.value
+                      event
+                        .target
+                        .value
                     )
                   }
-                  disabled={salvando}
+                  disabled={
+                    salvando
+                  }
                 />
               </div>
 
               <div className="flex justify-end">
                 <Button
                   type="submit"
-                  disabled={salvando}
+                  disabled={
+                    salvando
+                  }
                 >
                   {salvando ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+
                       Salvando...
                     </>
                   ) : (
                     <>
                       {regraEditandoId ? (
-                        <Save className="h-4 w-4 mr-2" />
+                        <Save className="mr-2 h-4 w-4" />
                       ) : (
-                        <Plus className="h-4 w-4 mr-2" />
+                        <Plus className="mr-2 h-4 w-4" />
                       )}
 
                       {regraEditandoId
@@ -1468,140 +1996,152 @@ export default function RegrasComerciaisPage() {
           </CardHeader>
 
           <CardContent>
-            {regras.length === 0 ? (
-              <div className="text-sm text-muted-foreground text-center py-6">
+            {regras.length ===
+            0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
                 Nenhuma regra comercial cadastrada.
               </div>
             ) : (
               <div className="space-y-3">
-                {regras.map((regra) => (
-                  <div
-                    key={regra.id}
-                    className="border rounded-lg p-4"
-                  >
-                    <div className="flex flex-col lg:flex-row lg:justify-between gap-4">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap gap-2 items-center">
-                          <span className="font-semibold">
-                            {regra.nome}
-                          </span>
+                {regras.map(
+                  (
+                    regra
+                  ) => (
+                    <div
+                      key={
+                        regra.id
+                      }
+                      className="rounded-lg border p-4"
+                    >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold">
+                              {
+                                regra.nome
+                              }
+                            </span>
 
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full ${
-                              regra.ativa
-                                ? "bg-green-100 text-green-700"
-                                : "bg-gray-100 text-gray-700"
-                            }`}
-                          >
-                            {regra.ativa
-                              ? "Ativa"
-                              : "Inativa"}
-                          </span>
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs ${
+                                regra.ativa
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                              {regra.ativa
+                                ? "Ativa"
+                                : "Inativa"}
+                            </span>
 
-                          <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700">
-                            {
-                              regra.tipoEscopo
+                            <span className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">
+                              {regra.tipoEscopo ===
+                              "Padrao"
+                                ? "Padrão — todos os clientes"
+                                : "Cliente específico"}
+                            </span>
+
+                            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                              {
+                                regra._count.vendas
+                              }{" "}
+                              venda
+                              {regra._count.vendas ===
+                              1
+                                ? ""
+                                : "s"}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1 text-sm">
+                            <p>
+                              Vigência:{" "}
+                              {formatarData(
+                                regra.vigenciaInicio
+                              )}{" "}
+                              até{" "}
+                              {formatarData(
+                                regra.vigenciaFim
+                              )}
+                            </p>
+
+                            <p>
+                              Aplicação:{" "}
+                              {regra.tipoEscopo ===
+                              "Padrao"
+                                ? "Todos os clientes sem regra específica"
+                                : regra.cliente
+                                      ?.nomeFantasia ||
+                                  regra.cliente
+                                    ?.razaoSocial ||
+                                  "Cliente não identificado"}
+                            </p>
+
+                            <p>
+                              Pedido mínimo:{" "}
+                              {formatarValor(
+                                regra.pedidoMinimo
+                              )}
+                            </p>
+
+                            <p>
+                              Comissão:{" "}
+                              {regra.tipoComissao ===
+                              "fixa"
+                                ? `${
+                                    regra.percentualComissao ??
+                                    0
+                                  }%`
+                                : regra.tipoComissao ===
+                                    "variada"
+                                  ? "Variada"
+                                  : "-"}
+                            </p>
+
+                            <p>
+                              Contrato:{" "}
+                              {regra.contrato
+                                ?.tipoFormalizacao ||
+                                "-"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              editarRegra(
+                                regra
+                              )
                             }
-                          </span>
+                          >
+                            Editar
+                          </Button>
 
-                          <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700">
-                            {
-                              regra._count
-                                .vendas
-                            }{" "}
-                            venda
-                            {regra._count
-                              .vendas === 1
-                              ? ""
-                              : "s"}
-                          </span>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            disabled={
+                              regra._count.vendas >
+                              0
+                            }
+                            onClick={() =>
+                              excluirRegra(
+                                regra
+                              )
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-
-                        <div className="text-sm space-y-1">
-                          <p>
-                            Vigência:{" "}
-                            {formatarData(
-                              regra.vigenciaInicio
-                            )}{" "}
-                            até{" "}
-                            {formatarData(
-                              regra.vigenciaFim
-                            )}
-                          </p>
-
-                          <p>
-                            Cliente:{" "}
-                            {regra.cliente
-                              ?.nomeFantasia ||
-                              regra.cliente
-                                ?.razaoSocial ||
-                              "Todos"}
-                          </p>
-
-                          <p>
-                            Pedido mínimo:{" "}
-                            {formatarValor(
-                              regra.pedidoMinimo
-                            )}
-                          </p>
-
-                          <p>
-                            Comissão:{" "}
-                            {regra.tipoComissao ===
-                            "fixa"
-                              ? `${
-                                  regra.percentualComissao ??
-                                  0
-                                }%`
-                              : regra.tipoComissao ===
-                                  "variada"
-                                ? "Variada"
-                                : "-"}
-                          </p>
-
-                          <p>
-                            Contrato:{" "}
-                            {regra.contrato
-                              ?.tipoFormalizacao ||
-                              "-"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            editarRegra(
-                              regra
-                            )
-                          }
-                        >
-                          Editar
-                        </Button>
-
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          disabled={
-                            regra._count
-                              .vendas > 0
-                          }
-                          onClick={() =>
-                            excluirRegra(
-                              regra
-                            )
-                          }
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             )}
           </CardContent>

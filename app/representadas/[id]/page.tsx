@@ -62,6 +62,7 @@ interface Representada {
   faixasComissao?: string
   fechamentoComissao: string
   pagamentoComissao: string
+  regraReconhecimentoComissao: string
   bancoComissao: string
   contatoPrincipal: string
   emailPrincipal: string
@@ -809,23 +810,25 @@ export default function RepresentadaPage() {
 
                 <div>
                   <p className="text-sm text-slate-500">
-                    Fechamento Comissão
+                    Fechamento da comissão
                   </p>
 
                   <p className="font-medium">
-                    {representada.fechamentoComissao ||
-                      "-"}
+                    {representada.fechamentoComissao
+                      ? `Dia ${representada.fechamentoComissao}`
+                      : "-"}
                   </p>
                 </div>
 
                 <div>
                   <p className="text-sm text-slate-500">
-                    Pagamento Comissão
+                    Pagamento da comissão
                   </p>
 
                   <p className="font-medium">
-                    {representada.pagamentoComissao ||
-                      "-"}
+                    {representada.pagamentoComissao
+                      ? `Dia ${representada.pagamentoComissao}`
+                      : "-"}
                   </p>
                 </div>
 
@@ -845,6 +848,27 @@ export default function RepresentadaPage() {
                 <h3 className="mb-4 font-semibold">
                   Comissão
                 </h3>
+
+                <div className="mb-4 rounded-lg border bg-blue-50 p-4">
+                  <p className="text-sm text-slate-500">
+                    Base para cálculo da comissão
+                  </p>
+
+                  <p className="text-lg font-semibold text-slate-900">
+                    {representada.regraReconhecimentoComissao ||
+                      "Não informada"}
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-600">
+                    {representada.regraReconhecimentoComissao ===
+                    "Liquidez"
+                      ? "A comissão é calculada conforme o pagamento do cliente."
+                      : representada.regraReconhecimentoComissao ===
+                        "Faturamento"
+                      ? "A comissão é calculada a partir do faturamento da venda."
+                      : "Edite o cadastro da Representada para definir Faturamento ou Liquidez."}
+                  </p>
+                </div>
 
                 {representada.tipoComissao ===
                 "variada" ? (

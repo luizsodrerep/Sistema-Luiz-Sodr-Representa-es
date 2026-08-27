@@ -542,9 +542,6 @@ model Venda {
 // ======================================================
 // EVENTOS DA VENDA
 // Historico operacional generico.
-// Permite registrar envio, recebimento, confirmacao,
-// pedido registrado, contato e outros eventos,
-// independentemente do canal utilizado pela Representada.
 // ======================================================
 
 model VendaEvento {
@@ -555,25 +552,10 @@ model VendaEvento {
 
   data DateTime @default(now())
 
-  // Exemplos:
-  // Pedido enviado
-  // Recebimento confirmado
-  // Pedido registrado
-  // Contato com Representada
-  // Outro
   tipo String
 
-  // Exemplos:
-  // E-mail
-  // WhatsApp
-  // Ligacao
-  // Portal
-  // Presencial
-  // Outro
   canal String?
 
-  // Numero de pedido, protocolo, referencia de e-mail,
-  // nome do contato ou outra identificacao externa.
   referencia String?
 
   descricao String?
@@ -594,10 +576,13 @@ model VendaEvento {
 // ======================================================
 // FATURAMENTOS
 // Uma venda pode gerar varias NFs.
+// FAT-000001, FAT-000002 etc.
 // ======================================================
 
 model Faturamento {
   id String @id @default(cuid())
+
+  numeroSequencial Int @unique @default(autoincrement())
 
   vendaId String
 
@@ -637,15 +622,23 @@ model Faturamento {
 
 // ======================================================
 // TITULOS / VENCIMENTOS
-// Controle informativo do escritorio.
+// Controle informativo do pagamento do cliente
+// para a Representada.
+// TIT-000001, TIT-000002 etc.
 // ======================================================
 
 model TituloVenda {
   id String @id @default(cuid())
 
+  numeroSequencial Int @unique @default(autoincrement())
+
   faturamentoId String
 
   numeroParcela Int?
+
+  // Numero externo informado pela Representada,
+  // boleto, duplicata ou outra referencia.
+  numeroTituloExterno String?
 
   vencimento DateTime
 
@@ -655,6 +648,9 @@ model TituloVenda {
 
   prorrogadoPara DateTime?
 
+  // Campo atual preservado para compatibilidade.
+  // A apuracao detalhada de pagamentos deve usar
+  // TituloVendaBaixa.
   pagoEm DateTime?
 
   atrasoInformadoEm DateTime?
@@ -666,27 +662,84 @@ model TituloVenda {
 
   faturamento Faturamento @relation(fields: [faturamentoId], references: [id], onDelete: Restrict)
 
+  baixas    TituloVendaBaixa[]
+  comissoes ComissaoMovimento[]
+
   @@index([faturamentoId])
+  @@index([numeroTituloExterno])
   @@index([vencimento])
   @@index([status])
+}
+
+// ======================================================
+// BAIXAS / LIQUIDACOES DOS TITULOS DA VENDA
+// Permite pagamento total ou parcial.
+// Fundamental para comissoes reconhecidas por liquidez.
+// ======================================================
+
+model TituloVendaBaixa {
+  id String @id @default(cuid())
+
+  tituloVendaId String
+
+  data DateTime
+
+  valor Float
+
+  // Ex.: Representada, extrato, portal, e-mail,
+  // WhatsApp, relatorio de comissao ou outro.
+  origemInformacao String?
+
+  // Protocolo, numero de documento ou outra referencia.
+  referencia String?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  tituloVenda TituloVenda @relation(fields: [tituloVendaId], references: [id], onDelete: Restrict)
+
+  comissoes ComissaoMovimento[]
+
+  @@index([tituloVendaId])
+  @@index([data])
 }
 
 // ======================================================
 // MOVIMENTACOES DE COMISSAO
 // PREVISTA, DEVIDA, RECEBIDA, ESTORNADA,
 // RECUPERADA ou AJUSTE.
+// COM-000001, COM-000002 etc.
 // ======================================================
 
 model ComissaoMovimento {
   id String @id @default(cuid())
 
+  numeroSequencial Int @unique @default(autoincrement())
+
   vendaId       String?
   faturamentoId String?
   nfComissaoId  String?
 
+  tituloVendaId      String?
+  tituloVendaBaixaId String?
+
+  // Permite relacionar estorno, recuperacao ou ajuste
+  // ao movimento que lhe deu origem.
+  movimentoOrigemId String?
+
   tipo String
 
   data DateTime
+
+  // Ex.: 2026-08, Agosto/2026 ou outra competencia
+  // adotada operacionalmente.
+  competencia String?
+
+  // Valor sobre o qual a comissao foi efetivamente
+  // calculada naquele movimento.
+  baseCalculo Float?
 
   valor Float
 
@@ -705,24 +758,78 @@ model ComissaoMovimento {
 
   nfComissao NFComissao? @relation(fields: [nfComissaoId], references: [id], onDelete: SetNull)
 
+  tituloVenda TituloVenda? @relation(fields: [tituloVendaId], references: [id], onDelete: SetNull)
+
+  tituloVendaBaixa TituloVendaBaixa? @relation(fields: [tituloVendaBaixaId], references: [id], onDelete: SetNull)
+
+  movimentoOrigem ComissaoMovimento? @relation("ComissaoMovimentoOrigem", fields: [movimentoOrigemId], references: [id], onDelete: SetNull)
+
+  movimentosDerivados ComissaoMovimento[] @relation("ComissaoMovimentoOrigem")
+
+  parcelas ComissaoParcela[]
+
   @@index([vendaId])
   @@index([faturamentoId])
   @@index([nfComissaoId])
+  @@index([tituloVendaId])
+  @@index([tituloVendaBaixaId])
+  @@index([movimentoOrigemId])
   @@index([tipo])
   @@index([data])
+  @@index([competencia])
+  @@index([status])
+}
+
+// ======================================================
+// PARCELAS DA COMISSAO
+// Uma comissao pode ser paga em uma ou varias parcelas.
+// ======================================================
+
+model ComissaoParcela {
+  id String @id @default(cuid())
+
+  comissaoMovimentoId String
+
+  numeroParcela Int
+
+  vencimento DateTime
+
+  valor Float
+
+  status String @default("Pendente")
+
+  recebidoEm DateTime?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  comissaoMovimento ComissaoMovimento @relation(fields: [comissaoMovimentoId], references: [id], onDelete: Restrict)
+
+  @@unique([comissaoMovimentoId, numeroParcela])
+  @@index([comissaoMovimentoId])
+  @@index([vencimento])
+  @@index([status])
 }
 
 // ======================================================
 // NF DE COMISSAO DO ESCRITORIO
 // Aceita notas atuais e historicas.
+// NFC-000001 e a identificacao interna do CRM.
+// O campo numero permanece sendo o numero fiscal real.
+// A comissao pode existir sem NF.
 // ======================================================
 
 model NFComissao {
   id String @id @default(cuid())
 
+  numeroSequencial Int @unique @default(autoincrement())
+
   representadaId      String
   empresaEscritorioId String
 
+  // Numero fiscal real da NF.
   numero String?
 
   dataEmissao DateTime
@@ -747,6 +854,14 @@ model NFComissao {
   contaBancariaId String?
 
   historica Boolean @default(false)
+
+  dataEnvio String?
+
+  referenciaEnvio String?
+
+  canceladoEm DateTime?
+
+  motivoCancelamento String?
 
   observacoes String?
 
@@ -850,8 +965,6 @@ model RepresentadaContaRecebimento {
 
 // ======================================================
 // INTERACOES / FOLLOW-UP
-// Visita, Ligacao, WhatsApp, E-mail,
-// Reuniao, Pos-venda etc.
 // ======================================================
 
 model Interacao {
@@ -913,12 +1026,6 @@ model Interacao {
 
 // ======================================================
 // ORCAMENTOS / PROPOSTAS COMERCIAIS
-// Nascem de uma necessidade comercial.
-// Podem estar vinculados a uma Interacao.
-// Nao geram Venda apenas por existirem.
-// A Venda nasce somente apos o aceite/aprovacao do cliente.
-// Nao geram Financeiro ou Comissao automaticamente.
-// Validade padrao de 7 dias e calculada pela aplicacao.
 // ======================================================
 
 model Orcamento {
@@ -990,6 +1097,23 @@ model Orcamento {
 
 // ======================================================
 // FINANCEIRO
+//
+// Mantido generico nesta fase.
+// Permite comissoes e tambem outras entradas/saidas,
+// inclusive recursos externos ao fluxo comercial.
+//
+// Exemplos futuros de origem:
+// Comissao
+// Aporte do proprietario
+// Receita externa
+// Uber
+// Reembolso
+// Transferencia
+// Outra
+//
+// A arquitetura definitiva de contas a pagar/receber,
+// despesas pessoais e empresariais sera analisada
+// em fase propria.
 // ======================================================
 
 model Financeiro {
@@ -1004,6 +1128,13 @@ model Financeiro {
 
   categoria String?
   descricao String?
+
+  // Origem livre do recurso ou despesa.
+  origem String?
+
+  // Permite distinguir recurso que nao nasceu
+  // da operacao comercial/comissoes do escritorio.
+  origemExterna Boolean @default(false)
 
   valor Float
 
@@ -1048,6 +1179,8 @@ model Financeiro {
   @@index([data])
   @@index([vencimento])
   @@index([status])
+  @@index([origem])
+  @@index([origemExterna])
 }
 
 // ======================================================

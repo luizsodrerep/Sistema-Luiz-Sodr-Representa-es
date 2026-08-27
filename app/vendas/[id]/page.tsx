@@ -201,64 +201,105 @@ const CANAIS_EVENTO = [
   "Outro",
 ]
 
-function formatarCodigoVenda(numero: number) {
-  return `VEN-${String(numero).padStart(6, "0")}`
+function formatarCodigoVenda(
+  numero: number
+) {
+  return `VEN-${String(
+    numero
+  ).padStart(6, "0")}`
 }
 
-function formatarCodigoOrcamento(numero: number) {
-  return `ORC-${String(numero).padStart(6, "0")}`
+function formatarCodigoOrcamento(
+  numero: number
+) {
+  return `ORC-${String(
+    numero
+  ).padStart(6, "0")}`
 }
 
-function formatarCodigoInteracao(numero: number) {
-  return `INT-${String(numero).padStart(6, "0")}`
+function formatarCodigoInteracao(
+  numero: number
+) {
+  return `INT-${String(
+    numero
+  ).padStart(6, "0")}`
 }
 
-function formatarMoeda(valor: number | null) {
-  if (valor === null || valor === undefined) {
+function formatarMoeda(
+  valor: number | null
+) {
+  if (
+    valor === null ||
+    valor === undefined
+  ) {
     return "—"
   }
 
-  return valor.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  })
+  return valor.toLocaleString(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL",
+    }
+  )
 }
 
-function formatarData(valor: string | null) {
+function formatarData(
+  valor: string | null
+) {
   if (!valor) {
     return "—"
   }
 
-  const data = new Date(valor)
+  const data =
+    new Date(valor)
 
-  if (Number.isNaN(data.getTime())) {
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
     return "—"
   }
 
-  return data.toLocaleDateString("pt-BR")
+  return data.toLocaleDateString(
+    "pt-BR"
+  )
 }
 
-function formatarDataHora(valor: string | null) {
+function formatarDataHora(
+  valor: string | null
+) {
   if (!valor) {
     return "—"
   }
 
-  const data = new Date(valor)
+  const data =
+    new Date(valor)
 
-  if (Number.isNaN(data.getTime())) {
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
     return "—"
   }
 
-  return data.toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  return data.toLocaleString(
+    "pt-BR",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  )
 }
 
-function classeStatus(status: string) {
+function classeStatus(
+  status: string
+) {
   if (
     status === "Faturado" ||
     status === "Confirmado"
@@ -266,15 +307,24 @@ function classeStatus(status: string) {
     return "bg-green-100 text-green-800"
   }
 
-  if (status === "Aguardando confirmação") {
+  if (
+    status ===
+    "Aguardando confirmação"
+  ) {
     return "bg-blue-100 text-blue-800"
   }
 
-  if (status === "Aguardando envio") {
+  if (
+    status ===
+    "Aguardando envio"
+  ) {
     return "bg-amber-100 text-amber-800"
   }
 
-  if (status === "Cancelado") {
+  if (
+    status ===
+    "Cancelado"
+  ) {
     return "bg-red-100 text-red-800"
   }
 
@@ -282,15 +332,62 @@ function classeStatus(status: string) {
 }
 
 function dataHoraLocalInput() {
-  const agora = new Date()
+  const agora =
+    new Date()
 
-  const ano = agora.getFullYear()
-  const mes = String(agora.getMonth() + 1).padStart(2, "0")
-  const dia = String(agora.getDate()).padStart(2, "0")
-  const hora = String(agora.getHours()).padStart(2, "0")
-  const minuto = String(agora.getMinutes()).padStart(2, "0")
+  const ano =
+    agora.getFullYear()
+
+  const mes =
+    String(
+      agora.getMonth() + 1
+    ).padStart(2, "0")
+
+  const dia =
+    String(
+      agora.getDate()
+    ).padStart(2, "0")
+
+  const hora =
+    String(
+      agora.getHours()
+    ).padStart(2, "0")
+
+  const minuto =
+    String(
+      agora.getMinutes()
+    ).padStart(2, "0")
 
   return `${ano}-${mes}-${dia}T${hora}:${minuto}`
+}
+
+function rotuloReferenciaHistorico(
+  evento: VendaEvento
+) {
+  if (
+    evento.tipo ===
+    "Pedido registrado"
+  ) {
+    return "Pedido da Representada"
+  }
+
+  if (
+    evento.tipo ===
+      "Pedido enviado" &&
+    evento.canal ===
+      "Portal"
+  ) {
+    return "Pedido / protocolo"
+  }
+
+  if (
+    evento.tipo ===
+    "Recebimento confirmado"
+  ) {
+    return "Protocolo / referência"
+  }
+
+  return "Referência"
 }
 
 export default function VendaDetalhesPage({
@@ -300,45 +397,90 @@ export default function VendaDetalhesPage({
     id: string
   }>
 }) {
-  const { id } = use(params)
+  const { id } =
+    use(params)
 
-  const [venda, setVenda] =
-    useState<Venda | null>(null)
+  const [
+    venda,
+    setVenda,
+  ] =
+    useState<Venda | null>(
+      null
+    )
 
-  const [eventos, setEventos] =
-    useState<VendaEvento[]>([])
+  const [
+    eventos,
+    setEventos,
+  ] =
+    useState<VendaEvento[]>(
+      []
+    )
 
-  const [loading, setLoading] =
+  const [
+    loading,
+    setLoading,
+  ] =
     useState(true)
 
-  const [salvandoEvento, setSalvandoEvento] =
+  const [
+    salvandoEvento,
+    setSalvandoEvento,
+  ] =
     useState(false)
 
-  const [erro, setErro] =
-    useState<string | null>(null)
+  const [
+    erro,
+    setErro,
+  ] =
+    useState<
+      string | null
+    >(null)
 
-  const [sucesso, setSucesso] =
-    useState<string | null>(null)
+  const [
+    sucesso,
+    setSucesso,
+  ] =
+    useState<
+      string | null
+    >(null)
 
-  const [modoEvento, setModoEvento] =
+  const [
+    modoEvento,
+    setModoEvento,
+  ] =
     useState<
       | "envio"
       | "confirmacao"
       | "pedido"
       | "contato"
+      | "alteracao"
     >("envio")
 
-  const [canalEvento, setCanalEvento] =
+  const [
+    canalEvento,
+    setCanalEvento,
+  ] =
     useState("E-mail")
 
-  const [referenciaEvento, setReferenciaEvento] =
+  const [
+    referenciaEvento,
+    setReferenciaEvento,
+  ] =
     useState("")
 
-  const [descricaoEvento, setDescricaoEvento] =
+  const [
+    descricaoEvento,
+    setDescricaoEvento,
+  ] =
     useState("")
 
-  const [dataEvento, setDataEvento] =
-    useState(dataHoraLocalInput())
+  const [
+    dataEvento,
+    setDataEvento,
+  ] =
+    useState(
+      dataHoraLocalInput()
+    )
 
   async function carregar() {
     try {
@@ -348,33 +490,42 @@ export default function VendaDetalhesPage({
       const [
         respostaVenda,
         respostaEventos,
-      ] = await Promise.all([
-        fetch(
-          `/api/vendas/${id}`,
-          {
-            cache: "no-store",
-          }
-        ),
+      ] =
+        await Promise.all([
+          fetch(
+            `/api/vendas/${id}`,
+            {
+              cache:
+                "no-store",
+            }
+          ),
 
-        fetch(
-          `/api/vendas/${id}/eventos`,
-          {
-            cache: "no-store",
-          }
-        ),
-      ])
+          fetch(
+            `/api/vendas/${id}/eventos`,
+            {
+              cache:
+                "no-store",
+            }
+          ),
+        ])
 
       const dadosVenda =
         await respostaVenda
           .json()
-          .catch(() => null)
+          .catch(
+            () => null
+          )
 
       const dadosEventos =
         await respostaEventos
           .json()
-          .catch(() => [])
+          .catch(
+            () => []
+          )
 
-      if (!respostaVenda.ok) {
+      if (
+        !respostaVenda.ok
+      ) {
         setErro(
           dadosVenda?.message ||
             "Não foi possível carregar a venda."
@@ -383,11 +534,15 @@ export default function VendaDetalhesPage({
         return
       }
 
-      setVenda(dadosVenda)
+      setVenda(
+        dadosVenda
+      )
 
       setEventos(
         respostaEventos.ok &&
-          Array.isArray(dadosEventos)
+          Array.isArray(
+            dadosEventos
+          )
           ? dadosEventos
           : []
       )
@@ -396,14 +551,20 @@ export default function VendaDetalhesPage({
         dadosVenda.status ===
         "Aguardando confirmação"
       ) {
-        setModoEvento("confirmacao")
+        setModoEvento(
+          "confirmacao"
+        )
       } else if (
         dadosVenda.status ===
         "Confirmado"
       ) {
-        setModoEvento("contato")
+        setModoEvento(
+          "contato"
+        )
       } else {
-        setModoEvento("envio")
+        setModoEvento(
+          "envio"
+        )
       }
     } catch {
       setErro(
@@ -426,10 +587,14 @@ export default function VendaDetalhesPage({
       }
 
       return venda.faturamentos.reduce(
-        (total, item) =>
+        (
+          total,
+          item
+        ) =>
           total +
           Number(
-            item.valorFaturado || 0
+            item.valorFaturado ||
+              0
           ),
         0
       )
@@ -443,7 +608,8 @@ export default function VendaDetalhesPage({
 
       return Math.max(
         Number(
-          venda.valorTotal || 0
+          venda.valorTotal ||
+            0
         ) -
           totalFaturado,
         0
@@ -453,37 +619,105 @@ export default function VendaDetalhesPage({
       totalFaturado,
     ])
 
-  const possuiEnvio =
-    eventos.some(
-      (evento) =>
-        evento.tipo ===
-        "Pedido enviado"
-    )
-
   function tipoEventoAtual() {
     if (
-      modoEvento === "confirmacao"
+      modoEvento ===
+      "confirmacao"
     ) {
       return "Recebimento confirmado"
     }
 
     if (
-      modoEvento === "pedido"
+      modoEvento ===
+      "pedido"
     ) {
       return "Pedido registrado"
     }
 
     if (
-      modoEvento === "contato"
+      modoEvento ===
+      "contato"
     ) {
       return "Contato com Representada"
+    }
+
+    if (
+      modoEvento ===
+      "alteracao"
+    ) {
+      return "Alteração pós-envio"
     }
 
     return "Pedido enviado"
   }
 
+  function rotuloReferenciaAtual() {
+    if (
+      modoEvento ===
+      "confirmacao"
+    ) {
+      return "Protocolo / referência da confirmação"
+    }
+
+    if (
+      modoEvento ===
+      "pedido"
+    ) {
+      return "Número do pedido da Representada"
+    }
+
+    if (
+      modoEvento ===
+      "contato"
+    ) {
+      return "Referência do contato"
+    }
+
+    if (
+      modoEvento ===
+      "alteracao"
+    ) {
+      return "Referência da alteração"
+    }
+
+    return "Pedido / protocolo da Representada"
+  }
+
+  function placeholderReferenciaAtual() {
+    if (
+      modoEvento ===
+      "confirmacao"
+    ) {
+      return "Ex.: protocolo, mensagem ou código da confirmação"
+    }
+
+    if (
+      modoEvento ===
+      "pedido"
+    ) {
+      return "Ex.: 123456"
+    }
+
+    if (
+      modoEvento ===
+      "contato"
+    ) {
+      return "Ex.: nome do contato, protocolo ou assunto"
+    }
+
+    if (
+      modoEvento ===
+      "alteracao"
+    ) {
+      return "Ex.: solicitação do cliente, e-mail, protocolo ou referência"
+    }
+
+    return "Ex.: número gerado pelo portal ou protocolo de recebimento"
+  }
+
   async function registrarEvento(
-    event: React.FormEvent
+    event:
+      React.FormEvent
   ) {
     event.preventDefault()
 
@@ -494,7 +728,8 @@ export default function VendaDetalhesPage({
       tipoEventoAtual()
 
     if (
-      tipo === "Pedido enviado" &&
+      tipo ===
+        "Pedido enviado" &&
       !canalEvento
     ) {
       setErro(
@@ -511,20 +746,47 @@ export default function VendaDetalhesPage({
       !descricaoEvento.trim()
     ) {
       setErro(
-        "Informe uma referência, protocolo, número ou descrição que identifique a confirmação recebida da Representada."
+        "Informe um protocolo, referência ou descrição que identifique a confirmação recebida da Representada."
+      )
+
+      return
+    }
+
+    if (
+      tipo ===
+        "Pedido registrado" &&
+      !referenciaEvento.trim()
+    ) {
+      setErro(
+        "Informe o número oficial do pedido fornecido pela Representada."
+      )
+
+      return
+    }
+
+    if (
+      tipo ===
+        "Alteração pós-envio" &&
+      !descricaoEvento.trim()
+    ) {
+      setErro(
+        "Descreva a divergência ou alteração ocorrida após o envio."
       )
 
       return
     }
 
     try {
-      setSalvandoEvento(true)
+      setSalvandoEvento(
+        true
+      )
 
       const response =
         await fetch(
           `/api/vendas/${id}/eventos`,
           {
-            method: "POST",
+            method:
+              "POST",
 
             headers: {
               "Content-Type":
@@ -534,6 +796,7 @@ export default function VendaDetalhesPage({
             body:
               JSON.stringify({
                 tipo,
+
                 canal:
                   canalEvento ||
                   null,
@@ -559,9 +822,13 @@ export default function VendaDetalhesPage({
       const data =
         await response
           .json()
-          .catch(() => null)
+          .catch(
+            () => null
+          )
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         setErro(
           data?.message ||
             "Não foi possível registrar o evento."
@@ -574,8 +841,14 @@ export default function VendaDetalhesPage({
         "Evento registrado com sucesso."
       )
 
-      setReferenciaEvento("")
-      setDescricaoEvento("")
+      setReferenciaEvento(
+        ""
+      )
+
+      setDescricaoEvento(
+        ""
+      )
+
       setDataEvento(
         dataHoraLocalInput()
       )
@@ -586,7 +859,9 @@ export default function VendaDetalhesPage({
         "Erro de comunicação ao registrar o evento."
       )
     } finally {
-      setSalvandoEvento(false)
+      setSalvandoEvento(
+        false
+      )
     }
   }
 
@@ -601,7 +876,10 @@ export default function VendaDetalhesPage({
     )
   }
 
-  if (erro && !venda) {
+  if (
+    erro &&
+    !venda
+  ) {
     return (
       <PageLayout title="Venda">
         <div className="mb-4 flex flex-wrap gap-2">
@@ -638,8 +916,10 @@ export default function VendaDetalhesPage({
     )
 
   const nomeCliente =
-    venda.cliente.nomeFantasia ||
-    venda.cliente.razaoSocial
+    venda.cliente
+      .nomeFantasia ||
+    venda.cliente
+      .razaoSocial
 
   const origemOrcamento =
     venda.orcamentoOrigem
@@ -665,7 +945,9 @@ export default function VendaDetalhesPage({
 
         <Button
           variant="outline"
-          onClick={carregar}
+          onClick={
+            carregar
+          }
         >
           <RefreshCw className="mr-2 h-4 w-4" />
           Atualizar
@@ -729,12 +1011,14 @@ export default function VendaDetalhesPage({
                     className="mt-1 flex items-center gap-2 font-medium text-blue-700 hover:underline"
                   >
                     <Building2 className="h-4 w-4" />
+
                     {nomeCliente}
                   </Link>
 
                   <p className="mt-1 text-xs text-muted-foreground">
                     CNPJ:{" "}
-                    {venda.cliente.cnpj ||
+                    {venda.cliente
+                      .cnpj ||
                       "—"}
                   </p>
                 </div>
@@ -749,7 +1033,11 @@ export default function VendaDetalhesPage({
                     className="mt-1 flex items-center gap-2 font-medium text-blue-700 hover:underline"
                   >
                     <Factory className="h-4 w-4" />
-                    {venda.representada.nome}
+
+                    {
+                      venda.representada
+                        .nome
+                    }
                   </Link>
                 </div>
               </div>
@@ -762,6 +1050,7 @@ export default function VendaDetalhesPage({
 
                   <p className="mt-1 flex items-center gap-2 font-medium">
                     <CalendarDays className="h-4 w-4 text-blue-600" />
+
                     {formatarData(
                       venda.data
                     )}
@@ -808,7 +1097,7 @@ export default function VendaDetalhesPage({
               </CardTitle>
 
               <CardDescription>
-                O sistema destaca a ação correspondente ao estágio atual da Venda.
+                Cada Venda possui um único envio oficial à Representada. Depois dele, confirmações, número do pedido, contatos e alterações permanecem registrados no histórico da mesma Venda.
               </CardDescription>
             </CardHeader>
 
@@ -817,11 +1106,11 @@ export default function VendaDetalhesPage({
                 "Aguardando envio" && (
                 <div className="rounded-md border border-amber-200 bg-amber-50 p-4">
                   <p className="font-semibold text-amber-900">
-                    Pedido ainda não enviado à Representada
+                    Envio oficial do pedido
                   </p>
 
                   <p className="mt-1 text-sm text-amber-800">
-                    Registre o primeiro envio abaixo.
+                    Registre abaixo o único envio oficial desta Venda à Representada.
                   </p>
                 </div>
               )}
@@ -830,11 +1119,11 @@ export default function VendaDetalhesPage({
                 "Aguardando confirmação" && (
                 <div className="rounded-md border border-blue-300 bg-blue-50 p-4">
                   <p className="font-semibold text-blue-900">
-                    Pedido já enviado. Agora confirme o recebimento da Representada.
+                    Pedido já enviado. Aguardando retorno da Representada.
                   </p>
 
                   <p className="mt-1 text-sm text-blue-800">
-                    Informe como a Representada confirmou o recebimento e registre protocolo, número, referência ou descrição da confirmação.
+                    Registre a confirmação de recebimento, o número oficial do pedido quando existir ou uma alteração/divergência ocorrida após o envio.
                   </p>
                 </div>
               )}
@@ -854,21 +1143,6 @@ export default function VendaDetalhesPage({
 
               <div className="flex flex-wrap gap-2">
                 {venda.status ===
-                  "Aguardando envio" && (
-                  <Button
-                    type="button"
-                    onClick={() =>
-                      setModoEvento(
-                        "envio"
-                      )
-                    }
-                  >
-                    <Send className="mr-2 h-4 w-4" />
-                    Registrar Envio
-                  </Button>
-                )}
-
-                {venda.status ===
                   "Aguardando confirmação" && (
                   <>
                     <Button
@@ -880,6 +1154,7 @@ export default function VendaDetalhesPage({
                       }
                     >
                       <CheckCircle2 className="mr-2 h-4 w-4" />
+
                       Confirmar Recebimento
                     </Button>
 
@@ -888,12 +1163,13 @@ export default function VendaDetalhesPage({
                       variant="outline"
                       onClick={() =>
                         setModoEvento(
-                          "envio"
+                          "alteracao"
                         )
                       }
                     >
-                      <Send className="mr-2 h-4 w-4" />
-                      Registrar Novo Envio
+                      <AlertCircle className="mr-2 h-4 w-4" />
+
+                      Registrar Alteração / Divergência
                     </Button>
 
                     <Button
@@ -936,23 +1212,40 @@ export default function VendaDetalhesPage({
                     >
                       Registrar Contato
                     </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        setModoEvento(
+                          "alteracao"
+                        )
+                      }
+                    >
+                      <AlertCircle className="mr-2 h-4 w-4" />
+
+                      Registrar Alteração / Divergência
+                    </Button>
                   </>
                 )}
               </div>
-
-              {modoEvento ===
-                "envio" &&
-                possuiEnvio && (
-                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                    Esta Venda já possui envio registrado. O novo envio será acrescentado ao histórico e não substituirá os anteriores.
-                  </div>
-                )}
 
               <form
                 onSubmit={
                   registrarEvento
                 }
-                className="space-y-4 rounded-md border p-4"
+                className={`space-y-4 rounded-lg border p-4 ${
+                  modoEvento ===
+                  "envio"
+                    ? "border-amber-200 bg-amber-50/60"
+                    : modoEvento ===
+                        "confirmacao"
+                      ? "border-blue-200 bg-blue-50/50"
+                      : modoEvento ===
+                          "alteracao"
+                        ? "border-orange-200 bg-orange-50/50"
+                        : "bg-slate-50/50"
+                }`}
               >
                 <div>
                   <p className="text-sm font-semibold">
@@ -965,9 +1258,10 @@ export default function VendaDetalhesPage({
                         : modoEvento ===
                             "contato"
                           ? "Registrar contato com Representada"
-                          : possuiEnvio
-                            ? "Registrar novo envio"
-                            : "Registrar envio do pedido"}
+                          : modoEvento ===
+                              "alteracao"
+                            ? "Registrar alteração ou divergência pós-envio"
+                            : "Registrar envio oficial do pedido"}
                   </p>
                 </div>
 
@@ -991,7 +1285,9 @@ export default function VendaDetalhesPage({
 
                       <SelectContent>
                         {CANAIS_EVENTO.map(
-                          (canal) => (
+                          (
+                            canal
+                          ) => (
                             <SelectItem
                               key={
                                 canal
@@ -1000,7 +1296,9 @@ export default function VendaDetalhesPage({
                                 canal
                               }
                             >
-                              {canal}
+                              {
+                                canal
+                              }
                             </SelectItem>
                           )
                         )}
@@ -1023,7 +1321,9 @@ export default function VendaDetalhesPage({
                         event
                       ) =>
                         setDataEvento(
-                          event.target.value
+                          event
+                            .target
+                            .value
                         )
                       }
                     />
@@ -1032,13 +1332,7 @@ export default function VendaDetalhesPage({
 
                 <div className="space-y-2">
                   <Label htmlFor="referenciaEvento">
-                    {modoEvento ===
-                    "confirmacao"
-                      ? "Referência da confirmação"
-                      : modoEvento ===
-                          "pedido"
-                        ? "Número / referência do pedido"
-                        : "Referência"}
+                    {rotuloReferenciaAtual()}
                   </Label>
 
                   <Input
@@ -1050,24 +1344,59 @@ export default function VendaDetalhesPage({
                       event
                     ) =>
                       setReferenciaEvento(
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
                     placeholder={
-                      modoEvento ===
-                      "confirmacao"
-                        ? "Protocolo, nº portal, mensagem, contato..."
-                        : modoEvento ===
-                            "pedido"
-                          ? "Número oficial do pedido, protocolo..."
-                          : "Protocolo, contato, referência..."
+                      placeholderReferenciaAtual()
                     }
                   />
+
+                  {modoEvento ===
+                    "envio" && (
+                    <p className="text-xs text-muted-foreground">
+                      Se a Representada ou o portal já gerou um número de pedido ou protocolo, informe-o aqui. Se ainda não existe número ou protocolo, deixe o campo em branco.
+                    </p>
+                  )}
+
+                  {modoEvento ===
+                    "pedido" && (
+                    <p className="text-xs text-muted-foreground">
+                      Informe o número oficial fornecido pela Representada. Não use este campo para observações.
+                    </p>
+                  )}
+
+                  {modoEvento ===
+                    "confirmacao" && (
+                    <p className="text-xs text-muted-foreground">
+                      Informe somente um protocolo, código ou referência real da confirmação. Se a confirmação não possui número, descreva-a no campo abaixo.
+                    </p>
+                  )}
+
+                  {modoEvento ===
+                    "contato" && (
+                    <p className="text-xs text-muted-foreground">
+                      Use somente quando houver uma referência útil para identificar o contato. Caso contrário, deixe em branco e utilize a descrição.
+                    </p>
+                  )}
+
+                  {modoEvento ===
+                    "alteracao" && (
+                    <p className="text-xs text-muted-foreground">
+                      A referência é opcional. Use-a somente quando existir e-mail, protocolo, mensagem ou outro identificador real da alteração.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="descricaoEvento">
                     Descrição
+                    {modoEvento ===
+                    "alteracao"
+                      ? " *"
+                      : ""}
                   </Label>
 
                   <Textarea
@@ -1080,10 +1409,17 @@ export default function VendaDetalhesPage({
                       event
                     ) =>
                       setDescricaoEvento(
-                        event.target.value
+                        event
+                          .target
+                          .value
                       )
                     }
-                    placeholder="Detalhes do envio, confirmação ou contato..."
+                    placeholder={
+                      modoEvento ===
+                      "alteracao"
+                        ? "Descreva exatamente o que foi alterado ou divergido após o envio oficial."
+                        : "Registre somente informações reais e úteis sobre o envio, confirmação, pedido ou contato."
+                    }
                   />
                 </div>
 
@@ -1096,11 +1432,17 @@ export default function VendaDetalhesPage({
                   {salvandoEvento ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+
                       Registrando...
                     </>
                   ) : (
                     <>
-                      <Plus className="mr-2 h-4 w-4" />
+                      {modoEvento ===
+                      "envio" ? (
+                        <Send className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Plus className="mr-2 h-4 w-4" />
+                      )}
 
                       {modoEvento ===
                       "confirmacao"
@@ -1111,7 +1453,10 @@ export default function VendaDetalhesPage({
                           : modoEvento ===
                               "contato"
                             ? "Registrar Contato"
-                            : "Registrar Envio"}
+                            : modoEvento ===
+                                "alteracao"
+                              ? "Registrar Alteração / Divergência"
+                              : "Registrar Envio Oficial"}
                     </>
                   )}
                 </Button>
@@ -1123,6 +1468,7 @@ export default function VendaDetalhesPage({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <History className="h-5 w-5" />
+
                 Histórico Operacional
               </CardTitle>
 
@@ -1132,51 +1478,69 @@ export default function VendaDetalhesPage({
             </CardHeader>
 
             <CardContent>
-              {eventos.length === 0 ? (
+              {eventos.length ===
+              0 ? (
                 <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
                   Nenhum evento operacional registrado.
                 </div>
               ) : (
                 <div className="space-y-3">
                   {eventos.map(
-                    (evento) => (
+                    (
+                      evento
+                    ) => (
                       <div
-                        key={evento.id}
+                        key={
+                          evento.id
+                        }
                         className="rounded-md border bg-slate-50 p-3"
                       >
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                           <div>
                             <p className="font-semibold">
-                              {evento.tipo}
+                              {
+                                evento.tipo
+                              }
                             </p>
 
                             <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
                               {evento.canal && (
                                 <span>
                                   Canal:{" "}
-                                  {evento.canal}
+                                  {
+                                    evento.canal
+                                  }
                                 </span>
                               )}
 
                               {evento.referencia && (
                                 <span>
-                                  Referência:{" "}
-                                  {evento.referencia}
+                                  {rotuloReferenciaHistorico(
+                                    evento
+                                  )}
+                                  :{" "}
+                                  {
+                                    evento.referencia
+                                  }
                                 </span>
                               )}
                             </div>
 
                             {evento.descricao && (
                               <p className="mt-2 whitespace-pre-wrap text-sm">
-                                {evento.descricao}
+                                {
+                                  evento.descricao
+                                }
                               </p>
                             )}
 
                             <p className="mt-2 text-xs text-muted-foreground">
                               Registrado por:{" "}
-                              {evento.usuario?.nome ||
+                              {evento.usuario
+                                ?.nome ||
                                 "Usuário não identificado"}
-                              {evento.usuario?.perfil
+                              {evento.usuario
+                                ?.perfil
                                 ? ` — ${evento.usuario.perfil}`
                                 : ""}
                             </p>
@@ -1210,7 +1574,8 @@ export default function VendaDetalhesPage({
                 </p>
 
                 <p className="text-lg font-bold">
-                  {venda.percentualComissaoAplicado !== null
+                  {venda.percentualComissaoAplicado !==
+                  null
                     ? `${Number(
                         venda.percentualComissaoAplicado
                       ).toLocaleString(
@@ -1258,7 +1623,8 @@ export default function VendaDetalhesPage({
             <CardContent>
               {origemOrcamento ? (
                 <div className="space-y-3">
-                  {origemOrcamento.interacaoOrigem && (
+                  {origemOrcamento
+                    .interacaoOrigem && (
                     <div className="rounded-md border bg-blue-50 p-3">
                       <FileText className="mb-2 h-5 w-5 text-blue-700" />
 
@@ -1271,7 +1637,9 @@ export default function VendaDetalhesPage({
                         className="font-mono font-bold text-blue-700 hover:underline"
                       >
                         {formatarCodigoInteracao(
-                          origemOrcamento.interacaoOrigem.numeroSequencial
+                          origemOrcamento
+                            .interacaoOrigem
+                            .numeroSequencial
                         )}
                       </Link>
                     </div>
@@ -1302,7 +1670,9 @@ export default function VendaDetalhesPage({
                     </p>
 
                     <p className="font-mono font-bold">
-                      {codigoVenda}
+                      {
+                        codigoVenda
+                      }
                     </p>
                   </div>
                 </div>
@@ -1328,7 +1698,9 @@ export default function VendaDetalhesPage({
                 </p>
 
                 <p className="font-semibold">
-                  {venda.status}
+                  {
+                    venda.status
+                  }
                 </p>
               </div>
 
@@ -1358,7 +1730,7 @@ export default function VendaDetalhesPage({
 
               <div>
                 <p className="text-xs text-muted-foreground">
-                  Pedido da Representada
+                  Pedido / código da Representada
                 </p>
 
                 <p className="font-medium">
@@ -1384,7 +1756,9 @@ export default function VendaDetalhesPage({
 
                 <p className="flex items-center gap-2 font-medium">
                   <User className="h-4 w-4" />
-                  {venda.criadoPor?.nome ||
+
+                  {venda.criadoPor
+                    ?.nome ||
                     "—"}
                 </p>
               </div>
@@ -1395,7 +1769,8 @@ export default function VendaDetalhesPage({
                 </p>
 
                 <p className="font-medium">
-                  {venda.responsavel?.nome ||
+                  {venda.responsavel
+                    ?.nome ||
                     "—"}
                 </p>
               </div>
@@ -1405,6 +1780,7 @@ export default function VendaDetalhesPage({
           <Link href="/vendas">
             <Button className="w-full">
               <ShoppingCart className="mr-2 h-4 w-4" />
+
               Ver todas as Vendas
             </Button>
           </Link>

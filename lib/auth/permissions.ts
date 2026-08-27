@@ -10,6 +10,7 @@ export type RecursoSistema =
   | "regrasComerciais"
   | "contasRecebimento"
   | "vendas"
+  | "faturamento"
   | "interacoes"
   | "agenda"
   | "mapa"
@@ -103,6 +104,11 @@ export const PERMISSOES: MatrizPermissoes = {
       escopo: "todos",
     },
 
+    faturamento: {
+      acoes: TODAS_ACOES,
+      escopo: "todos",
+    },
+
     interacoes: {
       acoes: TODAS_ACOES,
       escopo: "todos",
@@ -181,6 +187,11 @@ export const PERMISSOES: MatrizPermissoes = {
     },
 
     vendas: {
+      acoes: ACOES_OPERACIONAIS,
+      escopo: "operacional",
+    },
+
+    faturamento: {
       acoes: ACOES_OPERACIONAIS,
       escopo: "operacional",
     },
@@ -400,6 +411,19 @@ export function recursoDaRota(
     )
   ) {
     return "vendas"
+  }
+
+  if (
+    pathname ===
+      "/faturamentos" ||
+    pathname.startsWith(
+      "/faturamentos/"
+    ) ||
+    pathname.startsWith(
+      "/api/faturamentos"
+    )
+  ) {
+    return "faturamento"
   }
 
   if (
