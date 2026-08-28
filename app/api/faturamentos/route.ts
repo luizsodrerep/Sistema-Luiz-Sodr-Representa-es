@@ -158,21 +158,25 @@ function interpretarCondicaoPagamento(
         /\s+/g,
         ""
       )
+      .replace(
+        /-/g,
+        "/"
+      )
 
   if (
-    !/^\d+(?:-\d+)*$/.test(
+    !/^\d+(?:\/\d+)*$/.test(
       normalizada
     )
   ) {
     throw new ErroApi(
-      "A condição de pagamento da Venda está inválida. Use somente números separados por hífen, por exemplo: 0, 21, 21-28 ou 21-28-35.",
+      "A condição de pagamento da Venda está inválida. Use 0 para à vista ou prazos crescentes separados por barra ou hífen, por exemplo: 21/28/35 ou 21-28-35.",
       400
     )
   }
 
   const prazos =
     normalizada
-      .split("-")
+      .split("/")
       .map(
         (
           parte
@@ -220,7 +224,7 @@ function interpretarCondicaoPagamento(
       prazos[indice - 1]
     ) {
       throw new ErroApi(
-        "Os prazos da condição de pagamento devem estar em ordem crescente e sem repetição, por exemplo: 21-28-35.",
+        "Os prazos da condição de pagamento devem estar em ordem crescente e sem repetição, por exemplo: 21/28/35.",
         400
       )
     }
