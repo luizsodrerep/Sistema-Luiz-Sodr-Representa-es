@@ -1,719 +1,420 @@
-"use client"
+import Image from "next/image"
+import Link from "next/link"
 
 import {
-  ArrowUpRight,
+  ArrowRight,
   BarChart3,
   Building2,
-  Calendar,
-  CreditCard,
-  DollarSign,
+  CalendarDays,
+  CircleDollarSign,
+  FileBarChart,
   FileText,
-  Home,
-  Instagram,
-  MapPin,
-  MessageSquare,
+  Landmark,
+  Map,
+  MessageSquareText,
+  Plus,
+  ReceiptText,
+  Settings,
   Users,
-  Wallet,
+  WalletCards,
 } from "lucide-react"
 
-import Link from "next/link"
-import Image from "next/image"
-import { useRouter } from "next/navigation"
+type Modulo = {
+  titulo: string
+  descricao: string
+  href: string
+  icon: typeof Users
+}
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+type AcaoRapida = {
+  titulo: string
+  descricao: string
+  href: string
+  icon: typeof Users
+  destaque?: boolean
+}
 
-import {
-  Button,
-} from "@/components/ui/button"
+const ACOES_RAPIDAS: AcaoRapida[] = [
+  {
+    titulo: "Nova Venda",
+    descricao:
+      "Inicie um novo registro comercial.",
+    href: "/vendas/nova",
+    icon: ReceiptText,
+    destaque: true,
+  },
+  {
+    titulo: "Nova Interação",
+    descricao:
+      "Registre um novo contato com cliente.",
+    href: "/interacoes/nova",
+    icon: MessageSquareText,
+  },
+  {
+    titulo: "Dashboard",
+    descricao:
+      "Acesse a visão consolidada da gestão.",
+    href: "/dashboard",
+    icon: BarChart3,
+  },
+  {
+    titulo: "Faturamentos",
+    descricao:
+      "Acesse o fluxo de faturamento.",
+    href: "/faturamentos",
+    icon: WalletCards,
+  },
+]
 
-import {
-  SocialMediaSummary,
-} from "@/components/social-media-summary"
+const MODULOS_PRINCIPAIS: Modulo[] = [
+  {
+    titulo: "Clientes",
+    descricao:
+      "Consulte, cadastre e mantenha as informações comerciais dos clientes.",
+    href: "/clientes",
+    icon: Users,
+  },
+  {
+    titulo: "Interações",
+    descricao:
+      "Registre contatos, acompanhamentos e histórico de relacionamento.",
+    href: "/interacoes",
+    icon: MessageSquareText,
+  },
+  {
+    titulo: "Orçamentos",
+    descricao:
+      "Crie, acompanhe e consulte as propostas comerciais do escritório.",
+    href: "/orcamentos",
+    icon: FileText,
+  },
+  {
+    titulo: "Vendas",
+    descricao:
+      "Acompanhe pedidos confirmados e o fluxo comercial das vendas.",
+    href: "/vendas",
+    icon: ReceiptText,
+  },
+  {
+    titulo: "Faturamentos",
+    descricao:
+      "Registre notas fiscais, valores faturados, cortes e condições de pagamento.",
+    href: "/faturamentos",
+    icon: WalletCards,
+  },
+  {
+    titulo: "Representadas",
+    descricao:
+      "Consulte as indústrias representadas e seus dados comerciais.",
+    href: "/representadas",
+    icon: Building2,
+  },
+]
+
+const MODULOS_APOIO: Modulo[] = [
+  {
+    titulo: "Dashboard",
+    descricao:
+      "Acesse a área consolidada de gestão comercial.",
+    href: "/dashboard",
+    icon: BarChart3,
+  },
+  {
+    titulo: "Agenda",
+    descricao:
+      "Organize compromissos e atividades comerciais.",
+    href: "/agenda",
+    icon: CalendarDays,
+  },
+  {
+    titulo: "Financeiro",
+    descricao:
+      "Acesse os controles financeiros do escritório.",
+    href: "/financeiro",
+    icon: CircleDollarSign,
+  },
+  {
+    titulo: "Relatórios",
+    descricao:
+      "Consulte relatórios e informações gerenciais.",
+    href: "/relatorios",
+    icon: FileBarChart,
+  },
+  {
+    titulo: "Mapa",
+    descricao:
+      "Visualize informações geográficas relacionadas à operação.",
+    href: "/mapa",
+    icon: Map,
+  },
+  {
+    titulo: "Contabilidade",
+    descricao:
+      "Acesse informações destinadas ao suporte contábil.",
+    href: "/contabilidade",
+    icon: Landmark,
+  },
+  {
+    titulo: "Configurações",
+    descricao:
+      "Acesse os parâmetros e configurações disponíveis no sistema.",
+    href: "/configuracoes",
+    icon: Settings,
+  },
+]
 
 export default function HomePage() {
-  const router =
-    useRouter()
-
-  const menuPrincipal = [
-    {
-      name: "Home",
-      icon: (
-        <Home className="h-4 w-4" />
-      ),
-      href: "/",
-    },
-    {
-      name: "Dashboard",
-      icon: (
-        <BarChart3 className="h-4 w-4" />
-      ),
-      href: "/dashboard",
-    },
-    {
-      name: "Clientes",
-      icon: (
-        <Users className="h-4 w-4" />
-      ),
-      href: "/clientes",
-    },
-    {
-      name: "Interações",
-      icon: (
-        <MessageSquare className="h-4 w-4" />
-      ),
-      href: "/interacoes",
-    },
-    {
-      name: "Orçamentos",
-      icon: (
-        <FileText className="h-4 w-4" />
-      ),
-      href: "/orcamentos",
-    },
-    {
-      name: "Vendas",
-      icon: (
-        <DollarSign className="h-4 w-4" />
-      ),
-      href: "/vendas",
-    },
-    {
-      name: "Representadas",
-      icon: (
-        <Building2 className="h-4 w-4" />
-      ),
-      href: "/representadas",
-    },
-    {
-      name: "Agenda",
-      icon: (
-        <Calendar className="h-4 w-4" />
-      ),
-      href: "/agenda",
-    },
-    {
-      name: "Mapa",
-      icon: (
-        <MapPin className="h-4 w-4" />
-      ),
-      href: "/mapa",
-    },
-    {
-      name: "Relatórios",
-      icon: (
-        <BarChart3 className="h-4 w-4" />
-      ),
-      href: "/relatorios",
-    },
-    {
-      name: "Financeiro",
-      icon: (
-        <Wallet className="h-4 w-4" />
-      ),
-      href: "/financeiro",
-    },
-    {
-      name: "Contabilidade",
-      icon: (
-        <FileText className="h-4 w-4" />
-      ),
-      href: "/contabilidade",
-    },
-    {
-      name: "Configurações",
-      icon: (
-        <CreditCard className="h-4 w-4" />
-      ),
-      href: "/configuracoes",
-    },
-  ]
-
   return (
-    <div className="flex min-h-screen flex-col">
-      <div className="flex w-full flex-col items-center justify-center bg-gradient-to-r from-primary/90 to-primary p-4">
-        <div className="mb-4 flex flex-col items-center justify-center">
-          <Image
-            src="/images/logo-large.jpeg"
-            alt="Luiz Sodré Representações"
-            width={189}
-            height={94}
-            className="mb-2"
-          />
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <div className="mx-auto w-full max-w-[1500px]">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="grid lg:grid-cols-[1fr_360px]">
+            <div className="p-6 sm:p-8 lg:p-10">
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-blue-800">
+                <span className="h-2 w-2 rounded-full bg-orange-500" />
 
-          <h1 className="text-lg font-bold text-white">
-            Sistema de CRM e Gestão Comercial
-          </h1>
-        </div>
-
-        <div className="flex w-full max-w-7xl flex-wrap justify-center gap-2">
-          {menuPrincipal.map(
-            (
-              item
-            ) => (
-              <Button
-                key={
-                  item.href
-                }
-                variant="secondary"
-                className="flex h-10 w-[110px] items-center justify-center bg-white/90 text-primary hover:bg-white hover:text-primary"
-                onClick={() =>
-                  router.push(
-                    item.href
-                  )
-                }
-              >
-                {item.icon}
-
-                <span className="ml-1 text-xs">
-                  {item.name}
-                </span>
-              </Button>
-            )
-          )}
-        </div>
-      </div>
-
-      <div className="flex-1 bg-gray-50 p-4">
-        <h2 className="mb-4 text-lg font-bold text-primary">
-          Visão Geral
-        </h2>
-
-        <div className="grid gap-2 md:grid-cols-4">
-          <Card className="card-container h-16">
-            <div className="flex h-full">
-              <div className="flex items-center justify-center bg-primary/10 px-2">
-                <DollarSign className="h-4 w-4 text-primary" />
+                Gestão Comercial
               </div>
 
-              <CardContent className="flex flex-col justify-center p-2">
-                <p className="text-xxs text-muted-foreground">
-                  Vendas Totais
-                </p>
+              <div className="mt-5 max-w-3xl">
+                <h2 className="text-3xl font-bold tracking-tight text-[#071a2f] sm:text-4xl">
+                  Luiz Sodré Representações
+                </h2>
 
-                <p className="text-xs-plus font-bold">
-                  R$ 45.231,89
+                <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
+                  CRM para acompanhamento da operação comercial,
+                  relacionamento com clientes, vendas,
+                  faturamentos e gestão do escritório.
                 </p>
-
-                <p className="text-xxxs text-green-600">
-                  +20.1% mês
-                </p>
-              </CardContent>
-            </div>
-          </Card>
-
-          <Card className="card-container h-16">
-            <div className="flex h-full">
-              <div className="flex items-center justify-center bg-primary/10 px-2">
-                <Users className="h-4 w-4 text-primary" />
               </div>
 
-              <CardContent className="flex flex-col justify-center p-2">
-                <p className="text-xxs text-muted-foreground">
-                  Clientes Ativos
-                </p>
+              <div className="mt-7">
+                <div className="mb-3 flex items-center gap-2">
+                  <Plus className="h-4 w-4 text-orange-500" />
 
-                <p className="text-xs-plus font-bold">
-                  573
-                </p>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#0b315d]">
+                    Ações rápidas
+                  </p>
+                </div>
 
-                <p className="text-xxxs text-green-600">
-                  +12 novos
-                </p>
-              </CardContent>
-            </div>
-          </Card>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {ACOES_RAPIDAS.map(
+                    (acao) => {
+                      const Icone =
+                        acao.icon
 
-          <Card className="card-container h-16">
-            <div className="flex h-full">
-              <div className="flex items-center justify-center bg-primary/10 px-2">
-                <CreditCard className="h-4 w-4 text-primary" />
-              </div>
-
-              <CardContent className="flex flex-col justify-center p-2">
-                <p className="text-xxs text-muted-foreground">
-                  Ticket Médio
-                </p>
-
-                <p className="text-xs-plus font-bold">
-                  R$ 1.792
-                </p>
-
-                <p className="text-xxxs text-green-600">
-                  +2.5% mês
-                </p>
-              </CardContent>
-            </div>
-          </Card>
-
-          <Card className="card-container h-16">
-            <div className="flex h-full">
-              <div className="flex items-center justify-center bg-primary/10 px-2">
-                <BarChart3 className="h-4 w-4 text-primary" />
-              </div>
-
-              <CardContent className="flex flex-col justify-center p-2">
-                <p className="text-xxs text-muted-foreground">
-                  Comissões
-                </p>
-
-                <p className="text-xs-plus font-bold">
-                  R$ 6.784,42
-                </p>
-
-                <p className="text-xxxs text-green-600">
-                  +18.7% mês
-                </p>
-              </CardContent>
-            </div>
-          </Card>
-        </div>
-
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          <Card className="card-container">
-            <CardHeader className="card-header">
-              <CardTitle className="card-title">
-                Representadas
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="card-content">
-              <div className="space-y-1">
-                {[
-                  {
-                    nome:
-                      "Descartáveis Premium",
-                    vendas:
-                      "R$ 18.450",
-                    perc:
-                      "42%",
-                  },
-                  {
-                    nome:
-                      "Embalagens Eco",
-                    vendas:
-                      "R$ 12.320",
-                    perc:
-                      "28%",
-                  },
-                  {
-                    nome:
-                      "Papel & Cia",
-                    vendas:
-                      "R$ 8.760",
-                    perc:
-                      "20%",
-                  },
-                  {
-                    nome:
-                      "Plásticos Nobre",
-                    vendas:
-                      "R$ 4.380",
-                    perc:
-                      "10%",
-                  },
-                ].map(
-                  (
-                    rep
-                  ) => (
-                    <div
-                      key={
-                        rep.nome
-                      }
-                      className="flex items-center gap-1 text-xxs"
-                    >
-                      <div className="w-full space-y-0.5">
-                        <div className="flex items-center justify-between">
-                          <p className="truncate font-medium">
-                            {
-                              rep.nome
-                            }
-                          </p>
-
-                          <p className="font-medium">
-                            {
-                              rep.perc
-                            }
-                          </p>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xxxs text-muted-foreground">
-                          <span>
-                            Vendas:{" "}
-                            {
-                              rep.vendas
-                            }
-                          </span>
-                        </div>
-
-                        <div className="h-1 w-full rounded-full bg-muted">
-                          <div
-                            className="h-1 rounded-full bg-secondary"
-                            style={{
-                              width:
-                                rep.perc,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-container">
-            <CardHeader className="card-header">
-              <CardTitle className="card-title">
-                Ações Rápidas
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="card-content">
-              <div className="flex flex-col gap-1">
-                <Link
-                  href="/clientes/novo"
-                  className="w-full"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-full justify-start text-xxs"
-                  >
-                    <Users className="mr-1 h-3 w-3" />
-
-                    Novo Cliente
-                  </Button>
-                </Link>
-
-                <Link
-                  href="/interacoes/nova"
-                  className="w-full"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-full justify-start text-xxs"
-                  >
-                    <MessageSquare className="mr-1 h-3 w-3" />
-
-                    Nova Interação
-                  </Button>
-                </Link>
-
-                <Link
-                  href="/orcamentos/novo"
-                  className="w-full"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-full justify-start text-xxs"
-                  >
-                    <FileText className="mr-1 h-3 w-3" />
-
-                    Novo Orçamento
-                  </Button>
-                </Link>
-
-                <Link
-                  href="/vendas/nova"
-                  className="w-full"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-full justify-start text-xxs"
-                  >
-                    <DollarSign className="mr-1 h-3 w-3" />
-
-                    Nova Venda
-                  </Button>
-                </Link>
-
-                <Link
-                  href="/financeiro"
-                  className="w-full"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-full justify-start text-xxs"
-                  >
-                    <Wallet className="mr-1 h-3 w-3" />
-
-                    Financeiro
-                  </Button>
-                </Link>
-
-                <Link
-                  href="/contabilidade"
-                  className="w-full"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-full justify-start text-xxs"
-                  >
-                    <FileText className="mr-1 h-3 w-3" />
-
-                    Contabilidade
-                  </Button>
-                </Link>
-
-                <Link
-                  href="/redes-sociais"
-                  className="w-full"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-full justify-start text-xxs"
-                  >
-                    <Instagram className="mr-1 h-3 w-3" />
-
-                    Redes Sociais
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-container">
-            <CardHeader className="card-header">
-              <CardTitle className="card-title">
-                Follow-ups
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="card-content">
-              <div className="flex flex-col gap-1">
-                {[
-                  {
-                    nome:
-                      "Atacadão",
-                    acao:
-                      "Ligar",
-                    data:
-                      "Hoje",
-                    urgente:
-                      true,
-                  },
-                  {
-                    nome:
-                      "Mercado Central",
-                    acao:
-                      "Proposta",
-                    data:
-                      "Amanhã",
-                    urgente:
-                      false,
-                  },
-                  {
-                    nome:
-                      "Padaria Pão",
-                    acao:
-                      "Visita",
-                    data:
-                      "23/03",
-                    urgente:
-                      false,
-                  },
-                  {
-                    nome:
-                      "Distribuidora XYZ",
-                    acao:
-                      "Apresentação",
-                    data:
-                      "25/03",
-                    urgente:
-                      false,
-                  },
-                ].map(
-                  (
-                    followup
-                  ) => (
-                    <Button
-                      key={
-                        followup.nome
-                      }
-                      variant="outline"
-                      size="sm"
-                      className={`h-8 w-full flex-col items-start justify-start p-1 text-xxs ${
-                        followup.urgente
-                          ? "border-red-400"
-                          : ""
-                      }`}
-                    >
-                      <p className="w-full truncate font-medium">
-                        {
-                          followup.nome
-                        }
-                      </p>
-
-                      <div className="flex w-full justify-between">
-                        <span className="text-muted-foreground">
-                          {
-                            followup.acao
-                          }
-                        </span>
-
-                        <span
-                          className={
-                            followup.urgente
-                              ? "text-red-500"
-                              : "text-muted-foreground"
-                          }
+                      return (
+                        <Link
+                          key={acao.href}
+                          href={acao.href}
+                          className={[
+                            "group flex min-h-[78px] items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-200",
+                            "hover:-translate-y-0.5 hover:shadow-md",
+                            acao.destaque
+                              ? "border-[#0b315d] bg-[#0b315d] text-white hover:border-blue-600 hover:bg-blue-700"
+                              : "border-slate-200 bg-white text-[#071a2f] hover:border-blue-300 hover:bg-blue-50/70",
+                          ].join(" ")}
                         >
-                          {
-                            followup.data
-                          }
-                        </span>
-                      </div>
-                    </Button>
-                  )
-                )}
+                          <div
+                            className={[
+                              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-all duration-200",
+                              acao.destaque
+                                ? "bg-white/10 text-orange-300 group-hover:bg-white/15"
+                                : "bg-blue-50 text-blue-700 group-hover:bg-blue-600 group-hover:text-white",
+                            ].join(" ")}
+                          >
+                            <Icone className="h-5 w-5" />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold">
+                              {acao.titulo}
+                            </p>
+
+                            <p
+                              className={[
+                                "mt-0.5 text-xs leading-5",
+                                acao.destaque
+                                  ? "text-blue-100"
+                                  : "text-slate-500",
+                              ].join(" ")}
+                            >
+                              {acao.descricao}
+                            </p>
+                          </div>
+
+                          <ArrowRight
+                            className={[
+                              "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5",
+                              acao.destaque
+                                ? "text-orange-300"
+                                : "text-blue-600",
+                            ].join(" ")}
+                          />
+                        </Link>
+                      )
+                    }
+                  )}
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
 
-        <div className="mt-2 grid gap-2 md:grid-cols-4">
-          <Card className="card-container col-span-3">
-            <CardHeader className="card-header">
-              <CardTitle className="card-title">
-                Visão Geral de Vendas
-              </CardTitle>
-            </CardHeader>
+            <div className="relative overflow-hidden bg-[#071a2f] p-8 text-white lg:p-10">
+              <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full border-[32px] border-blue-600/20" />
 
-            <CardContent className="p-0">
-              <div className="flex h-[140px] w-full items-center justify-center bg-muted/10">
-                <BarChart3 className="h-6 w-6 text-muted-foreground" />
+              <div className="absolute -bottom-24 -left-16 h-64 w-64 rounded-full border-[38px] border-orange-500/10" />
+
+              <div className="relative flex h-full min-h-[250px] flex-col justify-between">
+                <div>
+                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-[#101a24] shadow-lg ring-1 ring-white/10">
+                    <Image
+                      src="/branding/logo-lsr.png"
+                      alt="Luiz Sodré Representações"
+                      width={96}
+                      height={96}
+                      priority
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+
+                  <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-orange-400">
+                    Sistema CRM
+                  </p>
+
+                  <p className="mt-2 text-xl font-bold leading-tight">
+                    Gestão comercial em um único ambiente.
+                  </p>
+                </div>
+
+                <p className="mt-6 text-sm leading-6 text-slate-300">
+                  Utilize as ações rápidas, os módulos abaixo
+                  ou o menu lateral para acessar sua rotina
+                  comercial.
+                </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        </section>
 
-          <Card className="card-container">
-            <CardHeader className="card-header">
-              <CardTitle className="card-title">
-                Clientes Recentes
-              </CardTitle>
-            </CardHeader>
+        <section className="mt-9">
+          <div className="mb-5">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">
+              Operação Comercial
+            </p>
 
-            <CardContent className="card-content">
-              <div className="space-y-1">
-                {[
-                  {
-                    nome:
-                      "Distribuidora ABC",
-                    categoria:
-                      "Distribuidor",
-                  },
-                  {
-                    nome:
-                      "Supermercado Silva",
-                    categoria:
-                      "Varejo",
-                  },
-                  {
-                    nome:
-                      "Confeitaria Doce",
-                    categoria:
-                      "Confeitaria",
-                  },
-                ].map(
-                  (
-                    cliente
-                  ) => (
-                    <div
-                      key={
-                        cliente.nome
-                      }
-                      className="flex items-center gap-1 rounded-sm p-1 text-xxs hover:bg-muted/20"
-                    >
-                      <div className="rounded-full bg-primary/10 p-1">
-                        <Building2 className="h-2 w-2 text-primary" />
+            <h3 className="mt-1 text-2xl font-bold tracking-tight text-[#071a2f]">
+              Módulos comerciais
+            </h3>
+
+            <p className="mt-1 text-sm text-slate-600">
+              Principais áreas utilizadas na rotina comercial.
+            </p>
+          </div>
+
+          <div className="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {MODULOS_PRINCIPAIS.map(
+              (modulo) => {
+                const Icone =
+                  modulo.icon
+
+                return (
+                  <Link
+                    key={modulo.href}
+                    href={modulo.href}
+                    className="group flex min-h-[250px] flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-lg"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 transition-all duration-200 group-hover:bg-blue-600 group-hover:text-white group-hover:shadow-sm">
+                        <Icone className="h-6 w-6" />
                       </div>
 
-                      <div className="flex-1 truncate">
-                        <p className="truncate font-medium">
-                          {
-                            cliente.nome
-                          }
-                        </p>
-
-                        <p className="text-xxxs text-muted-foreground">
-                          {
-                            cliente.categoria
-                          }
-                        </p>
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition-all duration-200 group-hover:border-blue-300 group-hover:bg-white group-hover:text-blue-700">
+                        <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                       </div>
                     </div>
-                  )
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        <div className="mt-2 grid gap-2 md:grid-cols-4">
-          <Card className="card-container col-span-3">
-            <CardHeader className="card-header">
-              <CardTitle className="card-title">
-                Redes Sociais
-              </CardTitle>
-            </CardHeader>
+                    <div className="mt-6">
+                      <h4 className="text-lg font-bold text-[#071a2f] transition-colors duration-200 group-hover:text-blue-700">
+                        {modulo.titulo}
+                      </h4>
 
-            <CardContent className="card-content">
-              <SocialMediaSummary />
-            </CardContent>
-          </Card>
+                      <p className="mt-3 text-sm leading-6 text-slate-600">
+                        {modulo.descricao}
+                      </p>
+                    </div>
 
-          <Card className="card-container">
-            <CardHeader className="card-header">
-              <CardTitle className="card-title">
-                Mapa de Clientes
-              </CardTitle>
-            </CardHeader>
+                    <div className="mt-auto pt-5">
+                      <div className="h-1 w-10 rounded-full bg-slate-100 transition-all duration-200 group-hover:w-16 group-hover:bg-blue-500" />
+                    </div>
+                  </Link>
+                )
+              }
+            )}
+          </div>
+        </section>
 
-            <CardContent className="p-0">
-              <div className="relative flex h-[120px] w-full items-center justify-center bg-muted/10">
-                <MapPin className="h-5 w-5 text-muted-foreground" />
+        <section className="mt-11">
+          <div className="mb-5">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">
+              Gestão e Apoio
+            </p>
 
-                <div className="absolute left-1/4 top-1/4">
-                  <div className="h-2 w-2 rounded-full bg-primary" />
-                </div>
+            <h3 className="mt-1 text-2xl font-bold tracking-tight text-[#071a2f]">
+              Outras áreas do sistema
+            </h3>
 
-                <div className="absolute right-1/3 top-1/3">
-                  <div className="h-2 w-2 rounded-full bg-primary" />
-                </div>
+            <p className="mt-1 text-sm text-slate-600">
+              Ferramentas complementares para gestão e
+              administração do escritório.
+            </p>
+          </div>
 
-                <div className="absolute bottom-1/4 right-1/4">
-                  <div className="h-2 w-2 rounded-full bg-secondary" />
-                </div>
+          <div className="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {MODULOS_APOIO.map(
+              (modulo) => {
+                const Icone =
+                  modulo.icon
 
-                <Link
-                  href="/mapa"
-                  className="absolute bottom-1 right-1"
-                >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 p-1 text-xxxs"
+                return (
+                  <Link
+                    key={modulo.href}
+                    href={modulo.href}
+                    className="group flex min-h-[155px] items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md"
                   >
-                    Ver mapa completo
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700 transition-all duration-200 group-hover:bg-blue-600 group-hover:text-white group-hover:shadow-sm">
+                      <Icone className="h-5 w-5" />
+                    </div>
 
-                    <ArrowUpRight className="ml-1 h-2 w-2" />
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <h4 className="font-bold text-[#071a2f] transition-colors duration-200 group-hover:text-blue-700">
+                          {modulo.titulo}
+                        </h4>
+
+                        <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-blue-600" />
+                      </div>
+
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        {modulo.descricao}
+                      </p>
+                    </div>
+                  </Link>
+                )
+              }
+            )}
+          </div>
+        </section>
+
+        <div className="mt-10 border-t border-slate-200 py-5">
+          <div className="flex flex-col justify-between gap-2 text-xs text-slate-500 sm:flex-row sm:items-center">
+            <span>
+              Luiz Sodré Representações
+            </span>
+
+            <span>
+              CRM e Gestão Comercial
+            </span>
+          </div>
         </div>
       </div>
     </div>

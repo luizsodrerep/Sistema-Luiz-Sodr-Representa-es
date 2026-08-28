@@ -13,17 +13,9 @@ export async function POST() {
     { status: 200 }
   )
 
-  response.cookies.set({
-    name: getSessionCookieName(),
-    value: "",
-    httpOnly: true,
-    secure:
-      process.env.NODE_ENV ===
-      "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  })
+  response.cookies.delete(
+    getSessionCookieName()
+  )
 
   return response
 }

@@ -1,16 +1,25 @@
 import type React from "react"
+
 import "@/app/globals.css"
 
-import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@/components/ui/toaster"
-import { AlertReminder } from "@/app/components/alert-reminder"
-import { UserSessionMenu } from "@/components/auth/user-session-menu"
+import {
+  ThemeProvider,
+} from "@/components/theme-provider"
+
+import {
+  Toaster,
+} from "@/components/ui/toaster"
+
+import {
+  UserSessionMenu,
+} from "@/components/auth/user-session-menu"
 
 export const metadata = {
   title:
-    "CRM e Sistema de Gestão Comercial",
+    "CRM Luiz Sodré Representações",
+
   description:
-    "Sistema completo de CRM e Gestão Comercial",
+    "Sistema de CRM e Gestão Comercial da Luiz Sodré Representações",
 }
 
 export default function RootLayout({
@@ -30,17 +39,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <UserSessionMenu />
-
-          {children}
+          <UserSessionMenu>
+            {children}
+          </UserSessionMenu>
 
           <Toaster />
-
-          <AlertReminder
-            title="Relatório de Comissão"
-            description="Emitir relatório de comissão para Descartáveis Premium"
-            time="Vence hoje às 18:00"
-          />
         </ThemeProvider>
       </body>
     </html>
