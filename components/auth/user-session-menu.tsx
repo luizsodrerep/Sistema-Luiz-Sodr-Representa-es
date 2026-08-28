@@ -20,6 +20,7 @@ import {
 import {
   BarChart3,
   Building2,
+  CalendarClock,
   CalendarDays,
   ChevronRight,
   CircleDollarSign,
@@ -135,6 +136,11 @@ const GRUPOS_MENU: GrupoMenu[] = [
         label: "Financeiro",
         href: "/financeiro",
         icon: CircleDollarSign,
+      },
+      {
+        label: "Títulos e Vencimentos",
+        href: "/titulos",
+        icon: CalendarClock,
       },
       {
         label: "Relatórios",
