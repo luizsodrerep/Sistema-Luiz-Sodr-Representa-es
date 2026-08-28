@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from "react"
 
 import Link from "next/link"
@@ -19,6 +20,7 @@ import {
   RefreshCw,
   Search,
   WalletCards,
+  X,
 } from "lucide-react"
 
 type Baixa = {
@@ -133,7 +135,9 @@ type RespostaApi = {
     inicioHoje: string
     fimHoje: string
   }
+
   resumo: Resumo
+
   titulos: Titulo[]
 }
 
@@ -144,6 +148,17 @@ type FiltroSituacao =
   | "A vencer"
   | "Prorrogado"
   | "Pago"
+
+type AcaoTitulo =
+  | {
+      tipo: "prorrogar"
+      titulo: Titulo
+    }
+  | {
+      tipo: "baixa"
+      titulo: Titulo
+    }
+  | null
 
 function formatarMoeda(
   valor: number
@@ -196,6 +211,79 @@ function formatarData(
           "UTC",
       }
     )
+}
+
+function dataParaInput(
+  valor:
+    | string
+    | null
+    | undefined
+) {
+  if (
+    !valor
+  ) {
+    return ""
+  }
+
+  const data =
+    new Date(valor)
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return ""
+  }
+
+  const ano =
+    data.getUTCFullYear()
+
+  const mes =
+    String(
+      data.getUTCMonth() +
+        1
+    ).padStart(
+      2,
+      "0"
+    )
+
+  const dia =
+    String(
+      data.getUTCDate()
+    ).padStart(
+      2,
+      "0"
+    )
+
+  return `${ano}-${mes}-${dia}`
+}
+
+function hojeParaInput() {
+  const agora =
+    new Date()
+
+  const ano =
+    agora.getFullYear()
+
+  const mes =
+    String(
+      agora.getMonth() +
+        1
+    ).padStart(
+      2,
+      "0"
+    )
+
+  const dia =
+    String(
+      agora.getDate()
+    ).padStart(
+      2,
+      "0"
+    )
+
+  return `${ano}-${mes}-${dia}`
 }
 
 function codigo(
@@ -274,6 +362,65 @@ function classesSituacao(
   return "border-blue-200 bg-blue-50 text-blue-700"
 }
 
+function converterMoedaDigitada(
+  valor: string
+) {
+  const texto =
+    valor
+      .trim()
+      .replace(
+        /\s/g,
+        ""
+      )
+      .replace(
+        /R\$/gi,
+        ""
+      )
+
+  if (
+    !texto
+  ) {
+    return null
+  }
+
+  let normalizado =
+    texto
+
+  if (
+    texto.includes(
+      ","
+    )
+  ) {
+    normalizado =
+      texto
+        .replace(
+          /\./g,
+          ""
+        )
+        .replace(
+          ",",
+          "."
+        )
+  }
+
+  const numero =
+    Number(
+      normalizado
+    )
+
+  if (
+    !Number.isFinite(
+      numero
+    )
+  ) {
+    return null
+  }
+
+  return Number(
+    numero.toFixed(2)
+  )
+}
+
 function CardResumo({
   titulo,
   quantidade,
@@ -287,8 +434,7 @@ function CardResumo({
     | string
   valor?: number
   destaque?: boolean
-  icone:
-    React.ReactNode
+  icone: ReactNode
 }) {
   return (
     <div
@@ -297,7 +443,9 @@ function CardResumo({
         destaque
           ? "border-orange-200 bg-orange-50/70"
           : "border-slate-200 bg-white hover:border-blue-200 hover:shadow-md",
-      ].join(" ")}
+      ].join(
+        " "
+      )}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -309,7 +457,8 @@ function CardResumo({
             {quantidade}
           </p>
 
-          {valor !== undefined && (
+          {valor !==
+            undefined && (
             <p className="mt-1 text-sm font-semibold text-slate-600">
               {formatarMoeda(
                 valor
@@ -324,10 +473,55 @@ function CardResumo({
             destaque
               ? "bg-orange-100 text-orange-600"
               : "bg-blue-50 text-blue-700",
-          ].join(" ")}
+          ].join(
+            " "
+          )}
         >
           {icone}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function ModalBase({
+  titulo,
+  subtitulo,
+  children,
+  onFechar,
+}: {
+  titulo: string
+  subtitulo: string
+  children: ReactNode
+  onFechar: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+          <div>
+            <h2 className="text-xl font-bold text-slate-950">
+              {titulo}
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              {subtitulo}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={
+              onFechar
+            }
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+            aria-label="Fechar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {children}
       </div>
     </div>
   )
@@ -347,7 +541,9 @@ export default function TitulosPage() {
     carregando,
     setCarregando,
   ] =
-    useState(true)
+    useState(
+      true
+    )
 
   const [
     erro,
@@ -359,10 +555,21 @@ export default function TitulosPage() {
     >(null)
 
   const [
+    sucesso,
+    setSucesso,
+  ] =
+    useState<
+      string
+      | null
+    >(null)
+
+  const [
     busca,
     setBusca,
   ] =
-    useState("")
+    useState(
+      ""
+    )
 
   const [
     filtro,
@@ -370,6 +577,70 @@ export default function TitulosPage() {
   ] =
     useState<FiltroSituacao>(
       "Todos"
+    )
+
+  const [
+    acao,
+    setAcao,
+  ] =
+    useState<AcaoTitulo>(
+      null
+    )
+
+  const [
+    processando,
+    setProcessando,
+  ] =
+    useState(
+      false
+    )
+
+  const [
+    novaData,
+    setNovaData,
+  ] =
+    useState(
+      ""
+    )
+
+  const [
+    dataBaixa,
+    setDataBaixa,
+  ] =
+    useState(
+      hojeParaInput()
+    )
+
+  const [
+    valorBaixa,
+    setValorBaixa,
+  ] =
+    useState(
+      ""
+    )
+
+  const [
+    origemInformacao,
+    setOrigemInformacao,
+  ] =
+    useState(
+      ""
+    )
+
+  const [
+    referenciaBaixa,
+    setReferenciaBaixa,
+  ] =
+    useState(
+      ""
+    )
+
+  const [
+    observacoesBaixa,
+    setObservacoesBaixa,
+  ] =
+    useState(
+      ""
     )
 
   const carregar =
@@ -435,6 +706,381 @@ export default function TitulosPage() {
       carregar,
     ]
   )
+
+  const abrirProrrogacao =
+    (
+      titulo: Titulo
+    ) => {
+      setErro(
+        null
+      )
+
+      setSucesso(
+        null
+      )
+
+      setNovaData(
+        ""
+      )
+
+      setAcao({
+        tipo:
+          "prorrogar",
+        titulo,
+      })
+    }
+
+  const abrirBaixa =
+    (
+      titulo: Titulo
+    ) => {
+      setErro(
+        null
+      )
+
+      setSucesso(
+        null
+      )
+
+      setDataBaixa(
+        hojeParaInput()
+      )
+
+      setValorBaixa(
+        titulo.saldo
+          .toFixed(
+            2
+          )
+          .replace(
+            ".",
+            ","
+          )
+      )
+
+      setOrigemInformacao(
+        ""
+      )
+
+      setReferenciaBaixa(
+        ""
+      )
+
+      setObservacoesBaixa(
+        ""
+      )
+
+      setAcao({
+        tipo:
+          "baixa",
+        titulo,
+      })
+    }
+
+  const fecharAcao =
+    () => {
+      if (
+        processando
+      ) {
+        return
+      }
+
+      setAcao(
+        null
+      )
+    }
+
+  const confirmarProrrogacao =
+    async () => {
+      if (
+        !acao ||
+        acao.tipo !==
+          "prorrogar"
+      ) {
+        return
+      }
+
+      if (
+        !novaData
+      ) {
+        setErro(
+          "Informe a nova data de vencimento."
+        )
+        return
+      }
+
+      const vencimentoAtual =
+        dataParaInput(
+          acao.titulo
+            .vencimentoEfetivo
+        )
+
+      if (
+        novaData <=
+        vencimentoAtual
+      ) {
+        setErro(
+          "A nova data deve ser posterior ao vencimento atual."
+        )
+        return
+      }
+
+      const confirmado =
+        window.confirm(
+          `Confirmar a prorrogação de ${codigo(
+            "TIT",
+            acao.titulo
+              .numeroSequencial
+          )} de ${formatarData(
+            acao.titulo
+              .vencimentoEfetivo
+          )} para ${formatarData(
+            `${novaData}T12:00:00.000Z`
+          )}?`
+        )
+
+      if (
+        !confirmado
+      ) {
+        return
+      }
+
+      try {
+        setProcessando(
+          true
+        )
+
+        setErro(
+          null
+        )
+
+        setSucesso(
+          null
+        )
+
+        const resposta =
+          await fetch(
+            `/api/titulos/${acao.titulo.id}/prorrogar`,
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  prorrogadoPara:
+                    novaData,
+                }),
+            }
+          )
+
+        const corpo =
+          await resposta
+            .json()
+
+        if (
+          !resposta.ok
+        ) {
+          throw new Error(
+            corpo.message ||
+              "Não foi possível prorrogar o vencimento."
+          )
+        }
+
+        setAcao(
+          null
+        )
+
+        setSucesso(
+          corpo.message ||
+            "Vencimento prorrogado com sucesso."
+        )
+
+        await carregar()
+      } catch (
+        error
+      ) {
+        setErro(
+          error instanceof
+            Error
+            ? error.message
+            : "Não foi possível prorrogar o vencimento."
+        )
+      } finally {
+        setProcessando(
+          false
+        )
+      }
+    }
+
+  const confirmarBaixa =
+    async () => {
+      if (
+        !acao ||
+        acao.tipo !==
+          "baixa"
+      ) {
+        return
+      }
+
+      if (
+        !dataBaixa
+      ) {
+        setErro(
+          "Informe a data da baixa."
+        )
+        return
+      }
+
+      const valor =
+        converterMoedaDigitada(
+          valorBaixa
+        )
+
+      if (
+        valor === null ||
+        valor <= 0
+      ) {
+        setErro(
+          "Informe um valor de baixa maior que zero."
+        )
+        return
+      }
+
+      if (
+        valor >
+        acao.titulo.saldo
+      ) {
+        setErro(
+          `O valor da baixa não pode ultrapassar o saldo de ${formatarMoeda(
+            acao.titulo
+              .saldo
+          )}.`
+        )
+        return
+      }
+
+      const baixaTotal =
+        Math.abs(
+          valor -
+            acao.titulo
+              .saldo
+        ) <
+        0.005
+
+      const confirmado =
+        window.confirm(
+          baixaTotal
+            ? `Confirmar a baixa total de ${formatarMoeda(
+                valor
+              )} em ${codigo(
+                "TIT",
+                acao.titulo
+                  .numeroSequencial
+              )}? O título ficará marcado como Pago.`
+            : `Confirmar a baixa parcial de ${formatarMoeda(
+                valor
+              )} em ${codigo(
+                "TIT",
+                acao.titulo
+                  .numeroSequencial
+              )}? Permanecerá saldo em aberto.`
+        )
+
+      if (
+        !confirmado
+      ) {
+        return
+      }
+
+      try {
+        setProcessando(
+          true
+        )
+
+        setErro(
+          null
+        )
+
+        setSucesso(
+          null
+        )
+
+        const resposta =
+          await fetch(
+            `/api/titulos/${acao.titulo.id}/baixas`,
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  data:
+                    dataBaixa,
+
+                  valor,
+
+                  origemInformacao:
+                    origemInformacao ||
+                    null,
+
+                  referencia:
+                    referenciaBaixa ||
+                    null,
+
+                  observacoes:
+                    observacoesBaixa ||
+                    null,
+                }),
+            }
+          )
+
+        const corpo =
+          await resposta
+            .json()
+
+        if (
+          !resposta.ok
+        ) {
+          throw new Error(
+            corpo.message ||
+              "Não foi possível registrar a baixa."
+          )
+        }
+
+        setAcao(
+          null
+        )
+
+        setSucesso(
+          corpo.message ||
+            "Baixa registrada com sucesso."
+        )
+
+        await carregar()
+      } catch (
+        error
+      ) {
+        setErro(
+          error instanceof
+            Error
+            ? error.message
+            : "Não foi possível registrar a baixa."
+        )
+      } finally {
+        setProcessando(
+          false
+        )
+      }
+    }
 
   const titulosFiltrados =
     useMemo(
@@ -563,12 +1209,30 @@ export default function TitulosPage() {
                 carregando
                   ? "animate-spin"
                   : "",
-              ].join(" ")}
+              ].join(
+                " "
+              )}
             />
 
             Atualizar
           </button>
         </div>
+
+        {sucesso && (
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+
+            <div>
+              <p className="font-semibold">
+                Operação concluída
+              </p>
+
+              <p className="mt-1">
+                {sucesso}
+              </p>
+            </div>
+          </div>
+        )}
 
         {erro && (
           <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -576,7 +1240,7 @@ export default function TitulosPage() {
 
             <div>
               <p className="font-semibold">
-                Não foi possível carregar os títulos
+                Atenção
               </p>
 
               <p className="mt-1">
@@ -772,8 +1436,9 @@ export default function TitulosPage() {
                   </h3>
 
                   <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">
-                    Os títulos aparecem aqui depois que um faturamento
-                    é registrado e suas parcelas são geradas.
+                    Os títulos aparecem aqui depois que um
+                    faturamento é registrado e suas parcelas são
+                    geradas.
                   </p>
                 </div>
               ) : (
@@ -804,7 +1469,9 @@ export default function TitulosPage() {
                                   classesSituacao(
                                     titulo.situacao
                                   ),
-                                ].join(" ")}
+                                ].join(
+                                  " "
+                                )}
                               >
                                 {
                                   titulo.situacao
@@ -895,6 +1562,87 @@ export default function TitulosPage() {
                                 </p>
                               </div>
                             </div>
+
+                            {titulo.saldo >
+                              0 && (
+                              <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+                                <button
+                                  type="button"
+                                  onClick={
+                                    () =>
+                                      abrirProrrogacao(
+                                        titulo
+                                      )
+                                  }
+                                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100"
+                                >
+                                  <CalendarClock className="h-4 w-4" />
+
+                                  Prorrogar vencimento
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={
+                                    () =>
+                                      abrirBaixa(
+                                        titulo
+                                      )
+                                  }
+                                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600"
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+
+                                  Registrar baixa
+                                </button>
+                              </div>
+                            )}
+
+                            {titulo.baixas.length >
+                              0 && (
+                              <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
+                                <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                                  Histórico de baixas
+                                </p>
+
+                                <div className="mt-3 grid gap-2">
+                                  {titulo.baixas.map(
+                                    (
+                                      baixa
+                                    ) => (
+                                      <div
+                                        key={
+                                          baixa.id
+                                        }
+                                        className="flex flex-col gap-1 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                                      >
+                                        <div>
+                                          <span className="font-semibold text-slate-700">
+                                            {formatarData(
+                                              baixa.data
+                                            )}
+                                          </span>
+
+                                          {baixa.referencia && (
+                                            <span className="ml-2 text-xs text-slate-500">
+                                              {
+                                                baixa.referencia
+                                              }
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        <span className="font-bold text-emerald-700">
+                                          {formatarMoeda(
+                                            baixa.valor
+                                          )}
+                                        </span>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           <div className="grid min-w-0 gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm sm:grid-cols-2 xl:w-[390px]">
@@ -965,6 +1713,358 @@ export default function TitulosPage() {
           </>
         )}
       </div>
+
+      {acao?.tipo ===
+        "prorrogar" && (
+        <ModalBase
+          titulo="Prorrogar vencimento"
+          subtitulo={`${codigo(
+            "TIT",
+            acao.titulo
+              .numeroSequencial
+          )} • ${nomeEntidade(
+            acao.titulo
+              .venda
+              .cliente
+          )}`}
+          onFechar={
+            fecharAcao
+          }
+        >
+          <div className="p-6">
+            <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Vencimento atual
+                </p>
+
+                <p className="mt-1 font-bold text-slate-800">
+                  {formatarData(
+                    acao.titulo
+                      .vencimentoEfetivo
+                  )}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Saldo
+                </p>
+
+                <p className="mt-1 font-bold text-slate-800">
+                  {formatarMoeda(
+                    acao.titulo
+                      .saldo
+                  )}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  NF
+                </p>
+
+                <p className="mt-1 font-bold text-slate-800">
+                  {acao.titulo
+                    .faturamento
+                    .numeroNF ||
+                    "Não informada"}
+                </p>
+              </div>
+            </div>
+
+            <label className="mt-5 block">
+              <span className="text-sm font-semibold text-slate-700">
+                Novo vencimento
+              </span>
+
+              <input
+                type="date"
+                value={
+                  novaData
+                }
+                min={
+                  dataParaInput(
+                    acao.titulo
+                      .vencimentoEfetivo
+                  )
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    setNovaData(
+                      event
+                        .target
+                        .value
+                    )
+                }
+                className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+              />
+            </label>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={
+                  fecharAcao
+                }
+                disabled={
+                  processando
+                }
+                className="h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  confirmarProrrogacao
+                }
+                disabled={
+                  processando ||
+                  !novaData
+                }
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {processando && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+
+                Confirmar prorrogação
+              </button>
+            </div>
+          </div>
+        </ModalBase>
+      )}
+
+      {acao?.tipo ===
+        "baixa" && (
+        <ModalBase
+          titulo="Registrar baixa"
+          subtitulo={`${codigo(
+            "TIT",
+            acao.titulo
+              .numeroSequencial
+          )} • ${nomeEntidade(
+            acao.titulo
+              .venda
+              .cliente
+          )}`}
+          onFechar={
+            fecharAcao
+          }
+        >
+          <div className="p-6">
+            <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Valor do título
+                </p>
+
+                <p className="mt-1 font-bold text-slate-800">
+                  {formatarMoeda(
+                    acao.titulo
+                      .valor
+                  )}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Já baixado
+                </p>
+
+                <p className="mt-1 font-bold text-slate-800">
+                  {formatarMoeda(
+                    acao.titulo
+                      .totalBaixado
+                  )}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Saldo atual
+                </p>
+
+                <p className="mt-1 font-bold text-orange-600">
+                  {formatarMoeda(
+                    acao.titulo
+                      .saldo
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-semibold text-slate-700">
+                  Data da baixa
+                </span>
+
+                <input
+                  type="date"
+                  value={
+                    dataBaixa
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      setDataBaixa(
+                        event
+                          .target
+                          .value
+                      )
+                  }
+                  className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-semibold text-slate-700">
+                  Valor da baixa
+                </span>
+
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={
+                    valorBaixa
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      setValorBaixa(
+                        event
+                          .target
+                          .value
+                      )
+                  }
+                  placeholder="0,00"
+                  className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                />
+              </label>
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-semibold text-slate-700">
+                  Origem da informação
+                </span>
+
+                <input
+                  type="text"
+                  value={
+                    origemInformacao
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      setOrigemInformacao(
+                        event
+                          .target
+                          .value
+                      )
+                  }
+                  placeholder="Ex.: Representada, cliente, extrato..."
+                  className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-semibold text-slate-700">
+                  Referência
+                </span>
+
+                <input
+                  type="text"
+                  value={
+                    referenciaBaixa
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      setReferenciaBaixa(
+                        event
+                          .target
+                          .value
+                      )
+                  }
+                  placeholder="Ex.: comprovante ou identificação"
+                  className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                />
+              </label>
+            </div>
+
+            <label className="mt-4 block">
+              <span className="text-sm font-semibold text-slate-700">
+                Observações
+              </span>
+
+              <textarea
+                value={
+                  observacoesBaixa
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    setObservacoesBaixa(
+                      event
+                        .target
+                        .value
+                    )
+                }
+                rows={
+                  3
+                }
+                placeholder="Informações adicionais sobre esta baixa, se necessário."
+                className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+              />
+            </label>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={
+                  fecharAcao
+                }
+                disabled={
+                  processando
+                }
+                className="h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  confirmarBaixa
+                }
+                disabled={
+                  processando ||
+                  !dataBaixa ||
+                  !valorBaixa.trim()
+                }
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 text-sm font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {processando && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+
+                Confirmar baixa
+              </button>
+            </div>
+          </div>
+        </ModalBase>
+      )}
     </main>
   )
 }
