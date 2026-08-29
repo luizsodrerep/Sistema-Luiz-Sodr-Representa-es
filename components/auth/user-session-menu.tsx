@@ -18,6 +18,7 @@ import {
 } from "next/navigation"
 
 import {
+  BadgeDollarSign,
   BarChart3,
   Building2,
   CalendarClock,
@@ -141,6 +142,11 @@ const GRUPOS_MENU: GrupoMenu[] = [
         label: "Títulos e Vencimentos",
         href: "/titulos",
         icon: CalendarClock,
+      },
+      {
+        label: "Comissões",
+        href: "/comissoes",
+        icon: BadgeDollarSign,
       },
       {
         label: "Relatórios",
