@@ -2146,3 +2146,685 @@ capítulos 34 e 35 e não altere Prisma/schema sem necessidade funcional
 comprovada."
 
 ------------------------------------------------------------------------
+## 37. CONSOLIDAÇÃO OFICIAL DE 28/08/2026 — NOVO PONTO DE CONTINUIDADE
+
+Este capítulo atualiza e SUPERA, quando houver conflito, o estado operacional
+descrito nos capítulos anteriores.
+
+Os capítulos anteriores devem permanecer preservados como histórico técnico
+e funcional do projeto.
+
+### 37.1 Checkpoint protegido atual
+
+O último checkpoint funcional protegido no Git/GitHub é:
+
+`0bc1a38`
+
+Mensagem:
+
+`feat: adiciona controle operacional de comissoes`
+
+Branch:
+
+`main`
+
+Push para GitHub concluído.
+
+Após o push, `git status --short` permaneceu vazio.
+
+Checkpoints relevantes posteriores ao antigo `3d1e999`:
+
+- `2b8caaf` — autenticação e identidade visual;
+- `1f3d8e0` — controle operacional de Faturamentos;
+- `b507933` — Títulos e Vencimentos;
+- `d51d901` — baixa e prorrogação de Títulos;
+- `0bc1a38` — controle operacional de Comissões.
+
+Portanto, referências anteriores que indicam `3d1e999` como checkpoint
+funcional atual estão SUPERADAS por este capítulo.
+
+------------------------------------------------------------------------
+
+## 38. Estado funcional atual dos módulos financeiros comerciais
+
+### 38.1 Faturamento
+
+O módulo de Faturamento possui controle operacional de pendências.
+
+Situações operacionais implementadas:
+
+- Sem previsão;
+- Aguardando faturamento;
+- Previsto para hoje;
+- Previsão vencida;
+- Parcialmente faturado.
+
+O saldo pendente considera:
+
+`valor da Venda - faturamentos - cortes`
+
+A condição de pagamento foi corrigida para aceitar a convenção operacional
+real do escritório.
+
+Exemplos válidos:
+
+- `30/45/60`;
+- `30-45-60`;
+- demais prazos crescentes equivalentes;
+- `0` para pagamento à vista.
+
+A Venda real `VEN-000001` possui condição:
+
+`30/45/60`
+
+A simulação foi validada com geração correta de três vencimentos e divisão
+exata do valor.
+
+Nenhuma NF fictícia foi registrada durante essa validação.
+
+### 38.2 Títulos e Vencimentos
+
+Foi criado módulo próprio:
+
+`/titulos`
+
+O módulo distingue:
+
+- A vencer;
+- Vence hoje;
+- Vencido;
+- Prorrogado;
+- Pago.
+
+Foram implementadas operações de:
+
+- prorrogação de vencimento;
+- baixa parcial;
+- baixa total.
+
+A prorrogação preserva o vencimento original.
+
+A baixa preserva histórico através de `TituloVendaBaixa`.
+
+Nenhum título ou baixa fictícia foi criado para validar a interface.
+
+Títulos e Vencimentos permanecem tecnicamente em rota própria, mas
+conceitualmente fazem parte do Financeiro comercial.
+
+### 38.3 Comissões
+
+Foi criada a primeira versão operacional:
+
+`/comissoes`
+
+A versão atual é deliberadamente de leitura.
+
+Ela diferencia:
+
+- comissão prevista;
+- comissão devida;
+- comissão recebida;
+- estornada;
+- recuperada;
+- ajuste;
+- movimentos;
+- parcelas pendentes.
+
+Não existe geração automática de `ComissaoMovimento` neste momento.
+
+Essa decisão é intencional para impedir reconhecimento financeiro incorreto
+antes da validação completa das políticas reais de comissão de cada
+Representada.
+
+A Venda real `VEN-000001` apresentou corretamente:
+
+- Representada: MASSARI;
+- comissão prevista: R$ 134,46;
+- percentual preservado na Venda: 7%;
+- movimentos de comissão: 0.
+
+A ausência de movimento é correta enquanto não ocorrer o fato financeiro
+definido pela política da Representada.
+
+------------------------------------------------------------------------
+
+## 39. Regras reais de reconhecimento de comissão
+
+### 39.1 Conceitos separados
+
+O CRM deve tratar separadamente:
+
+1. previsão de comissão;
+2. gatilho de reconhecimento;
+3. competência/fechamento;
+4. pagamento da comissão;
+5. NF de comissão, quando exigida;
+6. recebimento efetivo;
+7. tributação da NF de serviços.
+
+Venda existente gera inicialmente comissão PREVISTA.
+
+Ela não deve se tornar automaticamente DEVIDA apenas porque a Venda existe.
+
+### 39.2 Reconhecimento por Faturamento
+
+Quando a Representada trabalha por Faturamento:
+
+- a emissão real da NF de venda é o gatilho;
+- a comissão passa a ser DEVIDA sobre a base efetivamente faturada;
+- os eventos pertencem ao período de fechamento aplicável;
+- o pagamento segue a política da respectiva Representada.
+
+Faturamento parcial deve futuramente respeitar a base efetivamente faturada
+e impedir duplicidade de reconhecimento.
+
+### 39.3 Reconhecimento por Liquidez
+
+Quando a Representada trabalha por Liquidez:
+
+- a baixa/pagamento efetivo do título é o gatilho;
+- a comissão passa a ser DEVIDA sobre o valor efetivamente liquidado;
+- os eventos pertencem ao período de fechamento aplicável;
+- o pagamento segue a política da respectiva Representada.
+
+Baixas parciais deverão ser tratadas de maneira proporcional quando essa
+regra for implementada, sempre evitando reconhecimento duplicado.
+
+### 39.4 Política real da MASSARI
+
+Política informada e validada operacionalmente:
+
+Regra de reconhecimento:
+
+`Liquidez`
+
+Fechamento:
+
+`01 a 30`
+
+Pagamento da comissão:
+
+`dia 10 do mês subsequente`
+
+Exige NF de comissão:
+
+`Sim`
+
+### 39.5 Exceção real da MASSARI — dia 31
+
+Foi identificada uma regra operacional importante:
+
+pagamentos/baixas ocorridos especificamente no dia 31 não entram no
+fechamento normal de 01 a 30.
+
+Esses valores ficam para o ciclo seguinte ao próximo.
+
+Exemplo:
+
+- baixa em 30/08/2026 → pagamento previsto da comissão em 10/09/2026;
+- baixa em 31/08/2026 → pagamento previsto da comissão em 10/10/2026.
+
+Essa regra NÃO deve ser codificada globalmente para todas as Representadas.
+
+Ela deve ser configurável por Representada, porque outras empresas podem
+possuir políticas diferentes.
+
+### 39.6 NF de comissão e tributação — MASSARI
+
+Informações reais para futura validação da área de Contabilidade:
+
+- MASSARI exige NF de comissão;
+- imposto informado sobre a NF de serviços: 6%;
+- pagamento do imposto: dia 20;
+- referência do pagamento do imposto: mês anterior.
+
+Essas informações pertencem conceitualmente ao fluxo:
+
+`COMISSÃO → NF DE COMISSÃO → CONTABILIDADE`
+
+O imposto não deve modificar o valor comercial bruto da comissão.
+
+O sistema deve conseguir distinguir futuramente:
+
+- comissão bruta;
+- imposto;
+- valor líquido;
+- competência;
+- NF emitida;
+- vencimento/pagamento da obrigação tributária.
+
+------------------------------------------------------------------------
+
+## 40. Decisão de pausa da automação de Comissões
+
+A automação financeira de Comissões fica temporariamente PAUSADA.
+
+Motivo:
+
+o uso prático com dados reais está revelando regras e necessidades que não
+devem ser presumidas antes de uma alteração estrutural.
+
+Antes de criar movimentos automáticos de comissão, será realizada uma
+varredura prática dos cadastros e módulos.
+
+O objetivo é evitar diversas migrations pequenas e sucessivas.
+
+Se alterações de schema forem realmente necessárias, as necessidades
+compatíveis deverão ser agrupadas em um único lote planejado.
+
+Não alterar Prisma apenas porque uma necessidade isolada foi identificada.
+
+------------------------------------------------------------------------
+
+## 41. Varredura prática obrigatória antes da próxima alteração do Prisma
+
+### 41.1 Cadastro automático por CNPJ
+
+Avaliar e desenvolver preenchimento cadastral por CNPJ para:
+
+- Clientes;
+- Representadas.
+
+Objetivo:
+
+ao informar um CNPJ válido, consultar uma fonte adequada e preencher
+automaticamente os dados cadastrais disponíveis.
+
+O usuário deve visualizar, conferir e poder corrigir os dados antes da
+gravação definitiva.
+
+A implementação deve considerar falha ou indisponibilidade da consulta
+externa sem impedir cadastro manual.
+
+### 41.2 Endereço estruturado
+
+Revisar Clientes e Representadas para verificar exatamente quais campos já
+existem antes de alterar o schema.
+
+Estrutura desejada:
+
+- logradouro;
+- número;
+- complemento;
+- bairro;
+- cidade;
+- estado;
+- CEP.
+
+Necessidade já identificada:
+
+Representadas precisam apresentar formalmente o bairro.
+
+Também deve ser avaliado campo próprio para número do endereço, evitando
+depender de o usuário lembrar de colocar o número dentro do campo de rua.
+
+Não criar campos duplicados sem antes conferir o modelo atual.
+
+### 41.3 Regra para novas necessidades descobertas
+
+Durante a alimentação real, revisar progressivamente:
+
+- Clientes;
+- Representadas;
+- Interações;
+- Orçamentos;
+- Vendas;
+- Faturamentos;
+- Títulos;
+- Comissões;
+- Financeiro;
+- Contabilidade.
+
+Novas necessidades identificadas durante o uso devem ser registradas.
+
+Não alterar Prisma a cada descoberta isolada.
+
+Primeiro consolidar o conjunto de necessidades.
+
+Depois avaliar quais realmente exigem banco de dados e quais podem ser
+resolvidas através de dados e relacionamentos já existentes.
+
+------------------------------------------------------------------------
+
+## 42. Remoção de dados fictícios do frontend
+
+Antes da utilização operacional intensiva do CRM com dados reais, deve ser
+feita uma varredura completa das telas que ainda apresentam informações
+fictícias ou estáticas como se fossem dados reais.
+
+Áreas já identificadas historicamente incluem:
+
+- Dashboard;
+- Agenda;
+- Relatórios;
+- Financeiro antigo;
+- eventuais cards, gráficos ou indicadores ainda não ligados ao banco.
+
+Regra definitiva:
+
+dados fictícios não podem ser apresentados como situação real do escritório.
+
+Quando uma tela ainda não possuir fonte de dados real, utilizar
+preferencialmente:
+
+- zero;
+- estado vazio;
+- `Sem dados`;
+- informação clara de módulo ainda não integrado;
+
+em vez de valores inventados.
+
+Dados institucionais, textos explicativos ou exemplos claramente
+identificados como exemplos não são considerados dados operacionais
+fictícios.
+
+A remoção deve ser feita cuidadosamente para não eliminar dados reais já
+cadastrados no PostgreSQL.
+
+------------------------------------------------------------------------
+
+## 43. Entrada e validação com dados reais
+
+O CRM passará por validação contínua durante toda a sua construção.
+
+A operação real não é apenas uso do sistema: também é mecanismo de
+validação funcional.
+
+Serão progressivamente cadastradas:
+
+- vendas reais da semana;
+- vendas retroativas reais;
+- dados reais dos meses anteriores escolhidos;
+- faturamentos reais;
+- títulos reais;
+- demais fatos comerciais efetivamente ocorridos.
+
+Regra:
+
+não inventar fatos retroativos para completar fluxo.
+
+Quando não houve Interação ou Orçamento histórico, não criar registros
+fictícios apenas para preencher etapas.
+
+Preservar datas e fatos reais.
+
+Problemas encontrados durante o uso devem ser analisados e corrigidos até a
+construção final do CRM.
+
+------------------------------------------------------------------------
+
+## 44. Clientes — análise ABC e concentração do faturamento
+
+Foi identificada necessidade gerencial de medir concentração comercial da
+carteira de Clientes.
+
+O objetivo é responder perguntas como:
+
+- quantos Clientes representam a maior parte do faturamento;
+- quanto os Clientes A representam;
+- quanto os Clientes B representam;
+- quanto os Clientes C representam;
+- qual o grau de concentração da carteira.
+
+Referência conceitual:
+
+`Análise ABC / Princípio de Pareto`
+
+Exemplo gerencial:
+
+uma parcela menor da carteira pode representar aproximadamente 80% do
+faturamento, enquanto uma parcela maior representa aproximadamente os 20%
+restantes.
+
+Esse exemplo NÃO deve ser transformado automaticamente em regra rígida
+20/80.
+
+A distribuição real deve ser analisada primeiro.
+
+### 44.1 Local recomendado
+
+A informação deverá aparecer em dois níveis.
+
+No módulo Clientes:
+
+- classificação A/B/C;
+- faturamento do Cliente;
+- participação percentual;
+- posição/ranking;
+- período considerado.
+
+Em Gestão Comercial/Dashboard:
+
+- quantidade de Clientes A/B/C;
+- percentual da carteira em cada classe;
+- percentual do faturamento;
+- curva de Pareto;
+- concentração comercial;
+- evolução por período.
+
+### 44.2 Classificação dinâmica
+
+A classificação A/B/C não deve ser simplesmente cadastrada manualmente como
+característica permanente do Cliente.
+
+Ela deve ser calculada a partir de dados comerciais reais e de um período
+definido.
+
+Um Cliente pode mudar de classe ao longo do tempo.
+
+A fórmula e os limites definitivos de A/B/C serão validados após existir
+volume suficiente de dados reais no CRM.
+
+------------------------------------------------------------------------
+
+## 45. Clientes — quantidade e relacionamento com Representadas
+
+Foi identificada uma necessidade comercial importante durante revisão das
+telas.
+
+Um mesmo Cliente pode comprar produtos de várias Representadas.
+
+Existem Clientes reais que compram de três, quatro ou mais Representadas.
+
+O CRM deve permitir identificar essa amplitude de relacionamento de forma
+rápida e visual.
+
+### 45.1 Indicador na tela do Cliente
+
+Ao abrir um Cliente, apresentar de forma discreta um indicador semelhante a:
+
+`Representadas relacionadas: 4`
+
+ou equivalente visual compatível com o padrão definitivo da interface.
+
+O objetivo é permitir que o usuário compreenda a amplitude comercial do
+Cliente imediatamente, sem poluir a tela.
+
+### 45.2 Detalhamento das Representadas
+
+Além da quantidade, deve ser possível visualizar quais Representadas estão
+relacionadas ao Cliente.
+
+A visualização deve distinguir, quando aplicável:
+
+- relacionamento atual/ativo;
+- relacionamento histórico;
+- Representada atualmente inativa.
+
+Uma Representada não deve desaparecer do histórico comercial do Cliente
+apenas porque foi posteriormente inativada.
+
+### 45.3 A contagem não deve ser um número manual
+
+Não criar simplesmente um campo como:
+
+`quantidadeRepresentadas = 4`
+
+para ser preenchido manualmente.
+
+A quantidade deve ser derivada dos relacionamentos e fatos comerciais reais
+existentes no CRM, evitando divergência entre a contagem e o histórico.
+
+Antes de decidir se é necessário novo relacionamento no Prisma, revisar o
+que já pode ser obtido através de:
+
+- Vendas;
+- Orçamentos;
+- Interações;
+- regras comerciais;
+- demais vínculos já existentes.
+
+### 45.4 Critério exato de relacionamento
+
+Ainda deve ser validado com dados reais o critério definitivo para afirmar
+que um Cliente "compra de uma Representada".
+
+Possíveis dimensões que deverão ser analisadas:
+
+- existência de Venda;
+- histórico de compra;
+- relacionamento comercial sem Venda recente;
+- Representada ativa ou inativa;
+- período da última compra.
+
+Não criar uma definição artificial antes da validação prática.
+
+### 45.5 Uso gerencial futuro
+
+Essa informação poderá alimentar futuramente:
+
+- oportunidades de cross-selling;
+- Clientes atendidos por apenas uma Representada;
+- Clientes multirrepresentadas;
+- Representadas ainda não trabalhadas em determinado Cliente;
+- cobertura comercial da carteira;
+- análise de concentração;
+- análise ABC;
+- oportunidades de expansão por Cliente.
+
+A informação deverá ser apresentada de forma simples no cadastro individual
+e de forma analítica em Gestão Comercial/Dashboard.
+
+------------------------------------------------------------------------
+
+## 46. Estratégia para próxima sessão de desenvolvimento
+
+A próxima sessão NÃO deve começar pela automação de Comissões.
+
+A sequência oficial passa a ser:
+
+1. continuar utilizando o CRM com dados reais;
+2. executar cadastros reais e observar dificuldades práticas;
+3. revisar Clientes e Representadas;
+4. avaliar preenchimento automático por CNPJ;
+5. revisar endereço, bairro e número;
+6. mapear necessidades adicionais de cadastro;
+7. localizar dados fictícios ainda existentes no frontend;
+8. remover ou substituir esses dados por estados reais/vazios;
+9. revisar a relação Cliente × Representadas;
+10. preparar futura análise ABC/Pareto;
+11. consolidar todas as necessidades que possam exigir alteração estrutural;
+12. somente então decidir sobre alteração única e planejada do Prisma;
+13. continuar entrada de Vendas/Faturamentos/Títulos reais;
+14. retornar posteriormente à automação de Comissões;
+15. depois avançar para Financeiro e Contabilidade.
+
+A regra central desta fase é:
+
+`VALIDAR NA PRÁTICA → IDENTIFICAR → CONSOLIDAR → ALTERAR UMA VEZ → VALIDAR NOVAMENTE`
+
+------------------------------------------------------------------------
+
+## 47. Regra de continuidade e proteção do projeto
+
+O desenvolvimento continuará sendo validado durante toda a construção do
+sistema.
+
+Não considerar uma tela definitivamente encerrada apenas porque compilou ou
+funcionou uma vez.
+
+O uso real pode revelar:
+
+- campos faltantes;
+- regras comerciais específicas;
+- problemas de ergonomia;
+- dados desnecessários;
+- relacionamentos não previstos;
+- inconsistências de cálculo;
+- oportunidades gerenciais.
+
+Essas descobertas devem ser incorporadas de maneira controlada.
+
+Não usar dados fictícios para esconder ausência de integração.
+
+Não alterar regras financeiras com base em suposição.
+
+Não alterar Prisma sem necessidade funcional comprovada.
+
+Quando houver necessidade de alteração estrutural, preferir lote único,
+planejado e validado.
+
+Preservar sempre:
+
+- histórico;
+- rastreabilidade;
+- segurança;
+- dados reais;
+- checkpoints Git/GitHub;
+- regras específicas por Representada;
+- possibilidade de evolução futura.
+
+------------------------------------------------------------------------
+
+## 48. Próximo ponto oficial de continuidade
+
+Checkpoint funcional protegido:
+
+`0bc1a38`
+
+Estado:
+
+Faturamento, Títulos/Vencimentos e primeira visão operacional de Comissões
+já desenvolvidos.
+
+Comissões:
+
+automação temporariamente pausada até validação com maior quantidade de
+dados reais e consolidação das políticas das Representadas.
+
+Próxima frente:
+
+`VARREDURA PRÁTICA → CADASTROS → CNPJ/ENDEREÇO → DADOS FICTÍCIOS → CLIENTE × REPRESENTADAS → NECESSIDADES DE PRISMA`
+
+Somente depois:
+
+`COMISSÕES → FINANCEIRO → CONTABILIDADE`
+
+Mensagem recomendada para abrir a próxima conversa:
+
+"Leia integralmente o DOCUMENTO_MESTRE_CRM.md, especialmente os capítulos
+37 a 48.
+
+O checkpoint funcional protegido é `0bc1a38`.
+
+Não refaça Faturamento, Títulos/Vencimentos ou a primeira versão de
+Comissões.
+
+A automação de Comissões está temporariamente pausada.
+
+Continue pela varredura prática do CRM com dados reais.
+
+As prioridades são revisar Clientes e Representadas, preenchimento por CNPJ,
+endereço estruturado com bairro e número, localizar e eliminar dados
+operacionais fictícios do frontend, avaliar Cliente × Representadas e
+preparar futura análise ABC/Pareto.
+
+Não altere Prisma a cada descoberta.
+
+Primeiro consolide todas as necessidades estruturais e, somente se houver
+necessidade funcional comprovada, planeje uma alteração única.
+
+Preserve integralmente as regras de comissão já validadas, especialmente a
+política da MASSARI e a exceção do dia 31."
+
+------------------------------------------------------------------------
