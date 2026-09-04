@@ -2828,3 +2828,836 @@ Preserve integralmente as regras de comissão já validadas, especialmente a
 política da MASSARI e a exceção do dia 31."
 
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+## 49. CONSOLIDAÇÃO OFICIAL DE 04/09/2026 — NOVO CHECKPOINT FUNCIONAL
+
+Este capítulo atualiza e SUPERA, quando houver conflito, o estado operacional
+descrito nos capítulos anteriores.
+
+Os capítulos anteriores devem permanecer preservados como histórico técnico
+e funcional do projeto.
+
+### 49.1 Checkpoint funcional protegido atual
+
+Commit funcional protegido mais recente:
+
+`150836c`
+
+Mensagem:
+
+`feat: consolida assistente financeiro prospeccao alertas e dashboard`
+
+Branch:
+
+`main`
+
+Push para GitHub concluído com sucesso em 04/09/2026.
+
+O checkpoint consolidou 21 arquivos alterados/adicionados e protegeu no
+GitHub, entre outros:
+
+- Financeiro operacional;
+- Meu Assistente Pessoal;
+- API central do Assistente;
+- alerta crítico global;
+- prospecção sem Cliente cadastrado;
+- ajustes em Interações;
+- ajustes em Orçamentos;
+- ajustes em Clientes;
+- ajustes em Representadas;
+- Dashboard higienizado;
+- permissões do Financeiro;
+- imagens utilizadas pelo Assistente.
+
+Validações executadas antes do checkpoint:
+
+- `npx tsc --noEmit` — 0 erros;
+- `npx prisma validate` — schema válido;
+- `git diff --check` — sem erro de whitespace;
+- aviso LF → CRLF em `prisma/schema.prisma`, sem impacto funcional;
+- push para `origin/main` concluído.
+
+Arquivo local não versionado e preservado:
+
+`public/foto sistema minha area paula.jpeg`
+
+Esse arquivo não estava em uso confirmado no código. Por segurança, não foi
+apagado e também não foi incluído no checkpoint.
+
+------------------------------------------------------------------------
+
+## 50. Financeiro — estado operacional em 04/09/2026
+
+Foi criada API própria:
+
+`app/api/financeiro/route.ts`
+
+Foi consolidada a tela:
+
+`app/financeiro/page.tsx`
+
+O Financeiro utiliza a estrutura Prisma existente.
+
+Tipos operacionais:
+
+- `Entrada`;
+- `Saida`;
+- `SaldoInicial`.
+
+Status:
+
+- `Pendente`;
+- `Realizado`;
+- `Cancelado`.
+
+Regras atuais:
+
+- Saldo Inicial é registrado como fato realizado;
+- Saldo Inicial pode ser positivo ou negativo;
+- Entrada e Saída usam valor positivo;
+- o sinal econômico é determinado pelo tipo;
+- Cancelado não participa dos cálculos;
+- pendências afetam projeção;
+- realizados afetam saldo realizado;
+- Saída pendente vencida entra no cálculo de valor vencido;
+- parcelamentos podem ser criados em lançamentos separados;
+- a divisão de parcelas é feita em centavos e eventual diferença de
+  arredondamento fica na última parcela;
+- Diretor possui exclusão definitiva;
+- Administrativo possui operação sem exclusão;
+- Preposto não possui acesso ao Financeiro.
+
+Resumo calculado pela API:
+
+- saldo realizado;
+- entradas realizadas;
+- saídas realizadas;
+- entradas pendentes;
+- saídas pendentes;
+- saldo projetado;
+- quantidade vencida;
+- valor vencido.
+
+Regra permanente:
+
+`FATO EXTERNO MANUAL → FINANCEIRO`
+
+`FATO GERADO POR MÓDULO → INTEGRAÇÃO FUTURA, SEM DUPLICAÇÃO MANUAL`
+
+O Financeiro não deve duplicar fatos que futuramente sejam originados
+automaticamente por Faturamentos, Títulos ou Comissões.
+
+------------------------------------------------------------------------
+
+## 51. Interações — continuidade operacional
+
+Foi consolidado o conceito de continuidade de Interações.
+
+Regra de negócio:
+
+- uma Interação representa um assunto/processo;
+- o assunto pode durar vários dias;
+- não se deve editar o passado para registrar nova evolução;
+- novas informações devem ser registradas como acompanhamento;
+- o histórico anterior deve permanecer preservado;
+- a Interação pode receber vários acompanhamentos;
+- somente quando o assunto estiver resolvido deve ser finalizada.
+
+A tela possui:
+
+- `Registrar acompanhamento`;
+- `Registrar e finalizar`.
+
+A finalização exige nova informação/resultado e confirmação do usuário.
+
+O Assistente não duplica essa lógica.
+
+Regra:
+
+`ASSISTENTE LEMBRA → INTERAÇÃO ORIGINAL RESOLVE → ASSISTENTE DEIXA DE EXIBIR`
+
+Observação arquitetural:
+
+A continuidade operacional atualmente aproveita a estrutura existente e deve
+permanecer sob observação técnica. Qualquer futura alteração estrutural para
+entidade dedicada de acompanhamento exigirá preservação integral do histórico,
+análise de impacto e aprovação explícita antes de migration.
+
+------------------------------------------------------------------------
+
+## 52. Prospecção sem Cliente cadastrado
+
+Foi identificada necessidade operacional real de registrar prospecções antes
+de existir Cliente formal no CRM.
+
+Foram adicionados ao modelo `Interacao`:
+
+- `nomeProspect`;
+- `empresaProspect`;
+- `origemProspeccao`.
+
+Uso:
+
+- permitir registrar contato inicial;
+- preservar origem;
+- não obrigar cadastro prematuro de Cliente;
+- permitir posterior evolução para Cliente real.
+
+A alteração estrutural foi aplicada com cautela.
+
+O banco recebeu as três colunas correspondentes.
+
+Depois foi confirmado:
+
+`npx prisma migrate diff --from-schema-datasource "prisma\schema.prisma" --to-schema-datamodel "prisma\schema.prisma" --script`
+
+Resultado final:
+
+`-- This is an empty migration.`
+
+Isso confirmou alinhamento entre banco e `schema.prisma`.
+
+Prisma Client foi regenerado com sucesso após encerramento dos processos que
+estavam bloqueando o arquivo do engine.
+
+Regra futura:
+
+não criar categoria genérica `Outros` de forma prematura para origem de
+prospecção.
+
+Primeiro observar os dados reais.
+
+------------------------------------------------------------------------
+
+## 53. Meu Assistente Pessoal — estado atual
+
+Foi criado:
+
+`app/meu-assistente-pessoal/page.tsx`
+
+Foi criada API central:
+
+`app/api/meu-assistente-pessoal/route.ts`
+
+Objetivo:
+
+ser o interligador operacional dos principais módulos do CRM, mostrando ao
+usuário o que exige atenção sem duplicar as regras de negócio de cada módulo.
+
+Princípio:
+
+`ASSISTENTE IDENTIFICA → PRIORIZA → ENCAMINHA → MÓDULO ORIGINAL EXECUTA`
+
+O Assistente não deve virar um segundo sistema dentro do CRM.
+
+### 53.1 Escopo por usuário
+
+Diretor:
+
+- visão consolidada do escritório.
+
+Administrativo / Preposto:
+
+- visão das próprias responsabilidades conforme regras atuais.
+
+### 53.2 Módulos integrados
+
+Atualmente integrados:
+
+- Interações;
+- Prospecções;
+- Orçamentos;
+- Vendas;
+- Títulos/Vencimentos.
+
+Integrações preparadas ou relacionadas, mas ainda não plenamente ativadas no
+Assistente:
+
+- Faturamentos;
+- Comissões;
+- Redes Sociais.
+
+### 53.3 Interações
+
+Entram enquanto:
+
+`statusFollowUp != "Finalizado"`
+
+Quando finalizadas, deixam de aparecer.
+
+### 53.4 Orçamentos
+
+Entram quando status:
+
+- `Pendente`;
+- `Vencido`.
+
+Não entram quando encerrados comercialmente, como:
+
+- `Aprovado`;
+- `Recusado`;
+- `Cancelado`.
+
+Orçamento vencido pode gerar alerta crítico.
+
+### 53.5 Vendas
+
+Fluxo validado:
+
+`Aguardando envio`
+→ Pedido enviado
+→ `Aguardando confirmação`
+→ Recebimento confirmado
+→ `Confirmado`
+
+O Assistente acompanha:
+
+- Venda aguardando envio;
+- Venda aguardando confirmação da Representada;
+- previsão de faturamento;
+- previsão de faturamento vencida.
+
+A etapa `Aguardando confirmação` foi adicionada ao Assistente em 04/09/2026
+para impedir que um pedido enviado desapareça do radar antes da confirmação
+da Representada.
+
+### 53.6 Títulos
+
+O Assistente considera:
+
+- vencimento original;
+- vencimento prorrogado;
+- pagamento;
+- status de quitação.
+
+Título pago/liquidado deixa de aparecer.
+
+Título vencido e não quitado pode gerar alerta crítico.
+
+------------------------------------------------------------------------
+
+## 54. Alerta crítico global
+
+Foi criado:
+
+`components/alerta-critico-global.tsx`
+
+Imagem usada:
+
+`public/assistente-alerta-paula.jpeg`
+
+O componente foi integrado globalmente ao CRM através de:
+
+`components/auth/user-session-menu.tsx`
+
+Comportamento:
+
+- aparece somente quando a API do Assistente retorna alerta crítico;
+- não aparece para pendência normal;
+- leva diretamente ao registro original;
+- pode ser silenciado temporariamente;
+- atualiza durante a navegação/uso;
+- não apaga nem resolve a pendência.
+
+Regras críticas iniciais:
+
+- Orçamento vencido;
+- Venda aguardando envio;
+- previsão de faturamento vencida;
+- Título vencido.
+
+Venda aguardando confirmação da Representada é importante, mas não é alerta
+global crítico enquanto não houver prazo objetivo máximo definido.
+
+Validação real em 04/09/2026:
+
+a API retornou pendências operacionais, porém:
+
+`alertasCriticos: 0`
+
+Portanto, a personagem corretamente não apareceu.
+
+Não criar pendência fictícia apenas para testar o alerta.
+
+------------------------------------------------------------------------
+
+## 55. Dashboard — preservação funcional e remoção de dados fictícios
+
+O Dashboard antigo continha valores e nomes comerciais fictícios da fase
+inicial de frontend.
+
+Foram identificados, entre outros:
+
+- vendas fictícias;
+- metas fictícias;
+- ticket médio fictício;
+- total de pedidos fictício;
+- diferenças de faturamento fictícias;
+- representadas fictícias;
+- histórico mensal fictício;
+- percentuais fictícios;
+- comissões fictícias.
+
+Decisão definitiva:
+
+O frontend antigo deve ser tratado como ESPECIFICAÇÃO FUNCIONAL do CRM.
+
+Portanto:
+
+- não apagar funcionalidades apenas porque ainda não estão ligadas ao banco;
+- preservar filtros;
+- preservar botões;
+- preservar abas;
+- preservar gráficos;
+- preservar relatórios;
+- preservar indicadores;
+- preservar análises planejadas;
+- retirar somente os dados demonstrativos.
+
+O Dashboard foi higienizado preservando a estrutura funcional.
+
+Onde não existe fonte real consolidada, o sistema utiliza estados neutros,
+como:
+
+- `R$ 0,00`;
+- `0`;
+- `0,0%`;
+- `Sem dados`;
+- mensagens claras de ausência de dado real.
+
+Regra importante:
+
+`ZERO FICTÍCIO NÃO DEVE SER CONFUNDIDO COM RESULTADO MEDIDO`
+
+Quando possível, interfaces futuras devem distinguir explicitamente ausência
+de integração de resultado real igual a zero.
+
+------------------------------------------------------------------------
+
+## 56. Regra permanente sobre funcionalidades antigas do frontend
+
+Toda função criada na fase inicial do frontend deve ser presumida como
+necessidade funcional do negócio até prova em contrário.
+
+Ao encontrar tela antiga com dados fictícios:
+
+1. identificar qual necessidade ela representa;
+2. preservar a função;
+3. remover somente os dados demonstrativos;
+4. conectar posteriormente aos módulos reais;
+5. não eliminar recursos por conveniência técnica;
+6. somente remover função com decisão explícita do usuário.
+
+Essa regra vale para:
+
+- Dashboard;
+- Contabilidade;
+- Agenda;
+- Relatórios;
+- Redes Sociais;
+- Interações AI;
+- comparativos;
+- planilhas;
+- demais telas antigas.
+
+------------------------------------------------------------------------
+
+## 57. Varredura de dados fictícios — estado em 04/09/2026
+
+Foi executada busca geral em:
+
+- `app`;
+- `components`;
+- `lib`.
+
+Foram identificadas ocorrências que exigem classificação cuidadosa.
+
+Não remover automaticamente ocorrências de palavras como:
+
+- exemplo;
+- mock;
+- fake;
+- demo.
+
+Algumas são legítimas:
+
+- comentários técnicos;
+- placeholders;
+- exemplos de condição de pagamento;
+- componentes internos;
+- mensagens explicativas.
+
+Áreas com dados operacionais fictícios confirmados ou suspeitos:
+
+- Contabilidade;
+- Interações AI;
+- Sales Comparison;
+- Spreadsheet Handler;
+- Agenda;
+- Redes Sociais;
+- Relatórios;
+- eventuais APIs/templates de planilha.
+
+Arquivo que precisa ser investigado antes de alterar:
+
+`app/api/clientes/exportar/route.ts`
+
+O registro `Exemplo Ltda` pode fazer parte de modelo/template de importação e
+não deve ser removido sem compreender o fluxo.
+
+------------------------------------------------------------------------
+
+## 58. Contabilidade — primeira pendência da próxima conversa
+
+A Contabilidade NÃO foi alterada nesta conversa.
+
+Foi apenas revisada.
+
+A tela atual contém várias funções planejadas que devem ser preservadas:
+
+- resumo contábil;
+- notas fiscais;
+- impostos;
+- filtros;
+- calendário fiscal;
+- importação/exportação;
+- nova Nota Fiscal;
+- novo imposto;
+- baixa/pagamento;
+- relatórios;
+- gráficos;
+- impressão;
+- relatório para contador;
+- análise tributária.
+
+Também contém dados demonstrativos antigos, incluindo:
+
+- clientes fictícios;
+- NFs fictícias;
+- impostos fictícios;
+- datas de 2023;
+- calendário fiscal fictício;
+- lembretes fiscais fictícios;
+- relatórios recentes fictícios;
+- percentuais tributários simplificados;
+- cálculo genérico de 6%.
+
+Regra para próxima conversa:
+
+NÃO apagar essas funções.
+
+Primeiro revisar o arquivo completo.
+
+Depois remover/substituir apenas os dados fictícios.
+
+Não inventar regras tributárias reais.
+
+A regra de 6% somente poderá ser usada onde houver regra real confirmada e
+contexto correto.
+
+Contabilidade é o primeiro ponto operacional recomendado para a próxima
+conversa.
+
+------------------------------------------------------------------------
+
+## 59. Nova diretriz gerencial — valor econômico de Clientes e Representadas
+
+Foi identificada em 04/09/2026 uma necessidade gerencial adicional à análise
+ABC/Pareto já registrada.
+
+Problema:
+
+um pedido grande isolado pode dar falsa impressão de alta rentabilidade.
+
+Exemplo conceitual:
+
+- pedido de R$ 10.000;
+- comissão de 10%;
+- reposição apenas a cada 3 ou 4 meses.
+
+Esse relacionamento não deve ser avaliado somente pelo valor unitário do
+pedido.
+
+A análise futura deve considerar, no mínimo:
+
+- faturamento anualizado;
+- frequência de recompra;
+- comissão efetivamente gerada;
+- recorrência;
+- tempo/esforço comercial consumido;
+- custo operacional de atendimento;
+- potencial futuro;
+- concentração;
+- estabilidade do relacionamento.
+
+A mesma lógica vale para Representadas.
+
+Uma Representada com percentual alto de comissão não é automaticamente a
+mais valiosa.
+
+Deverão ser avaliados:
+
+- comissão anual gerada;
+- quantidade de Clientes ativos;
+- frequência de recompra;
+- ticket;
+- prazo de faturamento;
+- conversão comercial;
+- esforço necessário;
+- estabilidade;
+- potencial.
+
+### 59.1 Classificação A/B/C/D/E/F
+
+Foi discutida a possibilidade de ampliar a classificação para:
+
+- A;
+- B;
+- C;
+- D;
+- E;
+- F.
+
+A fórmula definitiva NÃO foi aprovada.
+
+Não criar campo estrutural nem automação antes da validação com dados reais.
+
+Também deve ser separado:
+
+`CLASSIFICAÇÃO ATUAL`
+
+de:
+
+`POTENCIAL FUTURO`
+
+Exemplo:
+
+um Cliente com resultado atual baixo, mas potencial alto, não deve ser
+tratado da mesma maneira que um Cliente com resultado baixo e potencial
+baixo.
+
+Objetivo final:
+
+priorizar energia comercial nas relações que geram maior retorno econômico e
+estratégico.
+
+------------------------------------------------------------------------
+
+## 60. Manual Operacional Completo
+
+A necessidade de Manual Operacional foi reforçada.
+
+O sistema está ficando fortemente interligado entre módulos e depende de
+rotina correta de uso.
+
+O Manual deverá documentar, progressivamente:
+
+- login;
+- perfis;
+- Clientes;
+- Representadas;
+- Interações;
+- acompanhamentos;
+- Prospecções;
+- Orçamentos;
+- Vendas;
+- Faturamentos;
+- Títulos;
+- Comissões;
+- Financeiro;
+- Assistente Pessoal;
+- Alertas;
+- Contabilidade;
+- Agenda;
+- Relatórios;
+- Dashboard;
+- demais módulos.
+
+O Manual não deve ser produzido às pressas antes da estabilização.
+
+Capturas de telas reais e fluxos validados devem ser preservados para futura
+elaboração.
+
+------------------------------------------------------------------------
+
+## 61. Prisma — regra reforçada de segurança estrutural
+
+A segurança estrutural foi reforçada.
+
+Regra permanente:
+
+NENHUMA alteração em:
+
+- `schema.prisma`;
+- migrations;
+- tabelas;
+- relações;
+- dependências estruturais;
+- arquitetura persistente;
+
+deve ser executada sem:
+
+1. necessidade funcional comprovada;
+2. consulta ao Documento Mestre;
+3. diagnóstico do estado atual;
+4. explicação de risco e impacto;
+5. aprovação explícita do usuário.
+
+GitHub é a principal proteção versionada do código.
+
+Não executar reset de banco.
+
+Não executar `prisma migrate dev` cegamente quando houver risco de conflito
+com migrations já aplicadas.
+
+Se Prisma solicitar reset do schema ou perda de dados:
+
+`RESPONDER NÃO / CANCELAR`
+
+Prisma permanece na versão:
+
+`5.22.0`
+
+Não atualizar para Prisma 8 ou outra versão estrutural sem planejamento
+próprio.
+
+------------------------------------------------------------------------
+
+## 62. Estado técnico final da sessão de 04/09/2026
+
+Validações concluídas:
+
+`npx tsc --noEmit`
+
+Resultado:
+
+- 0 erros TypeScript.
+
+`npx prisma validate`
+
+Resultado:
+
+- schema válido.
+
+`git diff --check`
+
+Resultado:
+
+- sem inconsistência de whitespace;
+- apenas aviso LF → CRLF no Windows em `prisma/schema.prisma`.
+
+Checkpoint funcional:
+
+`150836c`
+
+Mensagem:
+
+`feat: consolida assistente financeiro prospeccao alertas e dashboard`
+
+Push:
+
+- concluído em `origin/main`.
+
+Arquivo local não versionado:
+
+`public/foto sistema minha area paula.jpeg`
+
+Esse arquivo deve permanecer preservado até decisão futura.
+
+Build completo:
+
+- não foi repetido neste fechamento;
+- permanece pendente para lote técnico futuro.
+
+Lint:
+
+- permanece pendente.
+
+------------------------------------------------------------------------
+
+## 63. Próximo ponto oficial de continuidade
+
+Checkpoint funcional protegido:
+
+`150836c`
+
+Primeira frente recomendada:
+
+`CONTABILIDADE — REMOVER DADOS FICTÍCIOS SEM APAGAR FUNCIONALIDADES`
+
+Depois:
+
+1. continuar varredura de dados fictícios;
+2. revisar Interações AI;
+3. revisar Sales Comparison;
+4. revisar Spreadsheet Handler;
+5. revisar Agenda;
+6. revisar Redes Sociais;
+7. revisar Relatórios;
+8. investigar `app/api/clientes/exportar/route.ts`;
+9. preservar funções antigas do frontend;
+10. substituir gradualmente simulação por dados reais;
+11. continuar uso real com Paula;
+12. registrar dificuldades operacionais;
+13. evoluir análise econômica de Clientes e Representadas;
+14. definir futuramente classificação A–F;
+15. retomar Comissões quando houver base real suficiente;
+16. consolidar Contabilidade real;
+17. preparar Manual Operacional.
+
+Não refazer módulos já validados.
+
+Não pedir novamente dezenas de arquivos já revisados.
+
+Somente solicitar arquivo quando o estado local atual for realmente
+necessário.
+
+Mensagem recomendada para nova conversa:
+
+"Leia integralmente o DOCUMENTO_MESTRE_CRM.md, principalmente os capítulos
+49 a 63.
+
+O checkpoint funcional protegido atual é `150836c`.
+
+Não refaça os módulos e fluxos já validados.
+
+A primeira pendência é Contabilidade.
+
+A Contabilidade ainda contém dados demonstrativos antigos, mas suas funções
+devem ser preservadas integralmente.
+
+A regra permanente é: o frontend antigo representa necessidades reais do
+negócio. Remova somente dados fictícios; não apague funcionalidades sem
+decisão explícita.
+
+Depois continue a varredura controlada em Interações AI, Sales Comparison,
+Spreadsheet Handler, Agenda, Redes Sociais e Relatórios.
+
+O Meu Assistente Pessoal está implementado e integrado a
+Interações/Prospecções, Orçamentos, Vendas e Títulos.
+
+O Diretor possui visão consolidada do escritório.
+
+Existe alerta crítico global com personagem do Assistente.
+
+Vendas em `Aguardando confirmação` agora permanecem no radar do Assistente.
+
+O Financeiro operacional foi consolidado.
+
+A prospecção pode ser registrada antes de existir Cliente.
+
+Não altere Prisma, migration ou banco sem necessidade funcional comprovada,
+consulta ao Documento Mestre e aprovação explícita.
+
+Preserve o arquivo local não versionado
+`public/foto sistema minha area paula.jpeg`.
+
+Há uma nova diretriz futura para classificação econômica A–F de Clientes e
+Representadas considerando recorrência, faturamento anualizado, comissão,
+esforço e potencial. A fórmula ainda não está aprovada.
+
+O Manual Operacional Completo permanece pendência formal."
+
+------------------------------------------------------------------------
