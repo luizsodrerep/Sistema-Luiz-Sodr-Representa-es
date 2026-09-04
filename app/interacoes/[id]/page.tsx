@@ -52,6 +52,7 @@ import {
   Phone,
   PlusCircle,
   User,
+  UserSearch,
 } from "lucide-react"
 
 type Cliente = {
@@ -99,6 +100,10 @@ type Interacao = {
   clienteId: string | null
   representadaId: string | null
 
+  nomeProspect: string | null
+  empresaProspect: string | null
+  origemProspeccao: string | null
+
   cliente: Cliente | null
   representada: Representada | null
 
@@ -107,6 +112,13 @@ type Interacao = {
 
   criadoEm: string
   atualizadoEm: string
+}
+
+type AcompanhamentoSnapshot = {
+  resultado?: string | null
+  proximosPasso?: string | null
+  proximoContatoEm?: string | null
+  finalizado?: boolean
 }
 
 type SnapshotInteracao = {
@@ -126,7 +138,15 @@ type SnapshotInteracao = {
   representadaId?: string | null
   responsavelId?: string | null
 
+  nomeProspect?: string | null
+  empresaProspect?: string | null
+  origemProspeccao?: string | null
+
   atualizadoEm?: string | null
+
+  acompanhamento?:
+    | AcompanhamentoSnapshot
+    | null
 }
 
 type HistoricoItem = {
@@ -291,33 +311,6 @@ function classeStatusOrcamento(
   return "bg-amber-100 text-amber-800"
 }
 
-function foiEditada(
-  criadoEm: string,
-  atualizadoEm: string
-) {
-  const criado =
-    new Date(
-      criadoEm
-    ).getTime()
-
-  const atualizado =
-    new Date(
-      atualizadoEm
-    ).getTime()
-
-  if (
-    Number.isNaN(criado) ||
-    Number.isNaN(atualizado)
-  ) {
-    return false
-  }
-
-  return (
-    atualizado - criado >
-    2000
-  )
-}
-
 function valorLegivel(
   campo: string,
   valor: unknown
@@ -377,6 +370,15 @@ const nomesCampos: Record<
 
   responsavelId:
     "Responsável",
+
+  nomeProspect:
+    "Nome / Referência da Prospecção",
+
+  empresaProspect:
+    "Empresa / Estabelecimento",
+
+  origemProspeccao:
+    "Origem da Prospecção",
 }
 
 function obterAlteracoes(
@@ -528,6 +530,124 @@ export default function InteracaoDetalhesPage({
   ] =
     useState(false)
 
+  const [
+    acompanhamentoAberto,
+    setAcompanhamentoAberto,
+  ] =
+    useState(false)
+
+  const [
+    resultadoAcompanhamento,
+    setResultadoAcompanhamento,
+  ] =
+    useState("")
+
+  const [
+    proximosPassoAcompanhamento,
+    setProximosPassoAcompanhamento,
+  ] =
+    useState("")
+
+  const [
+    proximoContatoAcompanhamento,
+    setProximoContatoAcompanhamento,
+  ] =
+    useState("")
+
+  const [
+    salvandoAcompanhamento,
+    setSalvandoAcompanhamento,
+  ] =
+    useState(false)
+
+  const [
+    erroAcompanhamento,
+    setErroAcompanhamento,
+  ] =
+    useState<
+      string | null
+    >(null)
+
+  const [
+    sucessoAcompanhamento,
+    setSucessoAcompanhamento,
+  ] =
+    useState<
+      string | null
+    >(null)
+
+  async function carregarHistorico() {
+    try {
+      setLoadingHistorico(
+        true
+      )
+
+      setErroHistorico(
+        null
+      )
+
+      const response =
+        await fetch(
+          `/api/interacoes/${id}/historico`,
+          {
+            method:
+              "GET",
+
+            cache:
+              "no-store",
+          }
+        )
+
+      const data:
+        | HistoricoResponse
+        | {
+            message?: string
+          } =
+        await response
+          .json()
+          .catch(
+            () => ({
+              message:
+                "Resposta inválida.",
+            })
+          )
+
+      if (
+        !response.ok
+      ) {
+        setErroHistorico(
+          "message" in
+            data &&
+            data.message
+            ? data.message
+            : "Não foi possível carregar o histórico."
+        )
+
+        return
+      }
+
+      if (
+        "historico" in
+          data &&
+        Array.isArray(
+          data.historico
+        )
+      ) {
+        setHistorico(
+          data.historico
+        )
+      }
+    } catch {
+      setErroHistorico(
+        "Erro ao carregar histórico."
+      )
+    } finally {
+      setLoadingHistorico(
+        false
+      )
+    }
+  }
+
   useEffect(() => {
     async function carregar() {
       try {
@@ -582,78 +702,6 @@ export default function InteracaoDetalhesPage({
   }, [id])
 
   useEffect(() => {
-    async function carregarHistorico() {
-      try {
-        setLoadingHistorico(
-          true
-        )
-
-        setErroHistorico(
-          null
-        )
-
-        const response =
-          await fetch(
-            `/api/interacoes/${id}/historico`,
-            {
-              method:
-                "GET",
-
-              cache:
-                "no-store",
-            }
-          )
-
-        const data:
-          | HistoricoResponse
-          | {
-              message?: string
-            } =
-          await response
-            .json()
-            .catch(
-              () => ({
-                message:
-                  "Resposta inválida.",
-              })
-            )
-
-        if (
-          !response.ok
-        ) {
-          setErroHistorico(
-            "message" in
-              data &&
-              data.message
-              ? data.message
-              : "Não foi possível carregar o histórico."
-          )
-
-          return
-        }
-
-        if (
-          "historico" in
-            data &&
-          Array.isArray(
-            data.historico
-          )
-        ) {
-          setHistorico(
-            data.historico
-          )
-        }
-      } catch {
-        setErroHistorico(
-          "Erro ao carregar histórico de alterações."
-        )
-      } finally {
-        setLoadingHistorico(
-          false
-        )
-      }
-    }
-
     carregarHistorico()
   }, [id])
 
@@ -721,6 +769,139 @@ export default function InteracaoDetalhesPage({
     carregarOrcamentos()
   }, [id])
 
+  async function registrarAcompanhamento(
+    finalizar: boolean
+  ) {
+    if (
+      resultadoAcompanhamento
+        .trim() === ""
+    ) {
+      setErroAcompanhamento(
+        "Informe a atualização ou resultado deste acompanhamento."
+      )
+
+      return
+    }
+
+    if (
+      finalizar
+    ) {
+      const confirmou =
+        window.confirm(
+          "Deseja realmente finalizar esta interação? O acompanhamento atual será registrado e a interação ficará como Finalizada."
+        )
+
+      if (!confirmou) {
+        return
+      }
+    }
+
+    try {
+      setSalvandoAcompanhamento(
+        true
+      )
+
+      setErroAcompanhamento(
+        null
+      )
+
+      setSucessoAcompanhamento(
+        null
+      )
+
+      const proximoContatoEm =
+        proximoContatoAcompanhamento
+          ? new Date(
+              proximoContatoAcompanhamento
+            ).toISOString()
+          : null
+
+      const response =
+        await fetch(
+          `/api/interacoes/${id}`,
+          {
+            method:
+              "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                resultado:
+                  resultadoAcompanhamento,
+
+                proximosPasso:
+                  proximosPassoAcompanhamento,
+
+                proximoContatoEm,
+
+                finalizar,
+              }),
+          }
+        )
+
+      const data =
+        await response
+          .json()
+          .catch(
+            () => null
+          )
+
+      if (
+        !response.ok
+      ) {
+        setErroAcompanhamento(
+          data?.message ||
+            "Não foi possível registrar o acompanhamento."
+        )
+
+        return
+      }
+
+      if (
+        data?.interacao
+      ) {
+        setInteracao(
+          data.interacao
+        )
+      }
+
+      setResultadoAcompanhamento(
+        ""
+      )
+
+      setProximosPassoAcompanhamento(
+        ""
+      )
+
+      setProximoContatoAcompanhamento(
+        ""
+      )
+
+      setSucessoAcompanhamento(
+        data?.message ||
+          "Acompanhamento registrado com sucesso."
+      )
+
+      setAcompanhamentoAberto(
+        false
+      )
+
+      await carregarHistorico()
+    } catch {
+      setErroAcompanhamento(
+        "Erro ao registrar acompanhamento. Tente novamente."
+      )
+    } finally {
+      setSalvandoAcompanhamento(
+        false
+      )
+    }
+  }
+
   if (loading) {
     return (
       <PageLayout title="Carregando...">
@@ -759,11 +940,27 @@ export default function InteracaoDetalhesPage({
     return null
   }
 
-  const editada =
-    foiEditada(
-      interacao.criadoEm,
-      interacao.atualizadoEm
+  const historicoEdicoes =
+    historico.filter(
+      (
+        item
+      ) =>
+        item.acao ===
+        "EDICAO"
     )
+
+  const acompanhamentos =
+    historico.filter(
+      (
+        item
+      ) =>
+        item.acao ===
+        "ACOMPANHAMENTO"
+    )
+
+  const editada =
+    historicoEdicoes.length >
+    0
 
   const codigo =
     formatarCodigoInteracao(
@@ -778,6 +975,15 @@ export default function InteracaoDetalhesPage({
     interacao.representada !==
     null
 
+  const origemProspeccao =
+    !origemCliente &&
+    !origemRepresentada &&
+    Boolean(
+      interacao.nomeProspect ||
+      interacao.empresaProspect ||
+      interacao.origemProspeccao
+    )
+
   const nomeOrigem =
     interacao.cliente
       ? interacao.cliente
@@ -789,20 +995,30 @@ export default function InteracaoDetalhesPage({
         ? interacao
             .representada
             .nome
-        : "Origem não disponível"
+        : origemProspeccao
+          ? interacao.empresaProspect ||
+            interacao.nomeProspect ||
+            "Prospecção sem identificação"
+          : "Origem não disponível"
 
   const tipoOrigem =
     origemCliente
       ? "Cliente"
       : origemRepresentada
         ? "Representada"
-        : "Registro"
+        : origemProspeccao
+          ? "Prospecção / Lead"
+          : "Registro"
 
   const ultimaEdicao =
-    historico.length >
+    historicoEdicoes.length >
     0
-      ? historico[0]
+      ? historicoEdicoes[0]
       : null
+
+  const finalizada =
+    interacao.statusFollowUp ===
+    "Finalizado"
 
   return (
     <PageLayout title="Detalhes da Interação">
@@ -844,6 +1060,8 @@ export default function InteracaoDetalhesPage({
             <Building2 className="h-5 w-5 shrink-0 text-blue-600" />
           ) : origemRepresentada ? (
             <Factory className="h-5 w-5 shrink-0 text-orange-600" />
+          ) : origemProspeccao ? (
+            <UserSearch className="h-5 w-5 shrink-0 text-amber-600" />
           ) : (
             <ClipboardList className="h-5 w-5 shrink-0 text-muted-foreground" />
           )}
@@ -853,7 +1071,13 @@ export default function InteracaoDetalhesPage({
               {nomeOrigem}
             </p>
 
-            <p className="text-xs text-muted-foreground">
+            <p
+              className={
+                origemProspeccao
+                  ? "text-xs font-medium text-amber-700"
+                  : "text-xs text-muted-foreground"
+              }
+            >
               {tipoOrigem}
             </p>
           </div>
@@ -871,6 +1095,18 @@ export default function InteracaoDetalhesPage({
             }
           </span>
 
+          <span
+            className={`rounded-full px-2 py-1 text-xs font-medium ${
+              finalizada
+                ? "bg-slate-200 text-slate-700"
+                : "bg-amber-100 text-amber-800"
+            }`}
+          >
+            {
+              interacao.statusFollowUp
+            }
+          </span>
+
           {editada && (
             <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
               Editada
@@ -879,12 +1115,39 @@ export default function InteracaoDetalhesPage({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {!finalizada && (
+            <Button
+              size="sm"
+              onClick={() => {
+                setAcompanhamentoAberto(
+                  (
+                    atual
+                  ) =>
+                    !atual
+                )
+
+                setErroAcompanhamento(
+                  null
+                )
+
+                setSucessoAcompanhamento(
+                  null
+                )
+              }}
+            >
+              <MessageSquare className="mr-2 h-4 w-4" />
+
+              Registrar acompanhamento
+            </Button>
+          )}
+
           {interacao.cliente && (
             <Link
               href={`/orcamentos/novo?interacaoId=${interacao.id}`}
             >
               <Button
                 size="sm"
+                variant="outline"
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
 
@@ -916,6 +1179,189 @@ export default function InteracaoDetalhesPage({
         </div>
       )}
 
+      {sucessoAcompanhamento && (
+        <div className="mb-3 flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+
+          {
+            sucessoAcompanhamento
+          }
+        </div>
+      )}
+
+      {erroAcompanhamento && (
+        <div className="mb-3 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+
+          {
+            erroAcompanhamento
+          }
+        </div>
+      )}
+
+      {!finalizada &&
+        acompanhamentoAberto && (
+          <Card className="mb-4 border-blue-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-blue-600" />
+
+                Registrar acompanhamento
+              </CardTitle>
+
+              <CardDescription>
+                Registre uma nova etapa desta mesma interação sem alterar o histórico anterior.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              <div>
+                <label
+                  htmlFor="resultadoAcompanhamento"
+                  className="text-sm font-medium"
+                >
+                  Nova informação / resultado *
+                </label>
+
+                <textarea
+                  id="resultadoAcompanhamento"
+                  value={
+                    resultadoAcompanhamento
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setResultadoAcompanhamento(
+                      event.target.value
+                    )
+                  }
+                  disabled={
+                    salvandoAcompanhamento
+                  }
+                  rows={4}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Ex.: Fiz novo contato e fui informado que..."
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="proximosPassoAcompanhamento"
+                  className="text-sm font-medium"
+                >
+                  Próximos passos
+                </label>
+
+                <textarea
+                  id="proximosPassoAcompanhamento"
+                  value={
+                    proximosPassoAcompanhamento
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setProximosPassoAcompanhamento(
+                      event.target.value
+                    )
+                  }
+                  disabled={
+                    salvandoAcompanhamento
+                  }
+                  rows={3}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Ex.: Retornar após envio do catálogo."
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="proximoContatoAcompanhamento"
+                  className="text-sm font-medium"
+                >
+                  Próximo acompanhamento
+                </label>
+
+                <input
+                  id="proximoContatoAcompanhamento"
+                  type="datetime-local"
+                  value={
+                    proximoContatoAcompanhamento
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setProximoContatoAcompanhamento(
+                      event.target.value
+                    )
+                  }
+                  disabled={
+                    salvandoAcompanhamento
+                  }
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:max-w-sm"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={
+                    salvandoAcompanhamento
+                  }
+                  onClick={() =>
+                    setAcompanhamentoAberto(
+                      false
+                    )
+                  }
+                >
+                  Cancelar
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={
+                    salvandoAcompanhamento
+                  }
+                  onClick={() =>
+                    registrarAcompanhamento(
+                      true
+                    )
+                  }
+                >
+                  {salvandoAcompanhamento ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                  )}
+
+                  Registrar e finalizar
+                </Button>
+
+                <Button
+                  type="button"
+                  disabled={
+                    salvandoAcompanhamento
+                  }
+                  onClick={() =>
+                    registrarAcompanhamento(
+                      false
+                    )
+                  }
+                >
+                  {salvandoAcompanhamento ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArrowRight className="mr-2 h-4 w-4" />
+                  )}
+
+                  Registrar acompanhamento
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -924,7 +1370,7 @@ export default function InteracaoDetalhesPage({
             </CardTitle>
 
             <CardDescription>
-              Histórico comercial preservado sob o código{" "}
+              Registro principal preservado sob o código{" "}
               <span className="font-mono font-medium">
                 {codigo}
               </span>
@@ -1000,7 +1446,7 @@ export default function InteracaoDetalhesPage({
                 <p className="flex items-center gap-1 text-xs text-muted-foreground">
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
 
-                  Resultado
+                  Resultado atual
                 </p>
 
                 <div className="mt-1 whitespace-pre-wrap rounded-md border bg-green-50 p-3 text-sm">
@@ -1065,6 +1511,20 @@ export default function InteracaoDetalhesPage({
               </div>
             )}
 
+            {!interacao.proximoContatoEm && (
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Status do acompanhamento
+                </p>
+
+                <p className="mt-1 text-sm font-medium">
+                  {
+                    interacao.statusFollowUp
+                  }
+                </p>
+              </div>
+            )}
+
             <div className="border-t pt-3 text-xs text-muted-foreground">
               <p>
                 Código:{" "}
@@ -1089,7 +1549,9 @@ export default function InteracaoDetalhesPage({
                   <p className="mt-1 font-medium text-amber-700">
                     Última edição:{" "}
                     {formatarData(
-                      interacao.atualizadoEm
+                      ultimaEdicao
+                        ?.criadoEm ||
+                        null
                     )}
 
                     {ultimaEdicao
@@ -1099,171 +1561,14 @@ export default function InteracaoDetalhesPage({
                   </p>
 
                   <p className="mt-1 text-muted-foreground">
-                    Total de alterações registradas:{" "}
+                    Total de edições registradas:{" "}
                     <strong>
                       {
-                        historico.length
+                        historicoEdicoes.length
                       }
                     </strong>
                   </p>
                 </>
-              )}
-            </div>
-
-            <div className="border-t pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-between"
-                onClick={() =>
-                  setHistoricoAberto(
-                    (
-                      atual
-                    ) =>
-                      !atual
-                  )
-                }
-              >
-                <span className="flex items-center gap-2">
-                  <History className="h-4 w-4" />
-
-                  Histórico de alterações (
-                  {
-                    historico.length
-                  }
-                  )
-                </span>
-
-                {historicoAberto ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-
-              {historicoAberto && (
-                <div className="mt-3 space-y-3">
-                  {loadingHistorico ? (
-                    <div className="flex items-center gap-2 rounded-md border p-4 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-
-                      Carregando histórico...
-                    </div>
-                  ) : erroHistorico ? (
-                    <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                      {
-                        erroHistorico
-                      }
-                    </div>
-                  ) : historico.length ===
-                    0 ? (
-                    <div className="rounded-md border p-4 text-sm text-muted-foreground">
-                      Nenhuma alteração registrada.
-                    </div>
-                  ) : (
-                    historico.map(
-                      (
-                        item,
-                        index
-                      ) => {
-                        const alteracoes =
-                          obterAlteracoes(
-                            item
-                          )
-
-                        return (
-                          <div
-                            key={
-                              item.id
-                            }
-                            className="rounded-md border bg-slate-50 p-4"
-                          >
-                            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                              <div>
-                                <p className="text-sm font-semibold">
-                                  Alteração{" "}
-                                  {
-                                    historico.length -
-                                    index
-                                  }
-                                </p>
-
-                                <p className="text-xs text-muted-foreground">
-                                  {item.usuario
-                                    ?.nome ||
-                                    "Usuário não identificado"}
-                                  {" — "}
-                                  {item.usuario
-                                    ?.perfil ||
-                                    "—"}
-                                </p>
-                              </div>
-
-                              <p className="text-xs font-medium text-slate-600">
-                                {formatarData(
-                                  item.criadoEm
-                                )}
-                              </p>
-                            </div>
-
-                            {alteracoes.length >
-                            0 ? (
-                              <div className="mt-3 space-y-2">
-                                {alteracoes.map(
-                                  (
-                                    alteracao,
-                                    alteracaoIndex
-                                  ) => (
-                                    <div
-                                      key={`${item.id}-${alteracaoIndex}`}
-                                      className="rounded-md bg-white p-3 text-sm"
-                                    >
-                                      <p className="font-medium">
-                                        {
-                                          alteracao.campo
-                                        }
-                                      </p>
-
-                                      <div className="mt-1 grid gap-1 text-xs sm:grid-cols-2">
-                                        <div>
-                                          <span className="text-muted-foreground">
-                                            Antes:{" "}
-                                          </span>
-
-                                          <span>
-                                            {
-                                              alteracao.antes
-                                            }
-                                          </span>
-                                        </div>
-
-                                        <div>
-                                          <span className="text-muted-foreground">
-                                            Depois:{" "}
-                                          </span>
-
-                                          <span>
-                                            {
-                                              alteracao.depois
-                                            }
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                            ) : (
-                              <p className="mt-3 text-xs text-muted-foreground">
-                                Alteração registrada sem diferença operacional identificada nos campos exibidos.
-                              </p>
-                            )}
-                          </div>
-                        )
-                      }
-                    )
-                  )}
-                </div>
               )}
             </div>
           </CardContent>
@@ -1276,11 +1581,15 @@ export default function InteracaoDetalhesPage({
                 ? "Dados do Cliente"
                 : origemRepresentada
                   ? "Dados da Representada"
-                  : "Origem"}
+                  : origemProspeccao
+                    ? "Dados da Prospecção"
+                    : "Origem"}
             </CardTitle>
 
             <CardDescription>
-              Informações relacionadas ao registro.
+              {origemProspeccao
+                ? "Informações iniciais do possível cliente antes do cadastro formal."
+                : "Informações relacionadas ao registro."}
             </CardDescription>
           </CardHeader>
 
@@ -1545,8 +1854,73 @@ export default function InteracaoDetalhesPage({
               </>
             )}
 
+            {origemProspeccao && (
+              <>
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                  <div className="flex items-center gap-2">
+                    <UserSearch className="h-4 w-4 text-amber-700" />
+
+                    <p className="text-sm font-semibold text-amber-900">
+                      Prospecção / Lead
+                    </p>
+                  </div>
+
+                  <p className="mt-1 text-xs text-amber-800">
+                    Este contato ainda não possui cadastro formal como Cliente.
+                  </p>
+                </div>
+
+                {interacao.nomeProspect && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Nome / Referência
+                    </p>
+
+                    <p className="text-sm font-medium">
+                      {
+                        interacao.nomeProspect
+                      }
+                    </p>
+                  </div>
+                )}
+
+                {interacao.empresaProspect && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Empresa / Estabelecimento
+                    </p>
+
+                    <p className="text-sm font-medium">
+                      {
+                        interacao.empresaProspect
+                      }
+                    </p>
+                  </div>
+                )}
+
+                {interacao.origemProspeccao && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Origem da Prospecção
+                    </p>
+
+                    <p className="text-sm font-medium">
+                      {
+                        interacao.origemProspeccao
+                      }
+                    </p>
+                  </div>
+                )}
+
+                <div className="rounded-md border bg-slate-50 p-3 text-xs leading-5 text-muted-foreground">
+                  Caso esta oportunidade evolua para orçamento ou venda, será necessário cadastrar o Cliente e posteriormente vincular este histórico ao cadastro definitivo.
+                </div>
+              </>
+            )}
+
             {!interacao.cliente &&
-              !interacao.representada && (
+              !interacao.representada &&
+              !origemProspeccao && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <ClipboardList className="h-4 w-4" />
 
@@ -1556,6 +1930,357 @@ export default function InteracaoDetalhesPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+
+            Linha do tempo de acompanhamentos
+          </CardTitle>
+
+          <CardDescription>
+            Continuidade operacional desta mesma interação. Cada registro preserva a informação anterior.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-3">
+          <div className="rounded-md border bg-slate-50 p-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold">
+                  Registro inicial
+                </p>
+
+                <p className="text-xs text-muted-foreground">
+                  {interacao.criadoPor
+                    ?.nome ||
+                    "Usuário não identificado"}
+                  {" — "}
+                  {interacao.criadoPor
+                    ?.perfil ||
+                    "—"}
+                </p>
+              </div>
+
+              <p className="text-xs font-medium text-slate-600">
+                {formatarData(
+                  interacao.data
+                )}
+              </p>
+            </div>
+
+            {acompanhamentos.length ===
+              0 && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Nenhum acompanhamento posterior registrado até o momento.
+              </p>
+            )}
+          </div>
+
+          {[...acompanhamentos]
+            .reverse()
+            .map(
+              (
+                item,
+                index
+              ) => {
+                const acompanhamento =
+                  item.dadosDepois
+                    ?.acompanhamento
+
+                const resultado =
+                  acompanhamento
+                    ?.resultado ??
+                  item.dadosDepois
+                    ?.resultado ??
+                  "—"
+
+                const proximosPasso =
+                  acompanhamento
+                    ?.proximosPasso ??
+                  item.dadosDepois
+                    ?.proximosPasso ??
+                  null
+
+                const proximoContatoEm =
+                  acompanhamento
+                    ?.proximoContatoEm ??
+                  item.dadosDepois
+                    ?.proximoContatoEm ??
+                  null
+
+                const finalizado =
+                  acompanhamento
+                    ?.finalizado ===
+                    true ||
+                  item.dadosDepois
+                    ?.statusFollowUp ===
+                    "Finalizado"
+
+                return (
+                  <div
+                    key={
+                      item.id
+                    }
+                    className="rounded-md border bg-white p-4"
+                  >
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">
+                          Acompanhamento{" "}
+                          {
+                            index +
+                            1
+                          }
+
+                          {finalizado
+                            ? " — Finalização"
+                            : ""}
+                        </p>
+
+                        <p className="text-xs text-muted-foreground">
+                          {item.usuario
+                            ?.nome ||
+                            "Usuário não identificado"}
+                          {" — "}
+                          {item.usuario
+                            ?.perfil ||
+                            "—"}
+                        </p>
+                      </div>
+
+                      <p className="text-xs font-medium text-slate-600">
+                        {formatarData(
+                          item.criadoEm
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="mt-3">
+                      <p className="text-xs text-muted-foreground">
+                        Nova informação / resultado
+                      </p>
+
+                      <div className="mt-1 whitespace-pre-wrap rounded-md bg-green-50 p-3 text-sm">
+                        {
+                          resultado
+                        }
+                      </div>
+                    </div>
+
+                    {proximosPasso && (
+                      <div className="mt-3">
+                        <p className="text-xs text-muted-foreground">
+                          Próximos passos
+                        </p>
+
+                        <div className="mt-1 whitespace-pre-wrap rounded-md bg-blue-50 p-3 text-sm">
+                          {
+                            proximosPasso
+                          }
+                        </div>
+                      </div>
+                    )}
+
+                    {proximoContatoEm && (
+                      <div className="mt-3">
+                        <p className="text-xs text-muted-foreground">
+                          Próximo acompanhamento agendado
+                        </p>
+
+                        <p className="mt-1 text-sm font-medium">
+                          {formatarData(
+                            proximoContatoEm
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                    {finalizado && (
+                      <div className="mt-3 flex items-center gap-2 rounded-md bg-slate-100 p-3 text-sm font-medium text-slate-700">
+                        <CheckCircle2 className="h-4 w-4" />
+
+                        Interação finalizada neste acompanhamento.
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+            )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+
+            Histórico técnico de alterações
+          </CardTitle>
+
+          <CardDescription>
+            Correções feitas pelo recurso Editar. Este histórico é separado dos acompanhamentos operacionais.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-between"
+            onClick={() =>
+              setHistoricoAberto(
+                (
+                  atual
+                ) =>
+                  !atual
+              )
+            }
+          >
+            <span className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+
+              Histórico de edições (
+              {
+                historicoEdicoes.length
+              }
+              )
+            </span>
+
+            {historicoAberto ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
+
+          {historicoAberto && (
+            <div className="mt-3 space-y-3">
+              {loadingHistorico ? (
+                <div className="flex items-center gap-2 rounded-md border p-4 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+
+                  Carregando histórico...
+                </div>
+              ) : erroHistorico ? (
+                <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  {
+                    erroHistorico
+                  }
+                </div>
+              ) : historicoEdicoes.length ===
+                0 ? (
+                <div className="rounded-md border p-4 text-sm text-muted-foreground">
+                  Nenhuma edição registrada.
+                </div>
+              ) : (
+                historicoEdicoes.map(
+                  (
+                    item,
+                    index
+                  ) => {
+                    const alteracoes =
+                      obterAlteracoes(
+                        item
+                      )
+
+                    return (
+                      <div
+                        key={
+                          item.id
+                        }
+                        className="rounded-md border bg-slate-50 p-4"
+                      >
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold">
+                              Edição{" "}
+                              {
+                                historicoEdicoes.length -
+                                index
+                              }
+                            </p>
+
+                            <p className="text-xs text-muted-foreground">
+                              {item.usuario
+                                ?.nome ||
+                                "Usuário não identificado"}
+                              {" — "}
+                              {item.usuario
+                                ?.perfil ||
+                                "—"}
+                            </p>
+                          </div>
+
+                          <p className="text-xs font-medium text-slate-600">
+                            {formatarData(
+                              item.criadoEm
+                            )}
+                          </p>
+                        </div>
+
+                        {alteracoes.length >
+                        0 ? (
+                          <div className="mt-3 space-y-2">
+                            {alteracoes.map(
+                              (
+                                alteracao,
+                                alteracaoIndex
+                              ) => (
+                                <div
+                                  key={`${item.id}-${alteracaoIndex}`}
+                                  className="rounded-md bg-white p-3 text-sm"
+                                >
+                                  <p className="font-medium">
+                                    {
+                                      alteracao.campo
+                                    }
+                                  </p>
+
+                                  <div className="mt-1 grid gap-1 text-xs sm:grid-cols-2">
+                                    <div>
+                                      <span className="text-muted-foreground">
+                                        Antes:{" "}
+                                      </span>
+
+                                      <span>
+                                        {
+                                          alteracao.antes
+                                        }
+                                      </span>
+                                    </div>
+
+                                    <div>
+                                      <span className="text-muted-foreground">
+                                        Depois:{" "}
+                                      </span>
+
+                                      <span>
+                                        {
+                                          alteracao.depois
+                                        }
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-xs text-muted-foreground">
+                            Edição registrada sem diferença operacional identificada nos campos exibidos.
+                          </p>
+                        )}
+                      </div>
+                    )
+                  }
+                )
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="mt-4">
         <CardHeader>
@@ -1593,7 +2318,9 @@ export default function InteracaoDetalhesPage({
         <CardContent>
           {!interacao.cliente ? (
             <div className="rounded-md border bg-slate-50 p-4 text-sm text-muted-foreground">
-              Esta interação está vinculada diretamente a uma Representada. Para gerar um orçamento comercial é necessário partir de uma interação vinculada ao Cliente, pois todo orçamento exige Cliente + Representada.
+              {origemProspeccao
+                ? "Esta interação ainda é uma Prospecção / Lead. Para gerar orçamento comercial, primeiro será necessário cadastrar o Cliente e vincular a prospecção ao cadastro definitivo. Todo orçamento exige Cliente + Representada."
+                : "Esta interação está vinculada diretamente a uma Representada. Para gerar um orçamento comercial é necessário partir de uma interação vinculada ao Cliente, pois todo orçamento exige Cliente + Representada."}
             </div>
           ) : loadingOrcamentos ? (
             <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">

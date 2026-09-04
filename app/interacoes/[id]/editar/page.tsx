@@ -1,10 +1,20 @@
 "use client"
 
-import { use, useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import {
+  use,
+  useEffect,
+  useState,
+} from "react"
+import {
+  useRouter,
+} from "next/navigation"
 
-import { PageLayout } from "@/components/page-layout"
-import { NavigationButtons } from "@/components/navigation-buttons"
+import {
+  PageLayout,
+} from "@/components/page-layout"
+import {
+  NavigationButtons,
+} from "@/components/navigation-buttons"
 
 import {
   Card,
@@ -14,10 +24,18 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import {
+  Button,
+} from "@/components/ui/button"
+import {
+  Input,
+} from "@/components/ui/input"
+import {
+  Label,
+} from "@/components/ui/label"
+import {
+  Textarea,
+} from "@/components/ui/textarea"
 
 import {
   Select,
@@ -32,6 +50,7 @@ import {
   Clock,
   Loader2,
   Save,
+  UserSearch,
 } from "lucide-react"
 
 type Cliente = {
@@ -48,12 +67,24 @@ type Representada = {
 type Vinculo =
   | "cliente"
   | "representada"
+  | "prospeccao"
 
 const TIPOS = [
   "WhatsApp",
   "E-mail",
   "Visita",
   "Ligação",
+]
+
+const ORIGENS_PROSPECCAO = [
+  "Visita presencial",
+  "Instagram",
+  "WhatsApp",
+  "Indicação",
+  "Telefone",
+  "E-mail",
+  "Site / Internet",
+  "Feira / Evento",
 ]
 
 const STATUS = [
@@ -70,7 +101,8 @@ function converterParaDataLocal(
     return ""
   }
 
-  const data = new Date(valor)
+  const data =
+    new Date(valor)
 
   if (
     Number.isNaN(
@@ -80,11 +112,12 @@ function converterParaDataLocal(
     return ""
   }
 
-  const local = new Date(
-    data.getTime() -
-      data.getTimezoneOffset() *
-        60000
-  )
+  const local =
+    new Date(
+      data.getTime() -
+        data.getTimezoneOffset() *
+          60000
+    )
 
   return local
     .toISOString()
@@ -94,7 +127,8 @@ function converterParaDataLocal(
 function formatarData(
   valor: string
 ) {
-  const data = new Date(valor)
+  const data =
+    new Date(valor)
 
   if (
     Number.isNaN(
@@ -116,19 +150,27 @@ export default function EditarInteracaoPage({
     id: string
   }>
 }) {
-  const { id } = use(params)
+  const { id } =
+    use(params)
 
-  const router = useRouter()
+  const router =
+    useRouter()
 
   const [
     clientes,
     setClientes,
-  ] = useState<Cliente[]>([])
+  ] =
+    useState<Cliente[]>(
+      []
+    )
 
   const [
     representadas,
     setRepresentadas,
-  ] = useState<Representada[]>([])
+  ] =
+    useState<
+      Representada[]
+    >([])
 
   const [
     vinculo,
@@ -141,30 +183,34 @@ export default function EditarInteracaoPage({
   const [
     dataOriginal,
     setDataOriginal,
-  ] = useState("")
+  ] =
+    useState("")
 
   const [
     autorOriginal,
     setAutorOriginal,
-  ] = useState("")
+  ] =
+    useState("")
 
   const [
     carregando,
     setCarregando,
-  ] = useState(true)
+  ] =
+    useState(true)
 
   const [
     salvando,
     setSalvando,
-  ] = useState(false)
+  ] =
+    useState(false)
 
   const [
     erro,
     setErro,
   ] =
-    useState<string | null>(
-      null
-    )
+    useState<
+      string | null
+    >(null)
 
   const [
     form,
@@ -172,12 +218,18 @@ export default function EditarInteracaoPage({
   ] = useState({
     clienteId: "",
     representadaId: "",
+
+    nomeProspect: "",
+    empresaProspect: "",
+    origemProspeccao: "",
+
     tipo: "",
     assunto: "",
     descricao: "",
     resultado: "",
     proximosPasso: "",
     proximoContatoEm: "",
+
     statusFollowUp:
       "Sem acompanhamento",
   })
@@ -185,46 +237,58 @@ export default function EditarInteracaoPage({
   useEffect(() => {
     async function carregar() {
       try {
-        setCarregando(true)
-        setErro(null)
+        setCarregando(
+          true
+        )
+
+        setErro(
+          null
+        )
 
         const [
           respostaClientes,
           respostaRepresentadas,
           respostaInteracao,
-        ] = await Promise.all([
-          fetch(
-            "/api/clientes",
-            {
-              cache: "no-store",
-            }
-          ),
+        ] =
+          await Promise.all([
+            fetch(
+              "/api/clientes",
+              {
+                cache:
+                  "no-store",
+              }
+            ),
 
-          fetch(
-            "/api/representadas",
-            {
-              cache: "no-store",
-            }
-          ),
+            fetch(
+              "/api/representadas",
+              {
+                cache:
+                  "no-store",
+              }
+            ),
 
-          fetch(
-            `/api/interacoes/${id}`,
-            {
-              cache: "no-store",
-            }
-          ),
-        ])
+            fetch(
+              `/api/interacoes/${id}`,
+              {
+                cache:
+                  "no-store",
+              }
+            ),
+          ])
 
         const dadosInteracao =
           await respostaInteracao
             .json()
-            .catch(() => null)
+            .catch(
+              () => null
+            )
 
         if (
           !respostaInteracao.ok
         ) {
           throw new Error(
-            dadosInteracao?.message ||
+            dadosInteracao
+              ?.message ||
               "Não foi possível carregar a interação."
           )
         }
@@ -267,16 +331,51 @@ export default function EditarInteracaoPage({
             : []
         )
 
-        const possuiRepresentada =
+        const possuiCliente =
           Boolean(
-            dadosInteracao.representadaId
+            dadosInteracao
+              .clienteId
           )
 
-        setVinculo(
+        const possuiRepresentada =
+          Boolean(
+            dadosInteracao
+              .representadaId
+          )
+
+        const possuiProspeccao =
+          Boolean(
+            dadosInteracao
+              .nomeProspect ||
+              dadosInteracao
+                .empresaProspect ||
+              dadosInteracao
+                .origemProspeccao
+          )
+
+        if (
+          possuiCliente
+        ) {
+          setVinculo(
+            "cliente"
+          )
+        } else if (
           possuiRepresentada
-            ? "representada"
-            : "cliente"
-        )
+        ) {
+          setVinculo(
+            "representada"
+          )
+        } else if (
+          possuiProspeccao
+        ) {
+          setVinculo(
+            "prospeccao"
+          )
+        } else {
+          setVinculo(
+            "cliente"
+          )
+        }
 
         setDataOriginal(
           dadosInteracao.data ||
@@ -298,6 +397,21 @@ export default function EditarInteracaoPage({
           representadaId:
             dadosInteracao
               .representadaId ||
+            "",
+
+          nomeProspect:
+            dadosInteracao
+              .nomeProspect ||
+            "",
+
+          empresaProspect:
+            dadosInteracao
+              .empresaProspect ||
+            "",
+
+          origemProspeccao:
+            dadosInteracao
+              .origemProspeccao ||
             "",
 
           tipo:
@@ -337,12 +451,15 @@ export default function EditarInteracaoPage({
         })
       } catch (error) {
         setErro(
-          error instanceof Error
+          error instanceof
+            Error
             ? error.message
             : "Erro ao carregar a interação."
         )
       } finally {
-        setCarregando(false)
+        setCarregando(
+          false
+        )
       }
     }
 
@@ -353,48 +470,83 @@ export default function EditarInteracaoPage({
     campo: keyof typeof form,
     valor: string
   ) {
-    setForm((anterior) => ({
-      ...anterior,
-      [campo]: valor,
-    }))
+    setForm(
+      (
+        anterior
+      ) => ({
+        ...anterior,
+        [campo]:
+          valor,
+      })
+    )
 
     if (erro) {
-      setErro(null)
+      setErro(
+        null
+      )
     }
   }
 
   function alterarVinculo(
     novoVinculo: Vinculo
   ) {
-    setVinculo(novoVinculo)
+    setVinculo(
+      novoVinculo
+    )
 
-    setForm((anterior) => ({
-      ...anterior,
+    setForm(
+      (
+        anterior
+      ) => ({
+        ...anterior,
 
-      clienteId:
-        novoVinculo ===
-        "cliente"
-          ? anterior.clienteId
-          : "",
+        clienteId:
+          novoVinculo ===
+          "cliente"
+            ? anterior.clienteId
+            : "",
 
-      representadaId:
-        novoVinculo ===
-        "representada"
-          ? anterior.representadaId
-          : "",
-    }))
+        representadaId:
+          novoVinculo ===
+          "representada"
+            ? anterior.representadaId
+            : "",
 
-    setErro(null)
+        nomeProspect:
+          novoVinculo ===
+          "prospeccao"
+            ? anterior.nomeProspect
+            : "",
+
+        empresaProspect:
+          novoVinculo ===
+          "prospeccao"
+            ? anterior.empresaProspect
+            : "",
+
+        origemProspeccao:
+          novoVinculo ===
+          "prospeccao"
+            ? anterior.origemProspeccao
+            : "",
+      })
+    )
+
+    setErro(
+      null
+    )
   }
 
   async function salvar() {
     if (
-      vinculo === "cliente" &&
+      vinculo ===
+        "cliente" &&
       !form.clienteId
     ) {
       setErro(
         "Selecione o cliente."
       )
+
       return
     }
 
@@ -406,6 +558,31 @@ export default function EditarInteracaoPage({
       setErro(
         "Selecione a representada."
       )
+
+      return
+    }
+
+    if (
+      vinculo ===
+        "prospeccao" &&
+      !form.nomeProspect.trim()
+    ) {
+      setErro(
+        "Informe o nome ou a referência da prospecção."
+      )
+
+      return
+    }
+
+    if (
+      vinculo ===
+        "prospeccao" &&
+      !form.origemProspeccao
+    ) {
+      setErro(
+        "Selecione a origem da prospecção."
+      )
+
       return
     }
 
@@ -413,6 +590,7 @@ export default function EditarInteracaoPage({
       setErro(
         "Selecione o tipo de interação."
       )
+
       return
     }
 
@@ -428,66 +606,93 @@ export default function EditarInteracaoPage({
       setErro(
         "Informe a data do próximo acompanhamento."
       )
+
       return
     }
 
     try {
-      setSalvando(true)
-      setErro(null)
+      setSalvando(
+        true
+      )
+
+      setErro(
+        null
+      )
 
       const resposta =
         await fetch(
           `/api/interacoes/${id}`,
           {
-            method: "PUT",
+            method:
+              "PUT",
 
             headers: {
               "Content-Type":
                 "application/json",
             },
 
-            body: JSON.stringify({
-              clienteId:
-                vinculo ===
-                "cliente"
-                  ? form.clienteId
-                  : null,
+            body:
+              JSON.stringify({
+                clienteId:
+                  vinculo ===
+                  "cliente"
+                    ? form.clienteId
+                    : null,
 
-              representadaId:
-                vinculo ===
-                "representada"
-                  ? form.representadaId
-                  : null,
+                representadaId:
+                  vinculo ===
+                  "representada"
+                    ? form.representadaId
+                    : null,
 
-              tipo:
-                form.tipo,
+                nomeProspect:
+                  vinculo ===
+                  "prospeccao"
+                    ? form.nomeProspect.trim()
+                    : null,
 
-              assunto:
-                form.assunto ||
-                null,
+                empresaProspect:
+                  vinculo ===
+                    "prospeccao" &&
+                  form.empresaProspect.trim()
+                    ? form.empresaProspect.trim()
+                    : null,
 
-              descricao:
-                form.descricao ||
-                null,
+                origemProspeccao:
+                  vinculo ===
+                  "prospeccao"
+                    ? form.origemProspeccao
+                    : null,
 
-              resultado:
-                form.resultado ||
-                null,
+                tipo:
+                  form.tipo,
 
-              proximosPasso:
-                form.proximosPasso ||
-                null,
+                assunto:
+                  form.assunto ||
+                  null,
 
-              proximoContatoEm:
-                form.proximoContatoEm
-                  ? new Date(
-                      form.proximoContatoEm
-                    ).toISOString()
-                  : null,
+                descricao:
+                  form.descricao ||
+                  null,
 
-              statusFollowUp:
-                form.statusFollowUp,
-            }),
+                resultado:
+                  form.resultado ||
+                  null,
+
+                proximosPasso:
+                  form.proximosPasso ||
+                  null,
+
+                proximoContatoEm:
+                  form.proximoContatoEm
+                    ? new Date(
+                        form.proximoContatoEm
+                      ).toISOString()
+                    : null,
+
+                statusFollowUp:
+                  form.statusFollowUp,
+              }),
           }
         )
 
@@ -498,11 +703,14 @@ export default function EditarInteracaoPage({
             () => null
           )
 
-      if (!resposta.ok) {
+      if (
+        !resposta.ok
+      ) {
         setErro(
           dados?.message ||
             "Não foi possível salvar as alterações."
         )
+
         return
       }
 
@@ -516,11 +724,15 @@ export default function EditarInteracaoPage({
         "Erro de conexão ao salvar as alterações."
       )
     } finally {
-      setSalvando(false)
+      setSalvando(
+        false
+      )
     }
   }
 
-  if (carregando) {
+  if (
+    carregando
+  ) {
     return (
       <PageLayout title="Editar Interação">
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
@@ -593,7 +805,9 @@ export default function EditarInteracaoPage({
             </Label>
 
             <Select
-              value={vinculo}
+              value={
+                vinculo
+              }
               onValueChange={(
                 valor
               ) =>
@@ -601,7 +815,9 @@ export default function EditarInteracaoPage({
                   valor as Vinculo
                 )
               }
-              disabled={salvando}
+              disabled={
+                salvando
+              }
             >
               <SelectTrigger>
                 <SelectValue />
@@ -614,6 +830,10 @@ export default function EditarInteracaoPage({
 
                 <SelectItem value="representada">
                   Representada
+                </SelectItem>
+
+                <SelectItem value="prospeccao">
+                  Prospecção / Lead
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -638,7 +858,9 @@ export default function EditarInteracaoPage({
                     valor
                   )
                 }
-                disabled={salvando}
+                disabled={
+                  salvando
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o cliente" />
@@ -646,7 +868,9 @@ export default function EditarInteracaoPage({
 
                 <SelectContent>
                   {clientes.map(
-                    (cliente) => (
+                    (
+                      cliente
+                    ) => (
                       <SelectItem
                         key={
                           cliente.id
@@ -684,7 +908,9 @@ export default function EditarInteracaoPage({
                     valor
                   )
                 }
-                disabled={salvando}
+                disabled={
+                  salvando
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a representada" />
@@ -692,7 +918,9 @@ export default function EditarInteracaoPage({
 
                 <SelectContent>
                   {representadas.map(
-                    (representada) => (
+                    (
+                      representada
+                    ) => (
                       <SelectItem
                         key={
                           representada.id
@@ -712,6 +940,127 @@ export default function EditarInteracaoPage({
             </div>
           )}
 
+          {vinculo ===
+            "prospeccao" && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+              <div className="mb-4 flex items-start gap-2">
+                <UserSearch className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Dados da Prospecção / Lead
+                  </p>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Edite os dados iniciais deste possível cliente sem necessidade de cadastrá-lo formalmente.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>
+                    Nome / Referência *
+                  </Label>
+
+                  <Input
+                    value={
+                      form.nomeProspect
+                    }
+                    onChange={(
+                      evento
+                    ) =>
+                      alterarCampo(
+                        "nomeProspect",
+                        evento.target.value
+                      )
+                    }
+                    disabled={
+                      salvando
+                    }
+                    placeholder="Ex.: Michel"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>
+                    Empresa / Estabelecimento
+                  </Label>
+
+                  <Input
+                    value={
+                      form.empresaProspect
+                    }
+                    onChange={(
+                      evento
+                    ) =>
+                      alterarCampo(
+                        "empresaProspect",
+                        evento.target.value
+                      )
+                    }
+                    disabled={
+                      salvando
+                    }
+                    placeholder="Ex.: Casa das Formas"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <Label>
+                  Origem da Prospecção *
+                </Label>
+
+                <Select
+                  value={
+                    form.origemProspeccao
+                  }
+                  onValueChange={(
+                    valor
+                  ) =>
+                    alterarCampo(
+                      "origemProspeccao",
+                      valor
+                    )
+                  }
+                  disabled={
+                    salvando
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a origem" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {ORIGENS_PROSPECCAO.map(
+                      (
+                        origem
+                      ) => (
+                        <SelectItem
+                          key={
+                            origem
+                          }
+                          value={
+                            origem
+                          }
+                        >
+                          {
+                            origem
+                          }
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <p className="mt-3 text-xs text-muted-foreground">
+                Quando a prospecção virar um cliente real, altere o vínculo para Cliente e selecione o cadastro correspondente.
+              </p>
+            </div>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>
@@ -719,7 +1068,9 @@ export default function EditarInteracaoPage({
               </Label>
 
               <Select
-                value={form.tipo}
+                value={
+                  form.tipo
+                }
                 onValueChange={(
                   valor
                 ) =>
@@ -728,7 +1079,9 @@ export default function EditarInteracaoPage({
                     valor
                   )
                 }
-                disabled={salvando}
+                disabled={
+                  salvando
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o tipo" />
@@ -736,12 +1089,20 @@ export default function EditarInteracaoPage({
 
                 <SelectContent>
                   {TIPOS.map(
-                    (tipo) => (
+                    (
+                      tipo
+                    ) => (
                       <SelectItem
-                        key={tipo}
-                        value={tipo}
+                        key={
+                          tipo
+                        }
+                        value={
+                          tipo
+                        }
                       >
-                        {tipo}
+                        {
+                          tipo
+                        }
                       </SelectItem>
                     )
                   )}
@@ -763,11 +1124,18 @@ export default function EditarInteracaoPage({
                 ) =>
                   alterarCampo(
                     "assunto",
-                    evento.target
-                      .value
+                    evento.target.value
                   )
                 }
-                disabled={salvando}
+                disabled={
+                  salvando
+                }
+                placeholder={
+                  vinculo ===
+                  "prospeccao"
+                    ? "Ex.: Envio de catálogo e apresentação comercial"
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -787,11 +1155,12 @@ export default function EditarInteracaoPage({
               ) =>
                 alterarCampo(
                   "descricao",
-                  evento.target
-                    .value
+                  evento.target.value
                 )
               }
-              disabled={salvando}
+              disabled={
+                salvando
+              }
             />
           </div>
 
@@ -810,11 +1179,12 @@ export default function EditarInteracaoPage({
               ) =>
                 alterarCampo(
                   "resultado",
-                  evento.target
-                    .value
+                  evento.target.value
                 )
               }
-              disabled={salvando}
+              disabled={
+                salvando
+              }
             />
           </div>
 
@@ -833,11 +1203,12 @@ export default function EditarInteracaoPage({
               ) =>
                 alterarCampo(
                   "proximosPasso",
-                  evento.target
-                    .value
+                  evento.target.value
                 )
               }
-              disabled={salvando}
+              disabled={
+                salvando
+              }
             />
           </div>
 
@@ -857,11 +1228,12 @@ export default function EditarInteracaoPage({
                 ) =>
                   alterarCampo(
                     "proximoContatoEm",
-                    evento.target
-                      .value
+                    evento.target.value
                   )
                 }
-                disabled={salvando}
+                disabled={
+                  salvando
+                }
               />
             </div>
 
@@ -882,7 +1254,9 @@ export default function EditarInteracaoPage({
                     valor
                   )
                 }
-                disabled={salvando}
+                disabled={
+                  salvando
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -890,7 +1264,9 @@ export default function EditarInteracaoPage({
 
                 <SelectContent>
                   {STATUS.map(
-                    (status) => (
+                    (
+                      status
+                    ) => (
                       <SelectItem
                         key={
                           status
@@ -899,7 +1275,9 @@ export default function EditarInteracaoPage({
                           status
                         }
                       >
-                        {status}
+                        {
+                          status
+                        }
                       </SelectItem>
                     )
                   )}
@@ -910,17 +1288,23 @@ export default function EditarInteracaoPage({
 
           <div className="flex justify-end border-t pt-4">
             <Button
-              onClick={salvar}
-              disabled={salvando}
+              onClick={
+                salvar
+              }
+              disabled={
+                salvando
+              }
             >
               {salvando ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+
                   Salvando...
                 </>
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
+
                   Salvar Alterações
                 </>
               )}

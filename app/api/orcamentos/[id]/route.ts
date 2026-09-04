@@ -17,6 +17,63 @@ function textoOpcional(valor: unknown) {
     : null
 }
 
+/*
+ * Converte valores monetários recebidos tanto em formato
+ * numérico do JavaScript quanto em formato brasileiro.
+ *
+ * Exemplos aceitos:
+ *
+ * 3339.54
+ * "3339.54"
+ * "3339,54"
+ * "3.339,54"
+ * "R$ 3.339,54"
+ *
+ * Não altera o valor armazenado no banco.
+ * Apenas normaliza a entrada recebida pela API.
+ */
+function numeroMonetario(valor: unknown): number | null {
+  if (typeof valor === "number") {
+    return Number.isFinite(valor)
+      ? valor
+      : null
+  }
+
+  if (typeof valor !== "string") {
+    return null
+  }
+
+  let texto = valor.trim()
+
+  if (texto === "") {
+    return null
+  }
+
+  texto = texto
+    .replace(/\u00A0/g, "")
+    .replace(/\s/g, "")
+    .replace(/R\$/gi, "")
+
+  /*
+   * Se houver vírgula, consideramos entrada em padrão
+   * brasileiro:
+   *
+   * 3.339,54 -> 3339.54
+   * 3339,54  -> 3339.54
+   */
+  if (texto.includes(",")) {
+    texto = texto
+      .replace(/\./g, "")
+      .replace(",", ".")
+  }
+
+  const numero = Number(texto)
+
+  return Number.isFinite(numero)
+    ? numero
+    : null
+}
+
 function dataValida(valor: unknown): Date | null {
   if (typeof valor !== "string" || valor.trim() === "") {
     return null
@@ -436,9 +493,13 @@ export async function PUT(
     let valorTotal = orcamentoExistente.valorTotal
 
     if (body.valorTotal !== undefined) {
-      const valor = Number(body.valorTotal)
+      const valor =
+        numeroMonetario(body.valorTotal)
 
-      if (!Number.isFinite(valor) || valor <= 0) {
+      if (
+        valor === null ||
+        valor <= 0
+      ) {
         return NextResponse.json(
           {
             message:

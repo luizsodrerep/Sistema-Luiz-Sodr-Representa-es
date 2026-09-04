@@ -67,9 +67,21 @@ const TIPOS = [
   "Ligação",
 ]
 
+const ORIGENS_PROSPECCAO = [
+  "Visita presencial",
+  "Instagram",
+  "WhatsApp",
+  "Indicação",
+  "Telefone",
+  "E-mail",
+  "Site / Internet",
+  "Feira / Evento",
+]
+
 type Vinculo =
   | "cliente"
   | "representada"
+  | "prospeccao"
 
 export default function NovaInteracaoPage() {
   const router = useRouter()
@@ -116,6 +128,9 @@ export default function NovaInteracaoPage() {
   ] = useState({
     clienteId: "",
     representadaId: "",
+    nomeProspect: "",
+    empresaProspect: "",
+    origemProspeccao: "",
     tipo: "",
     assunto: "",
     descricao: "",
@@ -235,6 +250,24 @@ export default function NovaInteracaoPage() {
         "representada"
           ? prev.representadaId
           : "",
+
+      nomeProspect:
+        novoVinculo ===
+        "prospeccao"
+          ? prev.nomeProspect
+          : "",
+
+      empresaProspect:
+        novoVinculo ===
+        "prospeccao"
+          ? prev.empresaProspect
+          : "",
+
+      origemProspeccao:
+        novoVinculo ===
+        "prospeccao"
+          ? prev.origemProspeccao
+          : "",
     }))
 
     setErro(null)
@@ -259,6 +292,30 @@ export default function NovaInteracaoPage() {
     ) {
       setErro(
         "Selecione a representada relacionada à interação."
+      )
+
+      return
+    }
+
+    if (
+      vinculo ===
+        "prospeccao" &&
+      !form.nomeProspect.trim()
+    ) {
+      setErro(
+        "Informe o nome ou a referência da prospecção."
+      )
+
+      return
+    }
+
+    if (
+      vinculo ===
+        "prospeccao" &&
+      !form.origemProspeccao
+    ) {
+      setErro(
+        "Selecione a origem da prospecção."
       )
 
       return
@@ -298,6 +355,25 @@ export default function NovaInteracaoPage() {
                 vinculo ===
                 "representada"
                   ? form.representadaId
+                  : null,
+
+              nomeProspect:
+                vinculo ===
+                "prospeccao"
+                  ? form.nomeProspect.trim()
+                  : null,
+
+              empresaProspect:
+                vinculo ===
+                  "prospeccao" &&
+                form.empresaProspect.trim()
+                  ? form.empresaProspect.trim()
+                  : null,
+
+              origemProspeccao:
+                vinculo ===
+                "prospeccao"
+                  ? form.origemProspeccao
                   : null,
 
               tipo:
@@ -372,7 +448,7 @@ export default function NovaInteracaoPage() {
           </CardTitle>
 
           <CardDescription>
-            Registre contatos com clientes ou representadas. O usuário, a data e a hora da interação são registrados automaticamente pelo sistema.
+            Registre contatos com clientes, representadas ou novas prospecções. O usuário, a data e a hora da interação são registrados automaticamente pelo sistema.
           </CardDescription>
         </CardHeader>
 
@@ -432,6 +508,10 @@ export default function NovaInteracaoPage() {
 
                 <SelectItem value="representada">
                   Representada
+                </SelectItem>
+
+                <SelectItem value="prospeccao">
+                  Prospecção / Lead
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -578,6 +658,125 @@ export default function NovaInteracaoPage() {
             </div>
           )}
 
+          {vinculo ===
+            "prospeccao" && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+              <div className="mb-4">
+                <h3 className="font-semibold text-slate-900">
+                  Prospecção / Lead
+                </h3>
+
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Registre um contato comercial ainda sem cadastro formal de cliente. Se a oportunidade evoluir, o cliente poderá ser cadastrado posteriormente.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>
+                    Nome / Referência{" "}
+                    <span className="text-red-500">
+                      *
+                    </span>
+                  </Label>
+
+                  <Input
+                    value={
+                      form.nomeProspect
+                    }
+                    disabled={
+                      salvando
+                    }
+                    placeholder="Ex.: Michel"
+                    onChange={(
+                      event
+                    ) =>
+                      handleChange(
+                        "nomeProspect",
+                        event.target.value
+                      )
+                    }
+                  />
+
+                  <p className="text-xs text-muted-foreground">
+                    Nome da pessoa ou outra referência que permita identificar o contato.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>
+                    Empresa / Estabelecimento
+                  </Label>
+
+                  <Input
+                    value={
+                      form.empresaProspect
+                    }
+                    disabled={
+                      salvando
+                    }
+                    placeholder="Ex.: Casa das Formas"
+                    onChange={(
+                      event
+                    ) =>
+                      handleChange(
+                        "empresaProspect",
+                        event.target.value
+                      )
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <Label>
+                  Origem da Prospecção{" "}
+                  <span className="text-red-500">
+                    *
+                  </span>
+                </Label>
+
+                <Select
+                  value={
+                    form.origemProspeccao
+                  }
+                  onValueChange={(
+                    value
+                  ) =>
+                    handleChange(
+                      "origemProspeccao",
+                      value
+                    )
+                  }
+                  disabled={
+                    salvando
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione como esta prospecção chegou ao escritório" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {ORIGENS_PROSPECCAO.map(
+                      (origem) => (
+                        <SelectItem
+                          key={origem}
+                          value={origem}
+                        >
+                          {origem}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+
+                <p className="text-xs text-muted-foreground">
+                  A origem permitirá medir futuramente quais canais geram mais oportunidades comerciais.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>
@@ -623,7 +822,7 @@ export default function NovaInteracaoPage() {
               </Select>
 
               <p className="text-xs text-muted-foreground">
-                Novos tipos padronizados serão administrados posteriormente pela configuração do CRM.
+                Informe como ocorreu esta interação.
               </p>
             </div>
 
@@ -643,7 +842,10 @@ export default function NovaInteracaoPage() {
                   vinculo ===
                   "representada"
                     ? "Ex.: Cobrança de relatório de comissão"
-                    : "Ex.: Retorno sobre proposta comercial"
+                    : vinculo ===
+                        "prospeccao"
+                      ? "Ex.: Envio de catálogo e apresentação comercial"
+                      : "Ex.: Retorno sobre proposta comercial"
                 }
                 onChange={(
                   event
@@ -670,7 +872,12 @@ export default function NovaInteracaoPage() {
               disabled={
                 salvando
               }
-              placeholder="Descreva o que foi tratado."
+              placeholder={
+                vinculo ===
+                "prospeccao"
+                  ? "Descreva o contato, interesse demonstrado e demais informações conhecidas sobre a prospecção."
+                  : "Descreva o que foi tratado."
+              }
               onChange={(
                 event
               ) =>
@@ -720,7 +927,12 @@ export default function NovaInteracaoPage() {
               disabled={
                 salvando
               }
-              placeholder="Informe o que deverá ser feito depois."
+              placeholder={
+                vinculo ===
+                "prospeccao"
+                  ? "Ex.: Enviar catálogo e retornar contato para verificar interesse."
+                  : "Informe o que deverá ser feito depois."
+              }
               onChange={(
                 event
               ) =>

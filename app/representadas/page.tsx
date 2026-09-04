@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -12,6 +11,7 @@ import {
   Plus,
   Trash2,
   Building2,
+  Search,
 } from "lucide-react"
 
 interface Representada {
@@ -22,6 +22,75 @@ interface Representada {
   contatoPrincipal: string | null
   telefonePrincipal: string | null
   status: string
+}
+
+/*
+ * Normaliza textos para pesquisa.
+ *
+ * Exemplos:
+ * "São Paulo" -> "sao paulo"
+ * "STRAWPLAST SUL" -> "strawplast sul"
+ *
+ * A pesquisa deixa de depender de acentos,
+ * maiúsculas/minúsculas e pontuação.
+ */
+const normalizarTextoBusca = (
+  valor: string | null | undefined
+) => {
+  return (valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+}
+
+/*
+ * Pesquisa nos principais dados de identificação
+ * da representada.
+ *
+ * Cada palavra digitada precisa existir no conjunto
+ * de informações da representada.
+ *
+ * Exemplos:
+ * "strawplast"
+ * "strawplast sp"
+ * "strawplast sul"
+ * "rep 000001"
+ */
+const representadaCorrespondeBusca = (
+  representada: Representada,
+  busca: string
+) => {
+  const textoBusca =
+    normalizarTextoBusca(busca)
+
+  if (!textoBusca) {
+    return true
+  }
+
+  const termos =
+    textoBusca
+      .split(/\s+/)
+      .filter(Boolean)
+
+  const conteudoPesquisavel =
+    normalizarTextoBusca(
+      [
+        representada.nome,
+        representada.codigo,
+        representada.cnpj,
+        representada.contatoPrincipal,
+        representada.telefonePrincipal,
+        representada.status,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    )
+
+  return termos.every((termo) =>
+    conteudoPesquisavel.includes(termo)
+  )
 }
 
 export default function RepresentadasPage() {
@@ -43,11 +112,20 @@ export default function RepresentadasPage() {
     try {
       const response = await fetch("/api/representadas")
 
+      if (!response.ok) {
+        throw new Error("Erro ao carregar representadas")
+      }
+
       const data = await response.json()
 
-      setRepresentadas(data)
+      setRepresentadas(
+        Array.isArray(data)
+          ? data
+          : []
+      )
     } catch (error) {
       console.error(error)
+      setRepresentadas([])
       alert("Erro ao carregar representadas")
     } finally {
       setLoading(false)
@@ -85,10 +163,11 @@ export default function RepresentadasPage() {
   }
 
   const representadasFiltradas =
-    representadas.filter((rep) =>
-      rep.nome
-        .toLowerCase()
-        .includes(busca.toLowerCase())
+    representadas.filter((representada) =>
+      representadaCorrespondeBusca(
+        representada,
+        busca
+      )
     )
 
   const ativas = representadas.filter(
@@ -152,14 +231,21 @@ export default function RepresentadasPage() {
           </div>
         </div>
 
-        <Input
-          placeholder="Localizar representada..."
-          value={busca}
-          onChange={(e) =>
-            setBusca(e.target.value)
-          }
-          className="max-w-sm h-9"
-        />
+        <div className="relative max-w-lg">
+
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+
+          <Input
+            type="search"
+            placeholder="Buscar por nome, região, código, CNPJ, contato..."
+            value={busca}
+            onChange={(e) =>
+              setBusca(e.target.value)
+            }
+            className="pl-8 h-9"
+          />
+
+        </div>
 
       </div>
 
@@ -202,7 +288,7 @@ export default function RepresentadasPage() {
         {representadasFiltradas.map((rep, index) => (
           <div
             key={rep.id}
-            className={`grid grid-cols-12 px-4 py-3 text-sm items-center border-t hover:bg-muted/30 transition cursor-pointer ${
+            className={`grid grid-cols-12 px-4 py-3 text-sm items-center border-t hover:bg-muted/30 transition ${
               index % 2 === 0
                 ? "bg-white"
                 : "bg-muted/10"
@@ -210,7 +296,7 @@ export default function RepresentadasPage() {
           >
 
             <div
-              className="col-span-4 flex items-center gap-2 font-medium hover:text-primary"
+              className="col-span-4 flex items-center gap-2 font-medium hover:text-primary cursor-pointer"
               onClick={() =>
                 router.push(
                   `/representadas/${rep.id}`
@@ -219,7 +305,17 @@ export default function RepresentadasPage() {
             >
               <Building2 className="h-4 w-4" />
 
-              {rep.nome}
+              <div>
+                <div>
+                  {rep.nome}
+                </div>
+
+                {rep.contatoPrincipal && (
+                  <div className="text-xs text-muted-foreground font-normal">
+                    {rep.contatoPrincipal}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="col-span-2 text-muted-foreground">

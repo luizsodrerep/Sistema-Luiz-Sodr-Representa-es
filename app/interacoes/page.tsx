@@ -60,6 +60,7 @@ import {
   RefreshCw,
   Search,
   User,
+  UserSearch,
 } from "lucide-react"
 
 type Cliente = {
@@ -97,6 +98,10 @@ type Interacao = {
 
   clienteId: string | null
   representadaId: string | null
+
+  nomeProspect: string | null
+  empresaProspect: string | null
+  origemProspeccao: string | null
 
   cliente: Cliente | null
   representada: Representada | null
@@ -216,6 +221,8 @@ function obterOrigem(
           .nomeFantasia ||
         interacao.cliente
           .razaoSocial,
+
+      detalhe: null,
     }
   }
 
@@ -230,13 +237,52 @@ function obterOrigem(
         interacao
           .representada
           .nome,
+
+      detalhe: null,
+    }
+  }
+
+  if (
+    interacao.nomeProspect ||
+    interacao.empresaProspect ||
+    interacao.origemProspeccao
+  ) {
+    const nome =
+      interacao.empresaProspect ||
+      interacao.nomeProspect ||
+      "Prospecção sem identificação"
+
+    const detalhes = [
+      interacao.nomeProspect &&
+      interacao.empresaProspect
+        ? interacao.nomeProspect
+        : null,
+
+      interacao.origemProspeccao
+        ? `Origem: ${interacao.origemProspeccao}`
+        : null,
+    ].filter(Boolean)
+
+    return {
+      tipo:
+        "Prospecção / Lead",
+
+      nome,
+
+      detalhe:
+        detalhes.length > 0
+          ? detalhes.join(" • ")
+          : null,
     }
   }
 
   return {
     tipo: "Registro",
+
     nome:
       "Origem não disponível",
+
+    detalhe: null,
   }
 }
 
@@ -636,6 +682,38 @@ export default function InteracoesPage() {
               .includes(
                 termo
               ) ||
+            (
+              origem.detalhe
+                ?.toLowerCase()
+                .includes(
+                  termo
+                ) ??
+              false
+            ) ||
+            (
+              interacao.nomeProspect
+                ?.toLowerCase()
+                .includes(
+                  termo
+                ) ??
+              false
+            ) ||
+            (
+              interacao.empresaProspect
+                ?.toLowerCase()
+                .includes(
+                  termo
+                ) ??
+              false
+            ) ||
+            (
+              interacao.origemProspeccao
+                ?.toLowerCase()
+                .includes(
+                  termo
+                ) ??
+              false
+            ) ||
             autor
               .toLowerCase()
               .includes(
@@ -852,15 +930,18 @@ export default function InteracoesPage() {
 
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.25fr_1.35fr_1.05fr_1.15fr_auto] lg:items-center">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       {origem.tipo ===
                       "Cliente" ? (
-                        <Building2 className="h-4 w-4 shrink-0 text-blue-600" />
+                        <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
                       ) : origem.tipo ===
                         "Representada" ? (
-                        <Factory className="h-4 w-4 shrink-0 text-orange-600" />
+                        <Factory className="mt-0.5 h-4 w-4 shrink-0 text-orange-600" />
+                      ) : origem.tipo ===
+                        "Prospecção / Lead" ? (
+                        <UserSearch className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                       ) : (
-                        <ClipboardList className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                       )}
 
                       <div className="min-w-0">
@@ -876,11 +957,31 @@ export default function InteracoesPage() {
                           }
                         </Link>
 
-                        <p className="text-xs text-muted-foreground">
+                        <p
+                          className={
+                            origem.tipo ===
+                            "Prospecção / Lead"
+                              ? "text-xs font-medium text-amber-700"
+                              : "text-xs text-muted-foreground"
+                          }
+                        >
                           {
                             origem.tipo
                           }
                         </p>
+
+                        {origem.detalhe && (
+                          <p
+                            className="mt-0.5 truncate text-[10px] text-muted-foreground"
+                            title={
+                              origem.detalhe
+                            }
+                          >
+                            {
+                              origem.detalhe
+                            }
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1020,7 +1121,7 @@ export default function InteracoesPage() {
 
             <Input
               type="search"
-              placeholder="Código, cliente, assunto..."
+              placeholder="Código, cliente, prospecção, assunto..."
               className="h-8 w-full pl-7 text-xs"
               value={
                 searchTerm

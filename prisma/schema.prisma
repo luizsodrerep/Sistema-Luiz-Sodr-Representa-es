@@ -988,6 +988,12 @@ model Interacao {
   assunto   String?
   descricao String?
 
+  // Dados opcionais utilizados quando a interacao for
+  // do tipo Prospecção e ainda nao existir Cliente cadastrado.
+  nomeProspect     String?
+  empresaProspect  String?
+  origemProspeccao String?
+
   resultado String?
 
   proximosPasso String?

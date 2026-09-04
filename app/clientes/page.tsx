@@ -43,11 +43,18 @@ interface Cliente {
   razaoSocial: string
   nomeFantasia: string | null
   cnpj: string | null
+  inscricaoEstadual: string | null
+  contato: string | null
   email: string | null
   telefone: string | null
   whatsapp: string | null
+  endereco: string | null
+  bairro: string | null
   cidade: string | null
   estado: string | null
+  cep: string | null
+  regiao: string | null
+  rota: string | null
   categoria: string | null
   status: string
 }
@@ -85,6 +92,89 @@ const statusCor = (status: string) => {
     backgroundColor: "#f3f4f6",
     color: "#374151",
   }
+}
+
+/*
+ * Normaliza textos para pesquisa.
+ *
+ * Exemplos:
+ * "Jaçanã" -> "jacana"
+ * "ZONA LESTE" -> "zona leste"
+ *
+ * Isso permite uma busca mais tolerante a acentos,
+ * maiúsculas, minúsculas e caracteres de formatação.
+ */
+const normalizarTextoBusca = (
+  valor: string | null | undefined
+) => {
+  return (valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+}
+
+/*
+ * Verifica a pesquisa contra todos os principais dados
+ * de identificação comercial e geográfica do cliente.
+ *
+ * Cada palavra digitada precisa existir em algum ponto
+ * do conjunto de informações do cadastro.
+ *
+ * Isso permite, por exemplo:
+ * - "jacana"
+ * - "zona leste"
+ * - "empresa jacana"
+ * - "cli 000123"
+ */
+const clienteCorrespondeBusca = (
+  cliente: Cliente,
+  busca: string
+) => {
+  const textoBusca =
+    normalizarTextoBusca(busca)
+
+  if (!textoBusca) {
+    return true
+  }
+
+  const termos =
+    textoBusca
+      .split(/\s+/)
+      .filter(Boolean)
+
+  const conteudoPesquisavel =
+    normalizarTextoBusca(
+      [
+        cliente.codigo,
+        cliente.razaoSocial,
+        cliente.nomeFantasia,
+        cliente.cnpj,
+        cliente.inscricaoEstadual,
+        cliente.contato,
+        cliente.email,
+        cliente.telefone,
+        cliente.whatsapp,
+        cliente.endereco,
+        cliente.bairro,
+        cliente.cidade,
+        cliente.estado,
+        cliente.cep,
+        cliente.regiao,
+        cliente.rota,
+        cliente.categoria,
+        cliente.status,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    )
+
+  return termos.every((termo) =>
+    conteudoPesquisavel.includes(
+      termo
+    )
+  )
 }
 
 export default function ClientesPage() {
@@ -167,23 +257,15 @@ export default function ClientesPage() {
   ).length
 
   const clientesFiltrados = clientes.filter((cliente) => {
-    const texto = busca.trim().toLowerCase()
-
     const correspondeBusca =
-      !texto ||
-      cliente.razaoSocial?.toLowerCase().includes(texto) ||
-      cliente.nomeFantasia?.toLowerCase().includes(texto) ||
-      cliente.cidade?.toLowerCase().includes(texto) ||
-      cliente.estado?.toLowerCase().includes(texto) ||
-      cliente.categoria?.toLowerCase().includes(texto) ||
-      cliente.codigo?.toLowerCase().includes(texto) ||
-      cliente.cnpj?.toLowerCase().includes(texto) ||
-      cliente.email?.toLowerCase().includes(texto) ||
-      cliente.telefone?.toLowerCase().includes(texto) ||
-      cliente.whatsapp?.toLowerCase().includes(texto)
+      clienteCorrespondeBusca(
+        cliente,
+        busca
+      )
 
     const correspondeStatus =
-      filtroStatus === "Todos" || cliente.status === filtroStatus
+      filtroStatus === "Todos" ||
+      cliente.status === filtroStatus
 
     const correspondeCategoria =
       filtroCategoria === "Todas" ||
@@ -681,13 +763,13 @@ export default function ClientesPage() {
 
       <div className="flex gap-3 flex-wrap mb-4">
 
-        <div className="relative w-full md:w-96">
+        <div className="relative w-full md:w-[32rem]">
 
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
 
           <Input
             type="search"
-            placeholder="Buscar por nome, código, cidade, CNPJ..."
+            placeholder="Buscar por nome, bairro, região, rota, cidade, código, CNPJ..."
             className="pl-8"
             value={busca}
             onChange={(e) =>
@@ -880,6 +962,22 @@ export default function ClientesPage() {
 
                           <div className="text-xs text-muted-foreground">
                             {cliente.nomeFantasia}
+                          </div>
+
+                        )}
+
+                        {(cliente.bairro ||
+                          cliente.regiao ||
+                          cliente.rota) && (
+
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {[
+                              cliente.bairro,
+                              cliente.regiao,
+                              cliente.rota,
+                            ]
+                              .filter(Boolean)
+                              .join(" • ")}
                           </div>
 
                         )}

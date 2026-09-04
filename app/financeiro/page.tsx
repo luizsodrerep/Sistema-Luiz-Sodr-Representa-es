@@ -1,1222 +1,2144 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { PageLayout } from "@/components/page-layout"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { NavigationButtons } from "@/components/navigation-buttons"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { format } from "date-fns"
-import { ptBR } from "date-fns/locale"
-import { cn } from "@/lib/utils"
-import { toast } from "@/components/ui/use-toast"
-import Link from "next/link"
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import {
+  AlertTriangle,
   ArrowDownCircle,
   ArrowUpCircle,
-  BarChart3,
-  CalendarIcon,
-  Check,
-  CircleDollarSign,
-  Clock,
-  Download,
-  FileText,
-  Filter,
-  LineChart,
-  Plus,
+  CheckCircle2,
+  Clock3,
+  Loader2,
+  PlusCircle,
   RefreshCw,
   Search,
-  Trash,
-  TrendingDown,
-  TrendingUp,
+  Trash2,
   Wallet,
+  XCircle,
 } from "lucide-react"
-import { NavigationButtons } from "@/components/navigation-buttons"
-import { SpreadsheetHandler } from "@/components/spreadsheet-handler"
+
+type TipoFinanceiro =
+  | "Entrada"
+  | "Saida"
+  | "SaldoInicial"
+
+type StatusFinanceiro =
+  | "Pendente"
+  | "Realizado"
+  | "Cancelado"
+
+type ContaBancariaResumo = {
+  id: string
+  nome: string
+  banco: string | null
+}
+
+type MovimentoFinanceiro = {
+  id: string
+  data: string
+  tipo: TipoFinanceiro
+  categoria: string | null
+  descricao: string | null
+  origem: string | null
+  origemExterna: boolean
+  valor: number
+  status: StatusFinanceiro
+  vencimento: string | null
+  contaBancariaId: string | null
+  contaBancaria: ContaBancariaResumo | null
+  criadoEm: string
+  atualizadoEm: string
+}
+
+type ResumoFinanceiro = {
+  saldoRealizado: number
+  entradasRealizadas: number
+  saidasRealizadas: number
+  entradasPendentes: number
+  saidasPendentes: number
+  saldoProjetado: number
+  quantidadeVencidas: number
+  valorVencido: number
+}
+
+type RespostaFinanceiro = {
+  movimentos: MovimentoFinanceiro[]
+  resumo: ResumoFinanceiro
+}
+
+type FormularioFinanceiro = {
+  tipo: TipoFinanceiro
+  valor: string
+  data: string
+  descricao: string
+  categoria: string
+  origem: string
+  origemExterna: boolean
+  status: StatusFinanceiro
+  vencimento: string
+  parcelas: string
+  intervaloMeses: string
+  contaBancariaId: string
+}
+
+type UsuarioSessao = {
+  id: string
+  escritorioId: string
+  nome: string
+  email: string
+  perfil: string
+}
+
+type RespostaSessao = {
+  autenticado: boolean
+  usuario: UsuarioSessao | null
+}
+
+const resumoVazio: ResumoFinanceiro = {
+  saldoRealizado: 0,
+  entradasRealizadas: 0,
+  saidasRealizadas: 0,
+  entradasPendentes: 0,
+  saidasPendentes: 0,
+  saldoProjetado: 0,
+  quantidadeVencidas: 0,
+  valorVencido: 0,
+}
+
+function hojeInput() {
+  const agora = new Date()
+
+  const ano = agora.getFullYear()
+
+  const mes = String(
+    agora.getMonth() + 1
+  ).padStart(2, "0")
+
+  const dia = String(
+    agora.getDate()
+  ).padStart(2, "0")
+
+  return `${ano}-${mes}-${dia}`
+}
+
+function moeda(
+  valor: number
+) {
+  return new Intl.NumberFormat(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL",
+    }
+  ).format(valor)
+}
+
+function dataBrasileira(
+  valor: string | null
+) {
+  if (!valor) {
+    return "-"
+  }
+
+  const data = new Date(valor)
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return "-"
+  }
+
+  return new Intl.DateTimeFormat(
+    "pt-BR"
+  ).format(data)
+}
+
+function normalizarValor(
+  valor: string
+) {
+  const limpo = valor
+    .trim()
+    .replace(/\s/g, "")
+    .replace(/R\$/gi, "")
+
+  if (!limpo) {
+    return Number.NaN
+  }
+
+  if (
+    limpo.includes(",")
+  ) {
+    return Number(
+      limpo
+        .replace(/\./g, "")
+        .replace(",", ".")
+    )
+  }
+
+  return Number(limpo)
+}
+
+function statusBadge(
+  status: StatusFinanceiro
+) {
+  if (
+    status === "Realizado"
+  ) {
+    return (
+      <Badge className="bg-green-600 hover:bg-green-600">
+        Realizado
+      </Badge>
+    )
+  }
+
+  if (
+    status === "Cancelado"
+  ) {
+    return (
+      <Badge variant="secondary">
+        Cancelado
+      </Badge>
+    )
+  }
+
+  return (
+    <Badge
+      variant="outline"
+      className="border-amber-500 text-amber-700"
+    >
+      Pendente
+    </Badge>
+  )
+}
+
+function tipoVisivel(
+  tipo: TipoFinanceiro
+) {
+  if (
+    tipo === "SaldoInicial"
+  ) {
+    return "Saldo inicial"
+  }
+
+  if (
+    tipo === "Saida"
+  ) {
+    return "Saída"
+  }
+
+  return "Entrada"
+}
+
+function movimentoVencido(
+  movimento: MovimentoFinanceiro
+) {
+  if (
+    movimento.status !== "Pendente" ||
+    movimento.tipo !== "Saida" ||
+    !movimento.vencimento
+  ) {
+    return false
+  }
+
+  const vencimento =
+    new Date(
+      movimento.vencimento
+    )
+
+  const hoje = new Date()
+
+  hoje.setHours(
+    23,
+    59,
+    59,
+    999
+  )
+
+  return (
+    vencimento.getTime() <
+    hoje.getTime()
+  )
+}
+
+function formularioInicial(): FormularioFinanceiro {
+  return {
+    tipo: "Saida",
+    valor: "",
+    data: hojeInput(),
+    descricao: "",
+    categoria: "",
+    origem: "",
+    origemExterna: false,
+    status: "Realizado",
+    vencimento: "",
+    parcelas: "1",
+    intervaloMeses: "1",
+    contaBancariaId: "",
+  }
+}
 
 export default function FinanceiroPage() {
-  const [date, setDate] = useState<Date | undefined>(new Date())
-  const [showAddReceita, setShowAddReceita] = useState(false)
-  const [showAddDespesa, setShowAddDespesa] = useState(false)
-  const [filtroStatus, setFiltroStatus] = useState("todos")
-  const [filtroPeriodo, setFiltroPeriodo] = useState("mes-atual")
-  const [filtroCategoria, setFiltroCategoria] = useState("todas")
+  const [
+    movimentos,
+    setMovimentos,
+  ] = useState<
+    MovimentoFinanceiro[]
+  >([])
 
-  // Dados simulados
-  const resumoFinanceiro = {
-    saldoAtual: 45680.75,
-    contasReceber: 28500.0,
-    contasPagar: 12450.3,
-    receitasMes: 32500.0,
-    despesasMes: 18750.5,
-    previsaoProximoMes: 42250.2,
+  const [
+    resumo,
+    setResumo,
+  ] = useState<ResumoFinanceiro>(
+    resumoVazio
+  )
+
+  const [
+    formulario,
+    setFormulario,
+  ] = useState<FormularioFinanceiro>(
+    formularioInicial()
+  )
+
+  const [
+    usuario,
+    setUsuario,
+  ] = useState<UsuarioSessao | null>(
+    null
+  )
+
+  const [
+    carregando,
+    setCarregando,
+  ] = useState(true)
+
+  const [
+    salvando,
+    setSalvando,
+  ] = useState(false)
+
+  const [
+    excluindoId,
+    setExcluindoId,
+  ] = useState<string | null>(
+    null
+  )
+
+  const [
+    erro,
+    setErro,
+  ] = useState<string | null>(
+    null
+  )
+
+  const [
+    mensagem,
+    setMensagem,
+  ] = useState<string | null>(
+    null
+  )
+
+  const [
+    busca,
+    setBusca,
+  ] = useState("")
+
+  const [
+    filtroTipo,
+    setFiltroTipo,
+  ] = useState("todos")
+
+  const [
+    filtroStatus,
+    setFiltroStatus,
+  ] = useState("todos")
+
+  const podeExcluirDefinitivamente =
+    usuario?.perfil === "Diretor"
+
+  const carregarSessao =
+    useCallback(
+      async () => {
+        try {
+          const resposta =
+            await fetch(
+              "/api/auth/me",
+              {
+                method: "GET",
+                cache: "no-store",
+              }
+            )
+
+          if (!resposta.ok) {
+            setUsuario(null)
+            return
+          }
+
+          const dados =
+            (await resposta.json()) as RespostaSessao
+
+          setUsuario(
+            dados.autenticado
+              ? dados.usuario
+              : null
+          )
+        } catch {
+          setUsuario(null)
+        }
+      },
+      []
+    )
+
+  const carregarFinanceiro =
+    useCallback(
+      async () => {
+        try {
+          setCarregando(true)
+          setErro(null)
+
+          const resposta =
+            await fetch(
+              "/api/financeiro",
+              {
+                method: "GET",
+                cache: "no-store",
+              }
+            )
+
+          const dados =
+            await resposta.json()
+
+          if (!resposta.ok) {
+            throw new Error(
+              dados?.erro ||
+                "Não foi possível carregar o Financeiro."
+            )
+          }
+
+          const respostaFinanceiro =
+            dados as RespostaFinanceiro
+
+          setMovimentos(
+            Array.isArray(
+              respostaFinanceiro.movimentos
+            )
+              ? respostaFinanceiro.movimentos
+              : []
+          )
+
+          setResumo(
+            respostaFinanceiro.resumo ??
+              resumoVazio
+          )
+        } catch (error) {
+          setErro(
+            error instanceof Error
+              ? error.message
+              : "Erro ao carregar o Financeiro."
+          )
+        } finally {
+          setCarregando(false)
+        }
+      },
+      []
+    )
+
+  useEffect(() => {
+    void carregarSessao()
+    void carregarFinanceiro()
+  }, [
+    carregarSessao,
+    carregarFinanceiro,
+  ])
+
+  function alterarFormulario<
+    K extends keyof FormularioFinanceiro
+  >(
+    campo: K,
+    valor: FormularioFinanceiro[K]
+  ) {
+    setFormulario(
+      (atual) => ({
+        ...atual,
+        [campo]: valor,
+      })
+    )
   }
 
-  const contasReceber = [
-    {
-      id: 1,
-      descricao: "Comissão Descartáveis Premium",
-      cliente: "Descartáveis Premium",
-      valor: 5200.0,
-      vencimento: "2023-04-15",
-      status: "pendente",
-      categoria: "comissao",
-      origem: "vendas",
-      documento: "NF-001",
-    },
-    {
-      id: 2,
-      descricao: "Comissão Embalagens Eco",
-      cliente: "Embalagens Eco",
-      valor: 3800.0,
-      vencimento: "2023-04-15",
-      status: "pendente",
-      categoria: "comissao",
-      origem: "vendas",
-      documento: "NF-002",
-    },
-    {
-      id: 3,
-      descricao: "Comissão Papel & Cia",
-      cliente: "Papel & Cia",
-      valor: 4500.0,
-      vencimento: "2023-04-20",
-      status: "pendente",
-      categoria: "comissao",
-      origem: "vendas",
-      documento: "NF-003",
-    },
-    {
-      id: 4,
-      descricao: "Comissão Plásticos Nobre",
-      cliente: "Plásticos Nobre",
-      valor: 6200.0,
-      vencimento: "2023-03-15",
-      status: "recebido",
-      categoria: "comissao",
-      origem: "vendas",
-      documento: "NF-004",
-    },
-    {
-      id: 5,
-      descricao: "Consultoria ABC Ltda",
-      cliente: "ABC Consultoria",
-      valor: 2500.0,
-      vencimento: "2023-03-10",
-      status: "recebido",
-      categoria: "servico",
-      origem: "servicos",
-      documento: "NF-005",
-    },
-    {
-      id: 6,
-      descricao: "Treinamento XYZ Corp",
-      cliente: "XYZ Corporation",
-      valor: 3800.0,
-      vencimento: "2023-03-05",
-      status: "recebido",
-      categoria: "servico",
-      origem: "servicos",
-      documento: "NF-006",
-    },
-    {
-      id: 7,
-      descricao: "Comissão Descartáveis Premium",
-      cliente: "Descartáveis Premium",
-      valor: 4800.0,
-      vencimento: "2023-02-15",
-      status: "recebido",
-      categoria: "comissao",
-      origem: "vendas",
-      documento: "NF-007",
-    },
-  ]
+  function prepararEntradaExtra() {
+    setErro(null)
+    setMensagem(null)
 
-  const contasPagar = [
-    {
-      id: 1,
-      descricao: "Aluguel Escritório",
-      fornecedor: "Imobiliária Central",
-      valor: 3500.0,
-      vencimento: "2023-04-10",
-      status: "pendente",
-      categoria: "aluguel",
-      comprovante: "boleto-001.pdf",
-    },
-    {
-      id: 2,
-      descricao: "Internet Empresarial",
-      fornecedor: "Telecom Brasil",
-      valor: 450.3,
-      vencimento: "2023-04-15",
-      status: "pendente",
-      categoria: "servicos",
-      comprovante: "fatura-001.pdf",
-    },
-    {
-      id: 3,
-      descricao: "Energia Elétrica",
-      fornecedor: "Energia SA",
-      valor: 680.5,
-      vencimento: "2023-04-20",
-      status: "pendente",
-      categoria: "servicos",
-      comprovante: "fatura-002.pdf",
-    },
-    {
-      id: 4,
-      descricao: "Salário Assistente",
-      fornecedor: "Maria Silva",
-      valor: 2800.0,
-      vencimento: "2023-04-05",
-      status: "pendente",
-      categoria: "pessoal",
-      comprovante: "holerite-001.pdf",
-    },
-    {
-      id: 5,
-      descricao: "Impostos NF Serviços",
-      fornecedor: "Receita Federal",
-      valor: 1450.0,
-      vencimento: "2023-04-20",
-      status: "pendente",
-      categoria: "impostos",
-      comprovante: "darf-001.pdf",
-    },
-    {
-      id: 6,
-      descricao: "Material de Escritório",
-      fornecedor: "Papelaria Central",
-      valor: 350.8,
-      vencimento: "2023-03-15",
-      status: "pago",
-      categoria: "material",
-      comprovante: "nf-001.pdf",
-    },
-    {
-      id: 7,
-      descricao: "Manutenção Ar Condicionado",
-      fornecedor: "Refrigeração Ideal",
-      valor: 280.0,
-      vencimento: "2023-03-10",
-      status: "pago",
-      categoria: "servicos",
-      comprovante: "recibo-001.pdf",
-    },
-  ]
-
-  const fluxoCaixa = [
-    { data: "01/03/2023", descricao: "Saldo Inicial", tipo: "saldo", valor: 38500.25 },
-    { data: "05/03/2023", descricao: "Comissão Plásticos Nobre", tipo: "entrada", valor: 6200.0 },
-    { data: "10/03/2023", descricao: "Consultoria ABC Ltda", tipo: "entrada", valor: 2500.0 },
-    { data: "10/03/2023", descricao: "Aluguel Escritório", tipo: "saida", valor: 3500.0 },
-    { data: "12/03/2023", descricao: "Material de Escritório", tipo: "saida", valor: 350.8 },
-    { data: "15/03/2023", descricao: "Manutenção Ar Condicionado", tipo: "saida", valor: 280.0 },
-    { data: "15/03/2023", descricao: "Internet Empresarial", tipo: "saida", valor: 450.3 },
-    { data: "20/03/2023", descricao: "Treinamento XYZ Corp", tipo: "entrada", valor: 3800.0 },
-    { data: "25/03/2023", descricao: "Energia Elétrica", tipo: "saida", valor: 680.5 },
-    { data: "31/03/2023", descricao: "Saldo Final", tipo: "saldo", valor: 45738.65 },
-  ]
-
-  const categoriasDespesas = [
-    { id: "aluguel", nome: "Aluguel", cor: "bg-blue-500", valor: 3500.0 },
-    { id: "servicos", nome: "Serviços", cor: "bg-green-500", valor: 1410.8 },
-    { id: "pessoal", nome: "Pessoal", cor: "bg-purple-500", valor: 2800.0 },
-    { id: "impostos", nome: "Impostos", cor: "bg-red-500", valor: 1450.0 },
-    { id: "material", nome: "Material", cor: "bg-yellow-500", valor: 350.8 },
-    { id: "outros", nome: "Outros", cor: "bg-gray-500", valor: 0.0 },
-  ]
-
-  const categoriasReceitas = [
-    { id: "comissao", nome: "Comissões", cor: "bg-emerald-500", valor: 16200.0 },
-    { id: "servico", nome: "Serviços", cor: "bg-blue-500", valor: 6300.0 },
-    { id: "outros", nome: "Outros", cor: "bg-gray-500", valor: 0.0 },
-  ]
-
-  // Funções
-  const handleAddReceita = () => {
-    toast({
-      title: "Receita adicionada com sucesso!",
-      description: "A nova receita foi registrada no sistema.",
-    })
-    setShowAddReceita(false)
-  }
-
-  const handleAddDespesa = () => {
-    toast({
-      title: "Despesa adicionada com sucesso!",
-      description: "A nova despesa foi registrada no sistema.",
-    })
-    setShowAddDespesa(false)
-  }
-
-  const handlePagarConta = (id: number) => {
-    toast({
-      title: "Pagamento registrado!",
-      description: "O pagamento foi registrado com sucesso.",
+    setFormulario({
+      ...formularioInicial(),
+      tipo: "Entrada",
+      categoria: "Receita Extra",
+      origem: "Atividade Externa",
+      origemExterna: true,
+      status: "Realizado",
     })
   }
 
-  const handleReceberConta = (id: number) => {
-    toast({
-      title: "Recebimento registrado!",
-      description: "O recebimento foi registrado com sucesso.",
+  function prepararSaidaExtra() {
+    setErro(null)
+    setMensagem(null)
+
+    setFormulario({
+      ...formularioInicial(),
+      tipo: "Saida",
+      categoria: "Despesa Extra",
+      origem: "Despesa Externa",
+      origemExterna: true,
+      status: "Realizado",
     })
   }
 
-  const filtrarContas = (contas: any[], status: string) => {
-    if (status === "todos") return contas
-    return contas.filter((conta) => conta.status === status)
+  function prepararDivida() {
+    setErro(null)
+    setMensagem(null)
+
+    setFormulario({
+      ...formularioInicial(),
+      tipo: "Saida",
+      categoria: "Dívida",
+      origem: "Obrigação Financeira",
+      origemExterna: false,
+      status: "Pendente",
+      vencimento: hojeInput(),
+    })
+  }
+
+  function prepararSaldoInicial() {
+    setErro(null)
+    setMensagem(null)
+
+    setFormulario({
+      ...formularioInicial(),
+      tipo: "SaldoInicial",
+      categoria: "Saldo inicial",
+      origem: "Abertura financeira",
+      origemExterna: false,
+      status: "Realizado",
+    })
+  }
+
+  async function salvarLancamento() {
+    try {
+      setErro(null)
+      setMensagem(null)
+
+      const valor =
+        normalizarValor(
+          formulario.valor
+        )
+
+      if (
+        !Number.isFinite(valor)
+      ) {
+        throw new Error(
+          "Informe um valor válido."
+        )
+      }
+
+      if (
+        formulario.tipo !==
+          "SaldoInicial" &&
+        valor <= 0
+      ) {
+        throw new Error(
+          "Entradas e saídas devem ter valor maior que zero."
+        )
+      }
+
+      if (
+        formulario.tipo ===
+          "SaldoInicial" &&
+        valor === 0
+      ) {
+        throw new Error(
+          "O saldo inicial não pode ser zero."
+        )
+      }
+
+      if (
+        !formulario.descricao.trim()
+      ) {
+        throw new Error(
+          "Informe uma descrição."
+        )
+      }
+
+      const parcelas =
+        Number(
+          formulario.parcelas
+        )
+
+      const intervaloMeses =
+        Number(
+          formulario.intervaloMeses
+        )
+
+      const confirmacao =
+        window.confirm(
+          [
+            "CONFIRMAR LANÇAMENTO FINANCEIRO",
+            "",
+            `Tipo: ${tipoVisivel(formulario.tipo)}`,
+            `Valor: ${moeda(valor)}`,
+            `Data: ${dataBrasileira(formulario.data)}`,
+            `Situação: ${
+              formulario.tipo === "SaldoInicial"
+                ? "Realizado"
+                : formulario.status
+            }`,
+            `Descrição: ${formulario.descricao.trim()}`,
+            "",
+            "Este lançamento afetará os saldos financeiros do sistema.",
+            "",
+            "Confira principalmente valor, tipo, data e situação antes de continuar.",
+            "",
+            "Deseja salvar este lançamento?",
+          ].join("\n")
+        )
+
+      if (!confirmacao) {
+        return
+      }
+
+      setSalvando(true)
+
+      const resposta =
+        await fetch(
+          "/api/financeiro",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              tipo:
+                formulario.tipo,
+              valor,
+              data:
+                formulario.data,
+              descricao:
+                formulario.descricao.trim(),
+              categoria:
+                formulario.categoria.trim() ||
+                null,
+              origem:
+                formulario.origem.trim() ||
+                null,
+              origemExterna:
+                formulario.origemExterna,
+              status:
+                formulario.tipo ===
+                "SaldoInicial"
+                  ? "Realizado"
+                  : formulario.status,
+              vencimento:
+                formulario.status ===
+                  "Pendente" &&
+                formulario.vencimento
+                  ? formulario.vencimento
+                  : null,
+              parcelas:
+                formulario.status ===
+                  "Pendente"
+                  ? parcelas
+                  : 1,
+              intervaloMeses:
+                formulario.status ===
+                  "Pendente"
+                  ? intervaloMeses
+                  : 1,
+              contaBancariaId:
+                formulario.contaBancariaId ||
+                null,
+            }),
+          }
+        )
+
+      const dados =
+        await resposta.json()
+
+      if (!resposta.ok) {
+        throw new Error(
+          dados?.erro ||
+            "Não foi possível salvar o lançamento."
+        )
+      }
+
+      setMensagem(
+        formulario.status ===
+          "Pendente" &&
+        parcelas > 1
+          ? `${parcelas} parcelas cadastradas com sucesso.`
+          : "Lançamento cadastrado com sucesso."
+      )
+
+      setFormulario(
+        formularioInicial()
+      )
+
+      await carregarFinanceiro()
+    } catch (error) {
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Erro ao salvar o lançamento."
+      )
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function executarAcao(
+    id: string,
+    acao:
+      | "realizar"
+      | "cancelar"
+  ) {
+    try {
+      setErro(null)
+      setMensagem(null)
+
+      if (
+        acao === "cancelar"
+      ) {
+        const confirmado =
+          window.confirm(
+            [
+              "Cancelar este lançamento?",
+              "",
+              "O lançamento continuará registrado no histórico, mas deixará de afetar os saldos financeiros.",
+              "",
+              "Deseja continuar?",
+            ].join("\n")
+          )
+
+        if (!confirmado) {
+          return
+        }
+      }
+
+      const resposta =
+        await fetch(
+          "/api/financeiro",
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              id,
+              acao,
+            }),
+          }
+        )
+
+      const dados =
+        await resposta.json()
+
+      if (!resposta.ok) {
+        throw new Error(
+          dados?.erro ||
+            "Não foi possível atualizar o lançamento."
+        )
+      }
+
+      setMensagem(
+        acao === "realizar"
+          ? "Lançamento realizado com sucesso."
+          : "Lançamento cancelado com sucesso."
+      )
+
+      await carregarFinanceiro()
+    } catch (error) {
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar o lançamento."
+      )
+    }
+  }
+
+  async function excluirDefinitivamente(
+    movimento: MovimentoFinanceiro
+  ) {
+    try {
+      setErro(null)
+      setMensagem(null)
+
+      if (
+        !podeExcluirDefinitivamente
+      ) {
+        throw new Error(
+          "Somente o Diretor pode excluir definitivamente um lançamento financeiro."
+        )
+      }
+
+      const primeiraConfirmacao =
+        window.confirm(
+          [
+            "ATENÇÃO — EXCLUSÃO DEFINITIVA",
+            "",
+            `Descrição: ${movimento.descricao || "-"}`,
+            `Tipo: ${tipoVisivel(movimento.tipo)}`,
+            `Valor: ${moeda(movimento.valor)}`,
+            `Status: ${movimento.status}`,
+            "",
+            "A exclusão remove este registro definitivamente do Financeiro e recalcula os saldos.",
+            "",
+            "Para erros operacionais comuns, prefira CANCELAR.",
+            "",
+            "Deseja realmente continuar?",
+          ].join("\n")
+        )
+
+      if (
+        !primeiraConfirmacao
+      ) {
+        return
+      }
+
+      const segundaConfirmacao =
+        window.confirm(
+          [
+            "ÚLTIMA CONFIRMAÇÃO",
+            "",
+            "Este lançamento será apagado definitivamente.",
+            "",
+            "Use esta função somente quando o cadastro estiver realmente errado e não deva permanecer no histórico.",
+            "",
+            "Confirmar exclusão definitiva?",
+          ].join("\n")
+        )
+
+      if (
+        !segundaConfirmacao
+      ) {
+        return
+      }
+
+      setExcluindoId(
+        movimento.id
+      )
+
+      const resposta =
+        await fetch(
+          "/api/financeiro",
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              id:
+                movimento.id,
+            }),
+          }
+        )
+
+      const dados =
+        await resposta.json()
+
+      if (!resposta.ok) {
+        throw new Error(
+          dados?.erro ||
+            "Não foi possível excluir definitivamente o lançamento."
+        )
+      }
+
+      setMensagem(
+        dados?.mensagem ||
+          "Lançamento excluído definitivamente. Os saldos foram recalculados."
+      )
+
+      await carregarFinanceiro()
+    } catch (error) {
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Erro ao excluir o lançamento."
+      )
+    } finally {
+      setExcluindoId(null)
+    }
+  }
+
+  const contasPagar =
+    useMemo(
+      () =>
+        movimentos.filter(
+          (movimento) =>
+            movimento.tipo ===
+              "Saida" &&
+            movimento.status ===
+              "Pendente"
+        ),
+      [movimentos]
+    )
+
+  const contasReceber =
+    useMemo(
+      () =>
+        movimentos.filter(
+          (movimento) =>
+            movimento.tipo ===
+              "Entrada" &&
+            movimento.status ===
+              "Pendente"
+        ),
+      [movimentos]
+    )
+
+  const realizados =
+    useMemo(
+      () =>
+        movimentos.filter(
+          (movimento) =>
+            movimento.status ===
+            "Realizado"
+        ),
+      [movimentos]
+    )
+
+  const movimentosFiltrados =
+    useMemo(() => {
+      const texto =
+        busca
+          .trim()
+          .toLocaleLowerCase(
+            "pt-BR"
+          )
+
+      return movimentos.filter(
+        (movimento) => {
+          const atendeBusca =
+            !texto ||
+            [
+              movimento.descricao,
+              movimento.categoria,
+              movimento.origem,
+              movimento
+                .contaBancaria
+                ?.nome,
+            ]
+              .filter(Boolean)
+              .some((valor) =>
+                String(valor)
+                  .toLocaleLowerCase(
+                    "pt-BR"
+                  )
+                  .includes(texto)
+              )
+
+          const atendeTipo =
+            filtroTipo ===
+              "todos" ||
+            movimento.tipo ===
+              filtroTipo
+
+          const atendeStatus =
+            filtroStatus ===
+              "todos" ||
+            movimento.status ===
+              filtroStatus
+
+          return (
+            atendeBusca &&
+            atendeTipo &&
+            atendeStatus
+          )
+        }
+      )
+    }, [
+      movimentos,
+      busca,
+      filtroTipo,
+      filtroStatus,
+    ])
+
+  function tabelaMovimentos(
+    lista: MovimentoFinanceiro[]
+  ) {
+    if (carregando) {
+      return (
+        <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Carregando lançamentos...
+        </div>
+      )
+    }
+
+    if (
+      lista.length === 0
+    ) {
+      return (
+        <div className="flex min-h-40 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+          Nenhum lançamento encontrado.
+        </div>
+      )
+    }
+
+    return (
+      <div className="overflow-x-auto rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>
+                Status
+              </TableHead>
+
+              <TableHead>
+                Tipo
+              </TableHead>
+
+              <TableHead>
+                Descrição
+              </TableHead>
+
+              <TableHead>
+                Categoria
+              </TableHead>
+
+              <TableHead>
+                Data
+              </TableHead>
+
+              <TableHead>
+                Vencimento
+              </TableHead>
+
+              <TableHead className="text-right">
+                Valor
+              </TableHead>
+
+              <TableHead className="text-right">
+                Ações
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {lista.map(
+              (movimento) => {
+                const vencido =
+                  movimentoVencido(
+                    movimento
+                  )
+
+                const excluindo =
+                  excluindoId ===
+                  movimento.id
+
+                return (
+                  <TableRow
+                    key={
+                      movimento.id
+                    }
+                    className={
+                      vencido
+                        ? "bg-red-50"
+                        : undefined
+                    }
+                  >
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {statusBadge(
+                          movimento.status
+                        )}
+
+                        {vencido && (
+                          <span className="text-xs font-medium text-red-600">
+                            Vencido
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    <TableCell>
+                      <span className="font-medium">
+                        {tipoVisivel(
+                          movimento.tipo
+                        )}
+                      </span>
+                    </TableCell>
+
+                    <TableCell>
+                      <div className="min-w-[220px]">
+                        <div className="font-medium">
+                          {movimento.descricao ||
+                            "-"}
+                        </div>
+
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {movimento.origem
+                            ? `Origem: ${movimento.origem}`
+                            : "Origem não informada"}
+                        </div>
+
+                        {movimento
+                          .contaBancaria
+                          ?.nome && (
+                          <div className="text-xs text-muted-foreground">
+                            Conta:{" "}
+                            {
+                              movimento
+                                .contaBancaria
+                                .nome
+                            }
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    <TableCell>
+                      {movimento.categoria ||
+                        "-"}
+                    </TableCell>
+
+                    <TableCell>
+                      {dataBrasileira(
+                        movimento.data
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      <span
+                        className={
+                          vencido
+                            ? "font-semibold text-red-600"
+                            : undefined
+                        }
+                      >
+                        {dataBrasileira(
+                          movimento.vencimento
+                        )}
+                      </span>
+                    </TableCell>
+
+                    <TableCell className="text-right">
+                      <span
+                        className={
+                          movimento.tipo ===
+                          "Entrada"
+                            ? "font-semibold text-green-600"
+                            : movimento.tipo ===
+                              "Saida"
+                            ? "font-semibold text-red-600"
+                            : movimento.valor <
+                              0
+                            ? "font-semibold text-red-600"
+                            : "font-semibold"
+                        }
+                      >
+                        {moeda(
+                          movimento.valor
+                        )}
+                      </span>
+                    </TableCell>
+
+                    <TableCell className="text-right">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        {movimento.status ===
+                          "Pendente" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                void executarAcao(
+                                  movimento.id,
+                                  "realizar"
+                                )
+                              }
+                            >
+                              <CheckCircle2 className="mr-1 h-4 w-4" />
+
+                              {movimento.tipo ===
+                              "Entrada"
+                                ? "Receber"
+                                : "Pagar"}
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                void executarAcao(
+                                  movimento.id,
+                                  "cancelar"
+                                )
+                              }
+                            >
+                              <XCircle className="mr-1 h-4 w-4" />
+                              Cancelar
+                            </Button>
+                          </>
+                        )}
+
+                        {movimento.status ===
+                          "Realizado" &&
+                          movimento.tipo !==
+                            "SaldoInicial" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                void executarAcao(
+                                  movimento.id,
+                                  "cancelar"
+                                )
+                              }
+                            >
+                              <XCircle className="mr-1 h-4 w-4" />
+                              Cancelar
+                            </Button>
+                          )}
+
+                        {podeExcluirDefinitivamente && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={excluindo}
+                            onClick={() =>
+                              void excluirDefinitivamente(
+                                movimento
+                              )
+                            }
+                          >
+                            {excluindo ? (
+                              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="mr-1 h-4 w-4" />
+                            )}
+
+                            Excluir
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              }
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    )
   }
 
   return (
     <PageLayout title="Financeiro">
-      {/* Botões de navegação */}
-      <NavigationButtons backLabel="Voltar" backHref="/dashboard" />
+      <NavigationButtons
+        backLabel="Voltar"
+        backHref="/dashboard"
+      />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Saldo Atual</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ {resumoFinanceiro.saldoAtual.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Atualizado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm")}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">A Receber</CardTitle>
-            <ArrowDownCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">R$ {resumoFinanceiro.contasReceber.toFixed(2)}</div>
-            <div className="flex items-center pt-1">
-              <TrendingUp className="h-3 w-3 text-green-500" />
-              <span className="text-xs text-green-500 ml-1">+12% em relação ao mês anterior</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">A Pagar</CardTitle>
-            <ArrowUpCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">R$ {resumoFinanceiro.contasPagar.toFixed(2)}</div>
-            <div className="flex items-center pt-1">
-              <TrendingDown className="h-3 w-3 text-red-500" />
-              <span className="text-xs text-red-500 ml-1">-5% em relação ao mês anterior</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Previsão Próximo Mês</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ {resumoFinanceiro.previsaoProximoMes.toFixed(2)}</div>
-            <div className="flex items-center pt-1">
-              <TrendingUp className="h-3 w-3 text-green-500" />
-              <span className="text-xs text-green-500 ml-1">Saldo previsto para o próximo mês</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <div className="space-y-6">
+        <div className="rounded-lg border bg-muted/20 p-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold">
+              Controle financeiro operacional
+            </h2>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mt-4">
-        <Card className="md:col-span-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle>Fluxo de Caixa</CardTitle>
-              <div className="flex gap-2">
-                <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
-                  <SelectTrigger className="h-8 w-[150px]">
-                    <SelectValue placeholder="Período" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mes-atual">Mês Atual</SelectItem>
-                    <SelectItem value="mes-anterior">Mês Anterior</SelectItem>
-                    <SelectItem value="ultimos-3-meses">Últimos 3 Meses</SelectItem>
-                    <SelectItem value="ano-atual">Ano Atual</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" size="sm" className="h-8 gap-1">
-                  <Download className="h-3 w-3" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Exportar</span>
-                </Button>
+            <p className="text-sm text-muted-foreground">
+              Registre o que realmente entrou ou saiu e também
+              compromissos futuros. O saldo realizado representa
+              dinheiro já movimentado; o saldo projetado considera
+              também valores pendentes.
+            </p>
+          </div>
+        </div>
+
+        {erro && (
+          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {erro}
+          </div>
+        )}
+
+        {mensagem && (
+          <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+            {mensagem}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Saldo realizado
+              </CardTitle>
+
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+
+            <CardContent>
+              <div
+                className={`text-2xl font-bold ${
+                  resumo.saldoRealizado <
+                  0
+                    ? "text-red-600"
+                    : "text-green-600"
+                }`}
+              >
+                {moeda(
+                  resumo.saldoRealizado
+                )}
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[220px] w-full">
-              <div className="flex items-center justify-center h-full bg-muted/20 rounded-md">
-                <LineChart className="h-8 w-8 text-muted-foreground" />
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Somente valores efetivamente realizados
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                A pagar
+              </CardTitle>
+
+              <ArrowUpCircle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {moeda(
+                  resumo.saidasPendentes
+                )}
               </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between border-t px-6 py-3">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-500"></div>
-              <span className="text-xs text-muted-foreground">
-                Receitas: R$ {resumoFinanceiro.receitasMes.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-red-500"></div>
-              <span className="text-xs text-muted-foreground">
-                Despesas: R$ {resumoFinanceiro.despesasMes.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-              <span className="text-xs text-muted-foreground">
-                Saldo: R$ {(resumoFinanceiro.receitasMes - resumoFinanceiro.despesasMes).toFixed(2)}
-              </span>
-            </div>
-          </CardFooter>
-        </Card>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Obrigações e despesas pendentes
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                A receber
+              </CardTitle>
+
+              <ArrowDownCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {moeda(
+                  resumo.entradasPendentes
+                )}
+              </div>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Recebimentos futuros cadastrados
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Saldo projetado
+              </CardTitle>
+
+              <Clock3 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+
+            <CardContent>
+              <div
+                className={`text-2xl font-bold ${
+                  resumo.saldoProjetado <
+                  0
+                    ? "text-red-600"
+                    : "text-blue-600"
+                }`}
+              >
+                {moeda(
+                  resumo.saldoProjetado
+                )}
+              </div>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Realizado + entradas e saídas pendentes
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">
+                Entradas realizadas
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent>
+              <div className="text-xl font-bold text-green-600">
+                {moeda(
+                  resumo.entradasRealizadas
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">
+                Saídas realizadas
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent>
+              <div className="text-xl font-bold text-red-600">
+                {moeda(
+                  resumo.saidasRealizadas
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">
+                Contas vencidas
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent>
+              <div className="text-xl font-bold text-red-600">
+                {
+                  resumo.quantidadeVencidas
+                }
+              </div>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Total vencido:{" "}
+                {moeda(
+                  resumo.valorVencido
+                )}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Calendário Financeiro</CardTitle>
-            <CardDescription>Vencimentos e recebimentos</CardDescription>
+            <CardTitle>
+              Novo lançamento
+            </CardTitle>
+
+            <CardDescription>
+              Use os atalhos para agilizar os registros mais
+              frequentes. Categoria e origem continuam editáveis.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Calendar mode="single" selected={date} onSelect={setDate} locale={ptBR} className="rounded-md border" />
-          </CardContent>
-          <CardFooter className="flex flex-col items-start gap-2 border-t px-6 py-3">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-red-500"></div>
-              <span className="text-xs">5 contas a pagar</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-500"></div>
-              <span className="text-xs">3 contas a receber</span>
-            </div>
-            <Link href="/financeiro/calendario" className="text-xs text-primary hover:underline">
-              Ver calendário completo
-            </Link>
-          </CardFooter>
-        </Card>
-      </div>
 
-      <Tabs defaultValue="contas-receber" className="mt-4">
-        <TabsList className="grid w-full grid-cols-4 mb-4">
-          <TabsTrigger value="contas-receber">Contas a Receber</TabsTrigger>
-          <TabsTrigger value="contas-pagar">Contas a Pagar</TabsTrigger>
-          <TabsTrigger value="fluxo-caixa">Fluxo de Caixa</TabsTrigger>
-          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
-        </TabsList>
+          <CardContent className="space-y-5">
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-4">
+              <div className="flex gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
 
-        <TabsContent value="contas-receber" className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex flex-col md:flex-row gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="search" placeholder="Buscar conta..." className="w-full md:w-[250px] pl-8" />
+                <div>
+                  <p className="font-semibold text-amber-900">
+                    Confira antes de salvar
+                  </p>
+
+                  <p className="mt-1 text-sm text-amber-800">
+                    Todo lançamento financeiro pode alterar o saldo
+                    realizado ou projetado. Confira principalmente
+                    valor, tipo, data, situação e vencimento antes de
+                    confirmar.
+                  </p>
+
+                  <p className="mt-1 text-sm text-amber-800">
+                    Se houver erro depois do lançamento, prefira
+                    cancelar para preservar o histórico. A exclusão
+                    definitiva é uma ação excepcional e restrita ao
+                    Diretor.
+                  </p>
+                </div>
               </div>
-              <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os Status</SelectItem>
-                  <SelectItem value="pendente">Pendentes</SelectItem>
-                  <SelectItem value="recebido">Recebidos</SelectItem>
-                  <SelectItem value="atrasado">Atrasados</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todas as Categorias</SelectItem>
-                  <SelectItem value="comissao">Comissões</SelectItem>
-                  <SelectItem value="servico">Serviços</SelectItem>
-                  <SelectItem value="outros">Outros</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon" className="h-10 w-10">
-                <Filter className="h-4 w-4" />
-              </Button>
             </div>
-            <div className="flex gap-2">
-              {/* Componente de importação/exportação de planilhas */}
-              <SpreadsheetHandler moduleType="financeiro" />
 
-              <Dialog open={showAddReceita} onOpenChange={setShowAddReceita}>
-                <DialogTrigger asChild>
-                  <Button className="gap-1">
-                    <Plus className="h-4 w-4" />
-                    <span>Nova Receita</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Adicionar Nova Receita</DialogTitle>
-                    <DialogDescription>Preencha os dados da nova receita a ser registrada.</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="descricao">Descrição</Label>
-                      <Input id="descricao" placeholder="Descrição da receita" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="valor">Valor (R$)</Label>
-                        <Input id="valor" type="number" step="0.01" min="0" placeholder="0,00" />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="data-vencimento">Data de Vencimento</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full justify-start text-left font-normal">
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {date ? format(date, "dd/MM/yyyy") : "Selecione uma data"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="categoria">Categoria</Label>
-                        <Select>
-                          <SelectTrigger id="categoria">
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="comissao">Comissão</SelectItem>
-                            <SelectItem value="servico">Serviço</SelectItem>
-                            <SelectItem value="outros">Outros</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="cliente">Cliente/Origem</Label>
-                        <Select>
-                          <SelectTrigger id="cliente">
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="descartaveis-premium">Descartáveis Premium</SelectItem>
-                            <SelectItem value="embalagens-eco">Embalagens Eco</SelectItem>
-                            <SelectItem value="papel-cia">Papel & Cia</SelectItem>
-                            <SelectItem value="plasticos-nobre">Plásticos Nobre</SelectItem>
-                            <SelectItem value="outro">Outro</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="documento">Documento/NF</Label>
-                      <Input id="documento" placeholder="Número do documento ou NF" />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="observacoes">Observações</Label>
-                      <Input id="observacoes" placeholder="Observações adicionais" />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowAddReceita(false)}>
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleAddReceita}>Salvar</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
+            <div>
+              <Label className="mb-2 block">
+                Atalhos
+              </Label>
 
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Cliente/Origem</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtrarContas(contasReceber, filtroStatus).map((conta) => (
-                    <TableRow key={conta.id}>
-                      <TableCell className="font-medium">{conta.descricao}</TableCell>
-                      <TableCell>
-                        <Link
-                          href={`/representadas/${conta.cliente.toLowerCase().replace(/\s+/g, "-")}`}
-                          className="text-primary hover:underline"
-                        >
-                          {conta.cliente}
-                        </Link>
-                      </TableCell>
-                      <TableCell>R$ {conta.valor.toFixed(2)}</TableCell>
-                      <TableCell>{format(new Date(conta.vencimento), "dd/MM/yyyy")}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "capitalize",
-                            conta.status === "pendente" && "border-yellow-500 text-yellow-500",
-                            conta.status === "recebido" && "border-green-500 text-green-500",
-                            conta.status === "atrasado" && "border-red-500 text-red-500",
-                          )}
-                        >
-                          {conta.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "capitalize",
-                            conta.categoria === "comissao" && "bg-emerald-100 text-emerald-800",
-                            conta.categoria === "servico" && "bg-blue-100 text-blue-800",
-                            conta.categoria === "outros" && "bg-gray-100 text-gray-800",
-                          )}
-                        >
-                          {conta.categoria === "comissao"
-                            ? "Comissão"
-                            : conta.categoria === "servico"
-                              ? "Serviço"
-                              : "Outro"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {conta.status === "pendente" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 gap-1"
-                              onClick={() => handleReceberConta(conta.id)}
-                            >
-                              <Check className="h-3 w-3" />
-                              <span>Receber</span>
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-            <CardFooter className="flex items-center justify-between border-t px-6 py-3">
-              <div className="text-xs text-muted-foreground">
-                Mostrando {filtrarContas(contasReceber, filtroStatus).length} de {contasReceber.length} contas
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                  1
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={
+                    prepararEntradaExtra
+                  }
+                >
+                  <ArrowDownCircle className="mr-2 h-4 w-4 text-green-600" />
+                  Entrada Extra
                 </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  2
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={
+                    prepararSaidaExtra
+                  }
+                >
+                  <ArrowUpCircle className="mr-2 h-4 w-4 text-red-600" />
+                  Saída Extra
                 </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  3
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={
+                    prepararDivida
+                  }
+                >
+                  <Clock3 className="mr-2 h-4 w-4" />
+                  Cadastrar Dívida
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={
+                    prepararSaldoInicial
+                  }
+                >
+                  <Wallet className="mr-2 h-4 w-4" />
+                  Saldo Inicial
                 </Button>
               </div>
-            </CardFooter>
-          </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Receitas por Categoria</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {categoriasReceitas.map((categoria) => (
-                    <div key={categoria.id} className="flex items-center">
-                      <div className={`h-2 w-2 rounded-full ${categoria.cor} mr-2`} />
-                      <div className="flex-1 text-sm">{categoria.nome}</div>
-                      <div className="font-medium">R$ {categoria.valor.toFixed(2)}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 h-[160px] w-full">
-                  <div className="flex items-center justify-center h-full bg-muted/20 rounded-md">
-                    <BarChart3 className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Próximos Recebimentos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {contasReceber
-                    .filter((conta) => conta.status === "pendente")
-                    .slice(0, 4)
-                    .map((conta) => (
-                      <div key={conta.id} className="flex items-center justify-between border-b pb-2">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium">{conta.descricao}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(conta.vencimento), "dd/MM/yyyy")}
-                          </span>
-                        </div>
-                        <div className="text-sm font-medium">R$ {conta.valor.toFixed(2)}</div>
-                      </div>
-                    ))}
-                </div>
-                <Button variant="link" className="mt-4 h-8 p-0 text-xs">
-                  Ver todos os recebimentos
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="contas-pagar" className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex flex-col md:flex-row gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="search" placeholder="Buscar conta..." className="w-full md:w-[250px] pl-8" />
-              </div>
-              <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os Status</SelectItem>
-                  <SelectItem value="pendente">Pendentes</SelectItem>
-                  <SelectItem value="pago">Pagos</SelectItem>
-                  <SelectItem value="atrasado">Atrasados</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todas as Categorias</SelectItem>
-                  <SelectItem value="aluguel">Aluguel</SelectItem>
-                  <SelectItem value="servicos">Serviços</SelectItem>
-                  <SelectItem value="pessoal">Pessoal</SelectItem>
-                  <SelectItem value="impostos">Impostos</SelectItem>
-                  <SelectItem value="material">Material</SelectItem>
-                  <SelectItem value="outros">Outros</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon" className="h-10 w-10">
-                <Filter className="h-4 w-4" />
-              </Button>
+              <p className="mt-2 text-xs text-muted-foreground">
+                “Extra” serve para receitas ou despesas que não
+                pertencem diretamente ao fluxo normal da
+                representação. A descrição informa exatamente o que
+                ocorreu.
+              </p>
             </div>
-            <div className="flex gap-2">
-              {/* Componente de importação/exportação de planilhas */}
-              <SpreadsheetHandler moduleType="financeiro" />
 
-              <Dialog open={showAddDespesa} onOpenChange={setShowAddDespesa}>
-                <DialogTrigger asChild>
-                  <Button className="gap-1">
-                    <Plus className="h-4 w-4" />
-                    <span>Nova Despesa</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Adicionar Nova Despesa</DialogTitle>
-                    <DialogDescription>Preencha os dados da nova despesa a ser registrada.</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="descricao-despesa">Descrição</Label>
-                      <Input id="descricao-despesa" placeholder="Descrição da despesa" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="valor-despesa">Valor (R$)</Label>
-                        <Input id="valor-despesa" type="number" step="0.01" min="0" placeholder="0,00" />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="data-vencimento-despesa">Data de Vencimento</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full justify-start text-left font-normal">
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {date ? format(date, "dd/MM/yyyy") : "Selecione uma data"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="categoria-despesa">Categoria</Label>
-                        <Select>
-                          <SelectTrigger id="categoria-despesa">
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="aluguel">Aluguel</SelectItem>
-                            <SelectItem value="servicos">Serviços</SelectItem>
-                            <SelectItem value="pessoal">Pessoal</SelectItem>
-                            <SelectItem value="impostos">Impostos</SelectItem>
-                            <SelectItem value="material">Material</SelectItem>
-                            <SelectItem value="outros">Outros</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="fornecedor">Fornecedor</Label>
-                        <Input id="fornecedor" placeholder="Nome do fornecedor" />
-                      </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="comprovante">Comprovante</Label>
-                      <Input id="comprovante" type="file" />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="observacoes-despesa">Observações</Label>
-                      <Input id="observacoes-despesa" placeholder="Observações adicionais" />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowAddDespesa(false)}>
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleAddDespesa}>Salvar</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="space-y-2">
+                <Label>
+                  Tipo
+                </Label>
 
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Fornecedor</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtrarContas(contasPagar, filtroStatus).map((conta) => (
-                    <TableRow key={conta.id}>
-                      <TableCell className="font-medium">{conta.descricao}</TableCell>
-                      <TableCell>{conta.fornecedor}</TableCell>
-                      <TableCell>R$ {conta.valor.toFixed(2)}</TableCell>
-                      <TableCell>{format(new Date(conta.vencimento), "dd/MM/yyyy")}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "capitalize",
-                            conta.status === "pendente" && "border-yellow-500 text-yellow-500",
-                            conta.status === "pago" && "border-green-500 text-green-500",
-                            conta.status === "atrasado" && "border-red-500 text-red-500",
-                          )}
-                        >
-                          {conta.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "capitalize",
-                            conta.categoria === "aluguel" && "bg-blue-100 text-blue-800",
-                            conta.categoria === "servicos" && "bg-green-100 text-green-800",
-                            conta.categoria === "pessoal" && "bg-purple-100 text-purple-800",
-                            conta.categoria === "impostos" && "bg-red-100 text-red-800",
-                            conta.categoria === "material" && "bg-yellow-100 text-yellow-800",
-                            conta.categoria === "outros" && "bg-gray-100 text-gray-800",
-                          )}
-                        >
-                          {conta.categoria}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {conta.status === "pendente" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 gap-1"
-                              onClick={() => handlePagarConta(conta.id)}
-                            >
-                              <Check className="h-3 w-3" />
-                              <span>Pagar</span>
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-            <CardFooter className="flex items-center justify-between border-t px-6 py-3">
-              <div className="text-xs text-muted-foreground">
-                Mostrando {filtrarContas(contasPagar, filtroStatus).length} de {contasPagar.length} contas
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                  1
-                </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  2
-                </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  3
-                </Button>
-              </div>
-            </CardFooter>
-          </Card>
+                <Select
+                  value={
+                    formulario.tipo
+                  }
+                  onValueChange={(
+                    valor
+                  ) => {
+                    const tipo =
+                      valor as TipoFinanceiro
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Despesas por Categoria</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {categoriasDespesas.map((categoria) => (
-                    <div key={categoria.id} className="flex items-center">
-                      <div className={`h-2 w-2 rounded-full ${categoria.cor} mr-2`} />
-                      <div className="flex-1 text-sm">{categoria.nome}</div>
-                      <div className="font-medium">R$ {categoria.valor.toFixed(2)}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 h-[160px] w-full">
-                  <div className="flex items-center justify-center h-full bg-muted/20 rounded-md">
-                    <BarChart3 className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Próximos Pagamentos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {contasPagar
-                    .filter((conta) => conta.status === "pendente")
-                    .slice(0, 4)
-                    .map((conta) => (
-                      <div key={conta.id} className="flex items-center justify-between border-b pb-2">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium">{conta.descricao}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(conta.vencimento), "dd/MM/yyyy")}
-                          </span>
-                        </div>
-                        <div className="text-sm font-medium">R$ {conta.valor.toFixed(2)}</div>
-                      </div>
-                    ))}
-                </div>
-                <Button variant="link" className="mt-4 h-8 p-0 text-xs">
-                  Ver todos os pagamentos
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="fluxo-caixa" className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex flex-col md:flex-row gap-2">
-              <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Período" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mes-atual">Mês Atual</SelectItem>
-                  <SelectItem value="mes-anterior">Mês Anterior</SelectItem>
-                  <SelectItem value="ultimos-3-meses">Últimos 3 Meses</SelectItem>
-                  <SelectItem value="ano-atual">Ano Atual</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon" className="h-10 w-10">
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              {/* Componente de importação/exportação de planilhas */}
-              <SpreadsheetHandler moduleType="financeiro" />
-            </div>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Fluxo de Caixa - Março/2023</CardTitle>
-              <CardDescription>Movimentações financeiras do período</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead className="text-right">Saldo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {fluxoCaixa.map((movimento, index) => {
-                    // Calcular saldo acumulado
-                    let saldoAcumulado = 0
-                    for (let i = 0; i <= index; i++) {
-                      if (fluxoCaixa[i].tipo === "entrada") {
-                        saldoAcumulado += fluxoCaixa[i].valor
-                      } else if (fluxoCaixa[i].tipo === "saida") {
-                        saldoAcumulado -= fluxoCaixa[i].valor
-                      } else if (fluxoCaixa[i].tipo === "saldo" && i === 0) {
-                        saldoAcumulado = fluxoCaixa[i].valor
-                      }
-                    }
-
-                    return (
-                      <TableRow key={index}>
-                        <TableCell>{movimento.data}</TableCell>
-                        <TableCell className="font-medium">{movimento.descricao}</TableCell>
-                        <TableCell>
-                          {movimento.tipo === "entrada" ? (
-                            <Badge className="bg-green-100 text-green-800">Entrada</Badge>
-                          ) : movimento.tipo === "saida" ? (
-                            <Badge className="bg-red-100 text-red-800">Saída</Badge>
-                          ) : (
-                            <Badge className="bg-blue-100 text-blue-800">Saldo</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {movimento.tipo === "entrada" ? (
-                            <span className="text-green-600">+R$ {movimento.valor.toFixed(2)}</span>
-                          ) : movimento.tipo === "saida" ? (
-                            <span className="text-red-600">-R$ {movimento.valor.toFixed(2)}</span>
-                          ) : (
-                            <span>R$ {movimento.valor.toFixed(2)}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          R${" "}
-                          {movimento.tipo === "saldo" && index === fluxoCaixa.length - 1
-                            ? movimento.valor.toFixed(2)
-                            : saldoAcumulado.toFixed(2)}
-                        </TableCell>
-                      </TableRow>
+                    alterarFormulario(
+                      "tipo",
+                      tipo
                     )
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Evolução do Saldo</CardTitle>
-                <CardDescription>Saldo ao longo do período</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px] w-full">
-                  <div className="flex items-center justify-center h-full bg-muted/20 rounded-md">
-                    <LineChart className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    if (
+                      tipo ===
+                      "SaldoInicial"
+                    ) {
+                      alterarFormulario(
+                        "status",
+                        "Realizado"
+                      )
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Entradas vs Saídas</CardTitle>
-                <CardDescription>Comparativo do período</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px] w-full">
-                  <div className="flex items-center justify-center h-full bg-muted/20 rounded-md">
-                    <BarChart3 className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+                  <SelectContent>
+                    <SelectItem value="Entrada">
+                      Entrada
+                    </SelectItem>
 
-        <TabsContent value="relatorios" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="flex flex-col items-center justify-center p-6 hover:bg-muted/50 cursor-pointer transition-colors">
-              <CircleDollarSign className="h-10 w-10 text-primary mb-2" />
-              <h3 className="text-lg font-medium">Demonstrativo de Resultados</h3>
-              <p className="text-sm text-muted-foreground text-center mt-2">
-                Relatório completo de receitas, despesas e lucro do período
-              </p>
-            </Card>
+                    <SelectItem value="Saida">
+                      Saída
+                    </SelectItem>
 
-            <Card className="flex flex-col items-center justify-center p-6 hover:bg-muted/50 cursor-pointer transition-colors">
-              <BarChart3 className="h-10 w-10 text-primary mb-2" />
-              <h3 className="text-lg font-medium">Análise de Receitas</h3>
-              <p className="text-sm text-muted-foreground text-center mt-2">
-                Detalhamento das receitas por categoria e origem
-              </p>
-            </Card>
+                    <SelectItem value="SaldoInicial">
+                      Saldo inicial
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <Card className="flex flex-col items-center justify-center p-6 hover:bg-muted/50 cursor-pointer transition-colors">
-              <TrendingDown className="h-10 w-10 text-primary mb-2" />
-              <h3 className="text-lg font-medium">Análise de Despesas</h3>
-              <p className="text-sm text-muted-foreground text-center mt-2">
-                Detalhamento das despesas por categoria e fornecedor
-              </p>
-            </Card>
+              <div className="space-y-2">
+                <Label>
+                  Valor
+                </Label>
 
-            <Card className="flex flex-col items-center justify-center p-6 hover:bg-muted/50 cursor-pointer transition-colors">
-              <LineChart className="h-10 w-10 text-primary mb-2" />
-              <h3 className="text-lg font-medium">Fluxo de Caixa Projetado</h3>
-              <p className="text-sm text-muted-foreground text-center mt-2">
-                Projeção de entradas e saídas para os próximos meses
-              </p>
-            </Card>
+                <Input
+                  value={
+                    formulario.valor
+                  }
+                  onChange={(evento) =>
+                    alterarFormulario(
+                      "valor",
+                      evento.target.value
+                    )
+                  }
+                  placeholder={
+                    formulario.tipo ===
+                    "SaldoInicial"
+                      ? "Ex.: -1500,00"
+                      : "Ex.: 250,00"
+                  }
+                />
+              </div>
 
-            <Card className="flex flex-col items-center justify-center p-6 hover:bg-muted/50 cursor-pointer transition-colors">
-              <Clock className="h-10 w-10 text-primary mb-2" />
-              <h3 className="text-lg font-medium">Aging de Contas</h3>
-              <p className="text-sm text-muted-foreground text-center mt-2">
-                Análise de contas a receber e a pagar por tempo de vencimento
-              </p>
-            </Card>
+              <div className="space-y-2">
+                <Label>
+                  Data
+                </Label>
 
-            <Card className="flex flex-col items-center justify-center p-6 hover:bg-muted/50 cursor-pointer transition-colors">
-              <Wallet className="h-10 w-10 text-primary mb-2" />
-              <h3 className="text-lg font-medium">Relatório Fiscal</h3>
-              <p className="text-sm text-muted-foreground text-center mt-2">
-                Resumo de impostos e obrigações fiscais do período
-              </p>
-            </Card>
-          </div>
+                <Input
+                  type="date"
+                  value={
+                    formulario.data
+                  }
+                  onChange={(evento) =>
+                    alterarFormulario(
+                      "data",
+                      evento.target.value
+                    )
+                  }
+                />
+              </div>
 
-          <Card className="flex flex-col items-center justify-center p-6 hover:bg-muted/50 cursor-pointer transition-colors">
-            <TrendingDown className="h-10 w-10 text-primary mb-2" />
-            <h3 className="text-lg font-medium">Análise de Perdas por Cortes</h3>
-            <p className="text-sm text-muted-foreground text-center mt-2">
-              Relatório detalhado das perdas por cortes nos faturamentos das representadas
-            </p>
-          </Card>
+              <div className="space-y-2">
+                <Label>
+                  Situação
+                </Label>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Relatórios Recentes</CardTitle>
-              <CardDescription>Últimos relatórios gerados</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">Demonstrativo de Resultados - Março/2023</p>
-                      <p className="text-xs text-muted-foreground">Gerado em 01/04/2023</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" className="h-8 gap-1">
-                    <Download className="h-3 w-3" />
-                    <span>Baixar</span>
-                  </Button>
-                </div>
+                <Select
+                  value={
+                    formulario.tipo ===
+                    "SaldoInicial"
+                      ? "Realizado"
+                      : formulario.status
+                  }
+                  disabled={
+                    formulario.tipo ===
+                    "SaldoInicial"
+                  }
+                  onValueChange={(
+                    valor
+                  ) =>
+                    alterarFormulario(
+                      "status",
+                      valor as StatusFinanceiro
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
 
-                <div className="flex items-center justify-between border-b pb-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">Fluxo de Caixa - 1º Trimestre/2023</p>
-                      <p className="text-xs text-muted-foreground">Gerado em 31/03/2023</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" className="h-8 gap-1">
-                    <Download className="h-3 w-3" />
-                    <span>Baixar</span>
-                  </Button>
-                </div>
+                  <SelectContent>
+                    <SelectItem value="Realizado">
+                      Realizado
+                    </SelectItem>
 
-                <div className="flex items-center justify-between border-b pb-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">Análise de Despesas - Fevereiro/2023</p>
-                      <p className="text-xs text-muted-foreground">Gerado em 05/03/2023</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" className="h-8 gap-1">
-                    <Download className="h-3 w-3" />
-                    <span>Baixar</span>
-                  </Button>
-                </div>
+                    <SelectItem value="Pendente">
+                      Pendente
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-                <div className="flex items-center justify-between pb-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">Relatório Fiscal - Janeiro/2023</p>
-                      <p className="text-xs text-muted-foreground">Gerado em 10/02/2023</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" className="h-8 gap-1">
-                    <Download className="h-3 w-3" />
-                    <span>Baixar</span>
-                  </Button>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>
+                  Descrição
+                </Label>
+
+                <Input
+                  value={
+                    formulario.descricao
+                  }
+                  onChange={(evento) =>
+                    alterarFormulario(
+                      "descricao",
+                      evento.target.value
+                    )
+                  }
+                  placeholder="Ex.: combustível, recebimento externo, cartão, aluguel..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  Categoria
+                </Label>
+
+                <Input
+                  value={
+                    formulario.categoria
+                  }
+                  onChange={(evento) =>
+                    alterarFormulario(
+                      "categoria",
+                      evento.target.value
+                    )
+                  }
+                  placeholder="Use uma categoria simples"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>
+                  Origem
+                </Label>
+
+                <Input
+                  value={
+                    formulario.origem
+                  }
+                  onChange={(evento) =>
+                    alterarFormulario(
+                      "origem",
+                      evento.target.value
+                    )
+                  }
+                  placeholder="Ex.: representação, atividade externa, obrigação financeira"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  Origem externa
+                </Label>
+
+                <div className="flex h-10 items-center gap-3 rounded-md border px-3">
+                  <input
+                    id="origem-externa"
+                    type="checkbox"
+                    checked={
+                      formulario.origemExterna
+                    }
+                    onChange={(evento) =>
+                      alterarFormulario(
+                        "origemExterna",
+                        evento.target.checked
+                      )
+                    }
+                    className="h-4 w-4"
+                  />
+
+                  <Label
+                    htmlFor="origem-externa"
+                    className="cursor-pointer font-normal"
+                  >
+                    Movimento fora da representação
+                  </Label>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+
+            {formulario.tipo !==
+              "SaldoInicial" &&
+              formulario.status ===
+                "Pendente" && (
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <div className="mb-4">
+                    <h3 className="font-medium">
+                      Dados do compromisso
+                    </h3>
+
+                    <p className="text-sm text-muted-foreground">
+                      Para dívida parcelada, informe o valor total.
+                      O sistema distribuirá o valor entre as
+                      parcelas.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label>
+                        Primeiro vencimento
+                      </Label>
+
+                      <Input
+                        type="date"
+                        value={
+                          formulario.vencimento
+                        }
+                        onChange={(
+                          evento
+                        ) =>
+                          alterarFormulario(
+                            "vencimento",
+                            evento.target.value
+                          )
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>
+                        Parcelas
+                      </Label>
+
+                      <Input
+                        type="number"
+                        min="1"
+                        max="120"
+                        value={
+                          formulario.parcelas
+                        }
+                        onChange={(
+                          evento
+                        ) =>
+                          alterarFormulario(
+                            "parcelas",
+                            evento.target.value
+                          )
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>
+                        Intervalo em meses
+                      </Label>
+
+                      <Input
+                        type="number"
+                        min="1"
+                        max="24"
+                        value={
+                          formulario.intervaloMeses
+                        }
+                        onChange={(
+                          evento
+                        ) =>
+                          alterarFormulario(
+                            "intervaloMeses",
+                            evento.target.value
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {formulario.tipo ===
+              "SaldoInicial" && (
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                O saldo inicial representa a posição financeira
+                trazida do período anterior. Ele pode ser negativo.
+                Exemplo: <strong>-1500,00</strong>.
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                disabled={salvando}
+                onClick={() =>
+                  void salvarLancamento()
+                }
+              >
+                {salvando ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Revisar e salvar lançamento
+                  </>
+                )}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                disabled={salvando}
+                onClick={() => {
+                  setFormulario(
+                    formularioInicial()
+                  )
+                  setErro(null)
+                  setMensagem(null)
+                }}
+              >
+                Limpar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Tabs
+          defaultValue="pagar"
+          className="space-y-4"
+        >
+          <TabsList className="flex h-auto flex-wrap">
+            <TabsTrigger value="pagar">
+              A pagar (
+              {contasPagar.length})
+            </TabsTrigger>
+
+            <TabsTrigger value="receber">
+              A receber (
+              {contasReceber.length})
+            </TabsTrigger>
+
+            <TabsTrigger value="realizados">
+              Realizados (
+              {realizados.length})
+            </TabsTrigger>
+
+            <TabsTrigger value="todos">
+              Todos (
+              {movimentos.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pagar">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  Contas a pagar
+                </CardTitle>
+
+                <CardDescription>
+                  Dívidas, despesas e obrigações ainda não realizadas.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent>
+                {tabelaMovimentos(
+                  contasPagar
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="receber">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  Contas a receber
+                </CardTitle>
+
+                <CardDescription>
+                  Entradas previstas ainda não recebidas.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent>
+                {tabelaMovimentos(
+                  contasReceber
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="realizados">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  Movimentos realizados
+                </CardTitle>
+
+                <CardDescription>
+                  Valores que já afetaram o saldo financeiro
+                  realizado.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent>
+                {tabelaMovimentos(
+                  realizados
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="todos">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <CardTitle>
+                      Todos os lançamentos
+                    </CardTitle>
+
+                    <CardDescription>
+                      Consulte movimentos realizados, pendentes e
+                      cancelados.
+                    </CardDescription>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={
+                      carregando
+                    }
+                    onClick={() =>
+                      void carregarFinanceiro()
+                    }
+                  >
+                    <RefreshCw
+                      className={`mr-2 h-4 w-4 ${
+                        carregando
+                          ? "animate-spin"
+                          : ""
+                      }`}
+                    />
+                    Atualizar
+                  </Button>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+
+                    <Input
+                      className="pl-9"
+                      value={busca}
+                      onChange={(
+                        evento
+                      ) =>
+                        setBusca(
+                          evento.target.value
+                        )
+                      }
+                      placeholder="Buscar descrição, categoria ou origem..."
+                    />
+                  </div>
+
+                  <Select
+                    value={
+                      filtroTipo
+                    }
+                    onValueChange={
+                      setFiltroTipo
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="todos">
+                        Todos os tipos
+                      </SelectItem>
+
+                      <SelectItem value="Entrada">
+                        Entrada
+                      </SelectItem>
+
+                      <SelectItem value="Saida">
+                        Saída
+                      </SelectItem>
+
+                      <SelectItem value="SaldoInicial">
+                        Saldo inicial
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={
+                      filtroStatus
+                    }
+                    onValueChange={
+                      setFiltroStatus
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="todos">
+                        Todos os status
+                      </SelectItem>
+
+                      <SelectItem value="Pendente">
+                        Pendente
+                      </SelectItem>
+
+                      <SelectItem value="Realizado">
+                        Realizado
+                      </SelectItem>
+
+                      <SelectItem value="Cancelado">
+                        Cancelado
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {tabelaMovimentos(
+                  movimentosFiltrados
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </PageLayout>
   )
 }
-

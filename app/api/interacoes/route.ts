@@ -2,6 +2,17 @@ import { prisma } from "@/lib/prisma"
 import { exigirSessao } from "@/lib/auth/server"
 import { NextResponse } from "next/server"
 
+const ORIGENS_PROSPECCAO_PERMITIDAS = [
+  "Visita presencial",
+  "Instagram",
+  "WhatsApp",
+  "Indicação",
+  "Telefone",
+  "E-mail",
+  "Site / Internet",
+  "Feira / Evento",
+]
+
 export async function GET(
   request: Request
 ) {
@@ -42,41 +53,75 @@ export async function GET(
             : {}),
 
           /*
-           * PREPOSTO:
+           * PREPOSTO
            *
-           * Enxerga somente interações
-           * relacionadas a clientes da sua
-           * própria carteira.
+           * Pode visualizar:
            *
-           * Isso inclui interações feitas
-           * pelo Diretor ou Administrativo
-           * nesses clientes.
+           * 1. Interações relacionadas aos
+           *    clientes pertencentes à sua carteira;
+           *
+           * 2. Prospecções ainda sem Cliente,
+           *    desde que sejam de sua responsabilidade
+           *    ou tenham sido criadas por ele.
+           *
+           * Diretor e Administrativo continuam
+           * visualizando todas as interações
+           * do escritório.
            */
           ...(sessao.perfil ===
           "Preposto"
             ? {
-                cliente: {
-                  is: {
-                    escritorioId:
-                      sessao.escritorioId,
+                OR: [
+                  {
+                    cliente: {
+                      is: {
+                        escritorioId:
+                          sessao.escritorioId,
 
-                    OR: [
+                        OR: [
+                          {
+                            responsavelPrincipalId:
+                              sessao.usuarioId,
+                          },
+                          {
+                            participantes: {
+                              some: {
+                                usuarioId:
+                                  sessao.usuarioId,
+                                ativa: true,
+                              },
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  },
+
+                  {
+                    AND: [
                       {
-                        responsavelPrincipalId:
-                          sessao.usuarioId,
+                        clienteId:
+                          null,
                       },
                       {
-                        participantes: {
-                          some: {
-                            usuarioId:
+                        representadaId:
+                          null,
+                      },
+                      {
+                        OR: [
+                          {
+                            responsavelId:
                               sessao.usuarioId,
-                            ativa: true,
                           },
-                        },
+                          {
+                            criadoPorId:
+                              sessao.usuarioId,
+                          },
+                        ],
                       },
                     ],
                   },
-                },
+                ],
               }
             : {}),
         },
@@ -134,8 +179,13 @@ export async function GET(
         "NAO_AUTENTICADO"
     ) {
       return NextResponse.json(
-        { message: "Não autenticado" },
-        { status: 401 }
+        {
+          message:
+            "Não autenticado",
+        },
+        {
+          status: 401,
+        }
       )
     }
 
@@ -149,7 +199,9 @@ export async function GET(
         message:
           "Erro ao listar interações.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     )
   }
 }
@@ -158,8 +210,11 @@ export async function POST(
   request: Request
 ) {
   try {
-    const sessao = await exigirSessao()
-    const body = await request.json()
+    const sessao =
+      await exigirSessao()
+
+    const body =
+      await request.json()
 
     const clienteId =
       typeof body.clienteId ===
@@ -175,30 +230,127 @@ export async function POST(
         ? body.representadaId.trim()
         : null
 
+    const nomeProspect =
+      typeof body.nomeProspect ===
+        "string" &&
+      body.nomeProspect.trim() !== ""
+        ? body.nomeProspect.trim()
+        : null
+
+    const empresaProspect =
+      typeof body.empresaProspect ===
+        "string" &&
+      body.empresaProspect.trim() !== ""
+        ? body.empresaProspect.trim()
+        : null
+
+    const origemProspeccao =
+      typeof body.origemProspeccao ===
+        "string" &&
+      body.origemProspeccao.trim() !==
+        ""
+        ? body.origemProspeccao.trim()
+        : null
+
+    /*
+     * Uma interação pode pertencer a apenas
+     * um dos três contextos:
+     *
+     * - Cliente
+     * - Representada
+     * - Prospecção / Lead
+     */
+    const possuiCliente =
+      Boolean(clienteId)
+
+    const possuiRepresentada =
+      Boolean(representadaId)
+
+    const possuiProspeccao =
+      Boolean(
+        nomeProspect ||
+          empresaProspect ||
+          origemProspeccao
+      )
+
+    const quantidadeVinculos =
+      [
+        possuiCliente,
+        possuiRepresentada,
+        possuiProspeccao,
+      ].filter(Boolean).length
+
     if (
-      !clienteId &&
-      !representadaId
+      quantidadeVinculos === 0
     ) {
       return NextResponse.json(
         {
           message:
-            "Selecione um cliente ou uma representada para relacionar a interação.",
+            "Selecione um Cliente, uma Representada ou registre uma Prospecção / Lead.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
     }
 
     if (
-      clienteId &&
-      representadaId
+      quantidadeVinculos > 1
     ) {
       return NextResponse.json(
         {
           message:
-            "A interação deve ser relacionada a um cliente ou a uma representada, não aos dois simultaneamente.",
+            "A interação deve ser relacionada somente a um contexto: Cliente, Representada ou Prospecção.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
+    }
+
+    /*
+     * Validações específicas da Prospecção.
+     */
+    if (possuiProspeccao) {
+      if (!nomeProspect) {
+        return NextResponse.json(
+          {
+            message:
+              "Informe o nome ou a referência da prospecção.",
+          },
+          {
+            status: 400,
+          }
+        )
+      }
+
+      if (!origemProspeccao) {
+        return NextResponse.json(
+          {
+            message:
+              "Informe a origem da prospecção.",
+          },
+          {
+            status: 400,
+          }
+        )
+      }
+
+      if (
+        !ORIGENS_PROSPECCAO_PERMITIDAS.includes(
+          origemProspeccao
+        )
+      ) {
+        return NextResponse.json(
+          {
+            message:
+              "Origem da prospecção inválida.",
+          },
+          {
+            status: 400,
+          }
+        )
+      }
     }
 
     if (
@@ -211,10 +363,15 @@ export async function POST(
           message:
             "Tipo de interação é obrigatório.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       )
     }
 
+    /*
+     * CLIENTE
+     */
     if (clienteId) {
       const cliente =
         await prisma.cliente.findFirst({
@@ -257,16 +414,21 @@ export async function POST(
             message:
               "Cliente não encontrado ou sem permissão de acesso.",
           },
-          { status: 403 }
+          {
+            status: 403,
+          }
         )
       }
     }
 
+    /*
+     * REPRESENTADA
+     */
     if (representadaId) {
       /*
        * Interações institucionais com
-       * representadas ficam restritas ao
-       * Diretor e Administrativo.
+       * representadas permanecem restritas
+       * ao Diretor e Administrativo.
        */
       if (
         sessao.perfil === "Preposto"
@@ -276,7 +438,9 @@ export async function POST(
             message:
               "Seu perfil não possui permissão para registrar interações institucionais com representadas.",
           },
-          { status: 403 }
+          {
+            status: 403,
+          }
         )
       }
 
@@ -285,6 +449,7 @@ export async function POST(
           {
             where: {
               id: representadaId,
+
               escritorioId:
                 sessao.escritorioId,
             },
@@ -301,7 +466,9 @@ export async function POST(
             message:
               "Representada não encontrada ou sem permissão de acesso.",
           },
-          { status: 403 }
+          {
+            status: 403,
+          }
         )
       }
     }
@@ -330,7 +497,9 @@ export async function POST(
             message:
               "Data do próximo acompanhamento é inválida.",
           },
-          { status: 400 }
+          {
+            status: 400,
+          }
         )
       }
 
@@ -342,7 +511,8 @@ export async function POST(
      * Data/hora oficial da interação:
      * definida pelo servidor.
      */
-    const agora = new Date()
+    const agora =
+      new Date()
 
     const interacao =
       await prisma.interacao.create({
@@ -359,7 +529,27 @@ export async function POST(
           clienteId,
           representadaId,
 
-          tipo: body.tipo.trim(),
+          /*
+           * Dados da Prospecção ficam nulos
+           * nas interações tradicionais.
+           */
+          nomeProspect:
+            possuiProspeccao
+              ? nomeProspect
+              : null,
+
+          empresaProspect:
+            possuiProspeccao
+              ? empresaProspect
+              : null,
+
+          origemProspeccao:
+            possuiProspeccao
+              ? origemProspeccao
+              : null,
+
+          tipo:
+            body.tipo.trim(),
 
           data: agora,
 
@@ -423,6 +613,14 @@ export async function POST(
               perfil: true,
             },
           },
+
+          responsavel: {
+            select: {
+              id: true,
+              nome: true,
+              perfil: true,
+            },
+          },
         },
       })
 
@@ -439,8 +637,13 @@ export async function POST(
         "NAO_AUTENTICADO"
     ) {
       return NextResponse.json(
-        { message: "Não autenticado" },
-        { status: 401 }
+        {
+          message:
+            "Não autenticado",
+        },
+        {
+          status: 401,
+        }
       )
     }
 
@@ -454,7 +657,9 @@ export async function POST(
         message:
           "Erro ao criar interação.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     )
   }
 }
