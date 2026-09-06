@@ -53,27 +53,177 @@ interface Faixa {
 interface Representada {
   id: string
   nome: string
-  codigo: string
-  cnpj: string
-  comissao: string
+  codigo: string | null
+  cnpj: string | null
+
+  comissao: number | null
+
   tipoComissao:
     | "fixa"
     | "variada"
-  faixasComissao?: string
-  fechamentoComissao: string
-  pagamentoComissao: string
-  regraReconhecimentoComissao: string
-  bancoComissao: string
-  contatoPrincipal: string
-  emailPrincipal: string
-  telefonePrincipal: string
-  whatsappPrincipal: string
-  endereco: string
-  cidade: string
-  estado: string
-  cep: string
+    | null
+
+  faixasComissao:
+    | string
+    | null
+
+  fechamentoComissao:
+    | string
+    | null
+
+  pagamentoComissao:
+    | string
+    | null
+
+  regraReconhecimentoComissao:
+    | string
+    | null
+
+  bancoComissao:
+    | string
+    | null
+
+  contatoPrincipal:
+    | string
+    | null
+
+  emailPrincipal:
+    | string
+    | null
+
+  telefonePrincipal:
+    | string
+    | null
+
+  whatsappPrincipal:
+    | string
+    | null
+
+  endereco:
+    | string
+    | null
+
+  cidade:
+    | string
+    | null
+
+  estado:
+    | string
+    | null
+
+  cep:
+    | string
+    | null
+
+  pedidoMinimo:
+    | number
+    | null
+
+  minimoParcela:
+    | number
+    | null
+
+  politicaFrete:
+    | string
+    | null
+
+  regiaoAtendimento:
+    | string
+    | null
+
+  prazoEntregaDias:
+    | number
+    | null
+
+  prazoFaturamentoDias:
+    | number
+    | null
+
   status: string
-  observacoes: string
+
+  observacoes:
+    | string
+    | null
+}
+
+interface RegraComercial {
+  id: string
+  representadaId: string
+
+  clienteId:
+    | string
+    | null
+
+  contratoId:
+    | string
+    | null
+
+  nome: string
+  tipoEscopo: string
+
+  vigenciaInicio: string
+
+  vigenciaFim:
+    | string
+    | null
+
+  ativa: boolean
+
+  pedidoMinimo:
+    | number
+    | null
+
+  minimoParcela:
+    | number
+    | null
+
+  prazoEntregaDias:
+    | number
+    | null
+
+  prazoFaturamentoDias:
+    | number
+    | null
+
+  frete:
+    | string
+    | null
+
+  regiao:
+    | string
+    | null
+
+  tipoComissao:
+    | string
+    | null
+
+  percentualComissao:
+    | number
+    | null
+
+  faixasComissao:
+    | string
+    | null
+
+  reconhecimentoComissao:
+    | string
+    | null
+
+  fechamentoComissao:
+    | string
+    | null
+
+  pagamentoComissao:
+    | string
+    | null
+
+  observacoes:
+    | string
+    | null
+
+  _count: {
+    vendas: number
+  }
 }
 
 interface UsuarioResumo {
@@ -141,6 +291,206 @@ function formatarData(
       minute: "2-digit",
     }
   )
+}
+
+function formatarDataCurta(
+  valor: string | null
+) {
+  if (!valor) {
+    return "—"
+  }
+
+  const data =
+    new Date(valor)
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return "—"
+  }
+
+  return data.toLocaleDateString(
+    "pt-BR"
+  )
+}
+
+function formatarValor(
+  valor: number | null
+) {
+  if (
+    valor === null
+  ) {
+    return "—"
+  }
+
+  return valor.toLocaleString(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL",
+    }
+  )
+}
+
+function formatarPedidoMinimo(
+  valor: number | null
+) {
+  if (
+    valor === null
+  ) {
+    return "Não informado"
+  }
+
+  if (
+    valor === 0
+  ) {
+    return "Sem pedido mínimo"
+  }
+
+  return formatarValor(
+    valor
+  )
+}
+
+function formatarMinimoParcela(
+  valor: number | null
+) {
+  if (
+    valor === null
+  ) {
+    return "Não informado"
+  }
+
+  if (
+    valor === 0
+  ) {
+    return "Sem mínimo por parcela"
+  }
+
+  return formatarValor(
+    valor
+  )
+}
+
+function regraEstaVigente(
+  regra: RegraComercial
+) {
+  if (
+    !regra.ativa
+  ) {
+    return false
+  }
+
+  const agora =
+    new Date()
+
+  const inicio =
+    new Date(
+      regra.vigenciaInicio
+    )
+
+  if (
+    Number.isNaN(
+      inicio.getTime()
+    )
+  ) {
+    return false
+  }
+
+  if (
+    inicio > agora
+  ) {
+    return false
+  }
+
+  if (
+    regra.vigenciaFim
+  ) {
+    const fim =
+      new Date(
+        regra.vigenciaFim
+      )
+
+    if (
+      !Number.isNaN(
+        fim.getTime()
+      )
+    ) {
+      fim.setHours(
+        23,
+        59,
+        59,
+        999
+      )
+
+      if (
+        fim < agora
+      ) {
+        return false
+      }
+    }
+  }
+
+  return true
+}
+
+function formatarComissaoRegra(
+  regra: RegraComercial
+) {
+  if (
+    regra.tipoComissao ===
+    "fixa"
+  ) {
+    if (
+      regra.percentualComissao ===
+      null
+    ) {
+      return "Não informada"
+    }
+
+    return `${regra.percentualComissao.toLocaleString(
+      "pt-BR",
+      {
+        maximumFractionDigits: 4,
+      }
+    )}%`
+  }
+
+  if (
+    regra.tipoComissao ===
+    "variada"
+  ) {
+    return "Comissão variável por faixas"
+  }
+
+  return "Não informada"
+}
+
+function formatarComissaoRepresentada(
+  representada: Representada
+) {
+  if (
+    representada.tipoComissao ===
+    "variada"
+  ) {
+    return "Comissão variável por faixas"
+  }
+
+  if (
+    representada.comissao ===
+    null
+  ) {
+    return "Não informada"
+  }
+
+  return `${representada.comissao.toLocaleString(
+    "pt-BR",
+    {
+      maximumFractionDigits: 4,
+    }
+  )}%`
 }
 
 function foiEditada(
@@ -235,6 +585,14 @@ export default function RepresentadaPage() {
     )
 
   const [
+    regrasComerciais,
+    setRegrasComerciais,
+  ] =
+    useState<RegraComercial[]>(
+      []
+    )
+
+  const [
     interacoes,
     setInteracoes,
   ] =
@@ -249,6 +607,12 @@ export default function RepresentadaPage() {
     useState(true)
 
   const [
+    loadingRegras,
+    setLoadingRegras,
+  ] =
+    useState(true)
+
+  const [
     loadingInteracoes,
     setLoadingInteracoes,
   ] =
@@ -257,6 +621,14 @@ export default function RepresentadaPage() {
   const [
     erro,
     setErro,
+  ] =
+    useState<
+      string | null
+    >(null)
+
+  const [
+    erroRegras,
+    setErroRegras,
   ] =
     useState<
       string | null
@@ -346,6 +718,98 @@ export default function RepresentadaPage() {
 
     carregar()
   }, [id])
+
+  const carregarRegrasComerciais =
+    useCallback(
+      async (
+        silencioso =
+          false
+      ) => {
+        if (!id) {
+          setRegrasComerciais(
+            []
+          )
+
+          setLoadingRegras(
+            false
+          )
+
+          return
+        }
+
+        if (
+          !silencioso
+        ) {
+          setLoadingRegras(
+            true
+          )
+        }
+
+        setErroRegras(
+          null
+        )
+
+        try {
+          const response =
+            await fetch(
+              `/api/representadas/${id}/regras-comerciais`,
+              {
+                cache:
+                  "no-store",
+              }
+            )
+
+          if (
+            !response.ok
+          ) {
+            throw new Error(
+              "Falha ao carregar regras comerciais."
+            )
+          }
+
+          const data =
+            await response.json()
+
+          if (
+            !Array.isArray(
+              data
+            )
+          ) {
+            throw new Error(
+              "Resposta inválida da API."
+            )
+          }
+
+          setRegrasComerciais(
+            data
+          )
+        } catch (error) {
+          console.error(
+            "Erro ao carregar regras comerciais:",
+            error
+          )
+
+          setErroRegras(
+            "Não foi possível carregar as regras comerciais desta representada."
+          )
+        } finally {
+          if (
+            !silencioso
+          ) {
+            setLoadingRegras(
+              false
+            )
+          }
+        }
+      },
+      [id]
+    )
+
+  useEffect(() => {
+    carregarRegrasComerciais()
+  }, [
+    carregarRegrasComerciais,
+  ])
 
   const carregarInteracoes =
     useCallback(
@@ -602,6 +1066,60 @@ export default function RepresentadaPage() {
 
   const faixas =
     obterFaixas()
+
+  const regraPadraoVigente =
+    regrasComerciais.find(
+      (
+        regra
+      ) =>
+        regra.tipoEscopo ===
+          "Padrao" &&
+        regraEstaVigente(
+          regra
+        )
+    ) ||
+    null
+
+  const regrasEspecificasAtivas =
+    regrasComerciais.filter(
+      (
+        regra
+      ) =>
+        regra.tipoEscopo !==
+          "Padrao" &&
+        regraEstaVigente(
+          regra
+        )
+    ).length
+
+  const possuiCondicoesComerciaisCadastro =
+    representada.comissao !==
+      null ||
+    representada.tipoComissao ===
+      "variada" ||
+    representada.pedidoMinimo !==
+      null ||
+    representada.minimoParcela !==
+      null ||
+    Boolean(
+      representada.politicaFrete
+    ) ||
+    Boolean(
+      representada.regiaoAtendimento
+    ) ||
+    representada.prazoEntregaDias !==
+      null ||
+    representada.prazoFaturamentoDias !==
+      null ||
+    Boolean(
+      representada.regraReconhecimentoComissao
+    ) ||
+    Boolean(
+      representada.fechamentoComissao
+    ) ||
+    Boolean(
+      representada.pagamentoComissao
+    )
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -927,8 +1445,15 @@ export default function RepresentadaPage() {
                     </p>
 
                     <p className="text-2xl font-bold text-emerald-600">
-                      {representada.comissao ||
-                        "0"}
+                      {representada.comissao !==
+                      null
+                        ? representada.comissao.toLocaleString(
+                            "pt-BR",
+                            {
+                              maximumFractionDigits: 4,
+                            }
+                          )
+                        : "0"}
                       %
                     </p>
                   </div>
@@ -1020,6 +1545,455 @@ export default function RepresentadaPage() {
             </Card>
           </div>
         </div>
+
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ListChecks className="h-5 w-5" />
+                  Regras Comerciais
+                </CardTitle>
+
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Condições comerciais desta Representada.
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    carregarRegrasComerciais()
+                  }
+                  disabled={
+                    loadingRegras
+                  }
+                >
+                  <RefreshCw
+                    className={`mr-2 h-4 w-4 ${
+                      loadingRegras
+                        ? "animate-spin"
+                        : ""
+                    }`}
+                  />
+
+                  Atualizar
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    router.push(
+                      `/representadas/${id}/regras-comerciais`
+                    )
+                  }
+                >
+                  <ListChecks className="mr-2 h-4 w-4" />
+                  Gerenciar Regras
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            {loadingRegras ? (
+              <div className="flex items-center justify-center gap-2 py-8">
+                <Loader2 className="h-4 w-4 animate-spin" />
+
+                Carregando regras comerciais...
+              </div>
+            ) : erroRegras ? (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <div className="flex items-center gap-2 text-red-600">
+                  <AlertCircle className="h-4 w-4" />
+
+                  {
+                    erroRegras
+                  }
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    carregarRegrasComerciais()
+                  }
+                >
+                  Tentar novamente
+                </Button>
+              </div>
+            ) : regraPadraoVigente ? (
+              <div className="space-y-5">
+                <div className="flex flex-col gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                      Regra comercial padrão ativa e vigente
+                    </p>
+
+                    <p className="mt-1 text-lg font-semibold text-emerald-950">
+                      {
+                        regraPadraoVigente.nome
+                      }
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
+                      Ativa
+                    </span>
+
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                      {
+                        regraPadraoVigente._count.vendas
+                      }{" "}
+                      venda
+                      {regraPadraoVigente._count.vendas ===
+                      1
+                        ? ""
+                        : "s"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Vigência
+                    </p>
+
+                    <p className="font-medium">
+                      {formatarDataCurta(
+                        regraPadraoVigente.vigenciaInicio
+                      )}{" "}
+                      até{" "}
+                      {regraPadraoVigente.vigenciaFim
+                        ? formatarDataCurta(
+                            regraPadraoVigente.vigenciaFim
+                          )
+                        : "sem data final"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Pedido mínimo
+                    </p>
+
+                    <p className="font-medium">
+                      {formatarPedidoMinimo(
+                        regraPadraoVigente.pedidoMinimo
+                      )}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Mínimo por parcela
+                    </p>
+
+                    <p className="font-medium">
+                      {formatarMinimoParcela(
+                        regraPadraoVigente.minimoParcela
+                      )}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Comissão
+                    </p>
+
+                    <p className="font-medium">
+                      {formatarComissaoRegra(
+                        regraPadraoVigente
+                      )}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Prazo de entrega
+                    </p>
+
+                    <p className="font-medium">
+                      {regraPadraoVigente.prazoEntregaDias !==
+                      null
+                        ? `${regraPadraoVigente.prazoEntregaDias} dia(s)`
+                        : "—"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Prazo de faturamento
+                    </p>
+
+                    <p className="font-medium">
+                      {regraPadraoVigente.prazoFaturamentoDias !==
+                      null
+                        ? `${regraPadraoVigente.prazoFaturamentoDias} dia(s)`
+                        : "—"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Frete
+                    </p>
+
+                    <p className="font-medium">
+                      {regraPadraoVigente.frete ||
+                        "—"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Região
+                    </p>
+
+                    <p className="font-medium">
+                      {regraPadraoVigente.regiao ||
+                        "—"}
+                    </p>
+                  </div>
+                </div>
+
+                {regraPadraoVigente.observacoes && (
+                  <div className="rounded-md bg-muted/40 p-3">
+                    <p className="text-xs font-medium">
+                      Observações da regra
+                    </p>
+
+                    <p className="mt-1 whitespace-pre-wrap text-sm">
+                      {
+                        regraPadraoVigente.observacoes
+                      }
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+                  <p className="text-xs text-muted-foreground">
+                    Regras específicas de clientes ativas e vigentes:{" "}
+                    <span className="font-semibold text-foreground">
+                      {
+                        regrasEspecificasAtivas
+                      }
+                    </span>
+                  </p>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      router.push(
+                        `/representadas/${id}/regras-comerciais`
+                      )
+                    }
+                  >
+                    Ver histórico completo
+                  </Button>
+                </div>
+              </div>
+            ) : possuiCondicoesComerciaisCadastro ? (
+              <div className="space-y-5">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-amber-700">
+                    Condições comerciais já cadastradas
+                  </p>
+
+                  <p className="mt-1 font-semibold text-amber-950">
+                    Os dados abaixo estão salvos no cadastro principal da Representada.
+                  </p>
+
+                  <p className="mt-1 text-sm text-amber-800">
+                    Ainda não existe uma regra comercial versionada ativa. No próximo passo estes dados serão reaproveitados automaticamente em “Gerenciar Regras”, evitando nova digitação.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Pedido mínimo
+                    </p>
+
+                    <p className="font-medium">
+                      {formatarPedidoMinimo(
+                        representada.pedidoMinimo
+                      )}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Mínimo por parcela
+                    </p>
+
+                    <p className="font-medium">
+                      {formatarMinimoParcela(
+                        representada.minimoParcela
+                      )}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Comissão
+                    </p>
+
+                    <p className="font-medium">
+                      {formatarComissaoRepresentada(
+                        representada
+                      )}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Comissão calculada sobre
+                    </p>
+
+                    <p className="font-medium">
+                      {representada.regraReconhecimentoComissao ||
+                        "Não informado"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Prazo de entrega
+                    </p>
+
+                    <p className="font-medium">
+                      {representada.prazoEntregaDias !==
+                      null
+                        ? `${representada.prazoEntregaDias} dia(s)`
+                        : "—"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Prazo de faturamento
+                    </p>
+
+                    <p className="font-medium">
+                      {representada.prazoFaturamentoDias !==
+                      null
+                        ? `${representada.prazoFaturamentoDias} dia(s)`
+                        : "—"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Frete
+                    </p>
+
+                    <p className="font-medium">
+                      {representada.politicaFrete ||
+                        "—"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Região
+                    </p>
+
+                    <p className="font-medium">
+                      {representada.regiaoAtendimento ||
+                        "—"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Fechamento da comissão
+                    </p>
+
+                    <p className="font-medium">
+                      {representada.fechamentoComissao
+                        ? `Dia ${representada.fechamentoComissao}`
+                        : "—"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Pagamento da comissão
+                    </p>
+
+                    <p className="font-medium">
+                      {representada.pagamentoComissao
+                        ? `Dia ${representada.pagamentoComissao}`
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+
+                {regrasComerciais.length >
+                  0 && (
+                  <p className="border-t pt-3 text-xs text-muted-foreground">
+                    Existem{" "}
+                    <span className="font-semibold text-foreground">
+                      {
+                        regrasComerciais.length
+                      }
+                    </span>{" "}
+                    regra(s) no histórico, mas nenhuma regra padrão está ativa e vigente neste momento.
+                  </p>
+                )}
+
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      router.push(
+                        `/representadas/${id}/regras-comerciais`
+                      )
+                    }
+                  >
+                    <ListChecks className="mr-2 h-4 w-4" />
+
+                    Gerenciar e versionar regras
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-8 text-center text-muted-foreground">
+                <ListChecks className="h-8 w-8" />
+
+                <div>
+                  <p className="font-medium text-foreground">
+                    Nenhuma condição comercial encontrada.
+                  </p>
+
+                  <p className="mt-1 text-sm">
+                    Não existem condições comerciais no cadastro principal nem regra padrão ativa e vigente.
+                  </p>
+                </div>
+
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    router.push(
+                      `/representadas/${id}/regras-comerciais`
+                    )
+                  }
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+
+                  Abrir Regras Comerciais
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Search,
   ShoppingCart,
+  Target,
 } from "lucide-react"
 
 import {
@@ -46,6 +47,14 @@ import {
 import {
   Input,
 } from "@/components/ui/input"
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 import {
   Table,
@@ -138,6 +147,38 @@ type FiltroStatus =
   | "confirmados"
   | "faturados"
   | "cancelados"
+
+type FiltroPeriodo =
+  | "mes-atual"
+  | "mes-anterior"
+  | "ultimos-3-meses"
+  | "ano-atual"
+  | "todo-historico"
+
+type SaudeVendas = {
+  nome: string
+  emoji: string
+  classe: string
+  percentual: number | null
+}
+
+/*
+ * META DO ESCRITÓRIO
+ *
+ * Não definir valor provisório ou fictício.
+ *
+ * A futura meta deverá ser construída a partir de dados reais:
+ * - metas das Representadas;
+ * - custos fixos do escritório;
+ * - custos variáveis;
+ * - compromissos financeiros;
+ * - margem/reserva necessária para crescimento saudável.
+ *
+ * Quando essa estrutura estiver definida, esta tela já estará
+ * preparada para consumir a meta real.
+ */
+const META_MENSAL_ESCRITORIO: number | null =
+  null
 
 function formatarCodigoVenda(
   numero: number
@@ -318,6 +359,303 @@ function correspondeStatus(
   return true
 }
 
+function pertenceAoPeriodo(
+  venda: Venda,
+  filtro: FiltroPeriodo
+) {
+  if (
+    filtro === "todo-historico"
+  ) {
+    return true
+  }
+
+  const dataVenda =
+    new Date(venda.data)
+
+  if (
+    Number.isNaN(
+      dataVenda.getTime()
+    )
+  ) {
+    return false
+  }
+
+  const hoje =
+    new Date()
+
+  const ano =
+    hoje.getFullYear()
+
+  const mes =
+    hoje.getMonth()
+
+  let inicio: Date
+  let fim: Date
+
+  if (
+    filtro === "mes-atual"
+  ) {
+    inicio =
+      new Date(
+        ano,
+        mes,
+        1
+      )
+
+    fim =
+      new Date(
+        ano,
+        mes + 1,
+        1
+      )
+  } else if (
+    filtro === "mes-anterior"
+  ) {
+    inicio =
+      new Date(
+        ano,
+        mes - 1,
+        1
+      )
+
+    fim =
+      new Date(
+        ano,
+        mes,
+        1
+      )
+  } else if (
+    filtro ===
+    "ultimos-3-meses"
+  ) {
+    inicio =
+      new Date(
+        ano,
+        mes - 2,
+        1
+      )
+
+    fim =
+      new Date(
+        ano,
+        mes + 1,
+        1
+      )
+  } else {
+    inicio =
+      new Date(
+        ano,
+        0,
+        1
+      )
+
+    fim =
+      new Date(
+        ano + 1,
+        0,
+        1
+      )
+  }
+
+  return (
+    dataVenda >= inicio &&
+    dataVenda < fim
+  )
+}
+
+function descreverPeriodo(
+  filtro: FiltroPeriodo
+) {
+  const hoje =
+    new Date()
+
+  if (
+    filtro === "mes-atual"
+  ) {
+    const descricao =
+      hoje.toLocaleDateString(
+        "pt-BR",
+        {
+          month: "long",
+          year: "numeric",
+        }
+      )
+
+    return `Mês atual · ${descricao}`
+  }
+
+  if (
+    filtro === "mes-anterior"
+  ) {
+    const mesAnterior =
+      new Date(
+        hoje.getFullYear(),
+        hoje.getMonth() - 1,
+        1
+      )
+
+    const descricao =
+      mesAnterior.toLocaleDateString(
+        "pt-BR",
+        {
+          month: "long",
+          year: "numeric",
+        }
+      )
+
+    return `Mês anterior · ${descricao}`
+  }
+
+  if (
+    filtro ===
+    "ultimos-3-meses"
+  ) {
+    return "Últimos 3 meses"
+  }
+
+  if (
+    filtro === "ano-atual"
+  ) {
+    return `Ano atual · ${hoje.getFullYear()}`
+  }
+
+  return "Todo o histórico"
+}
+
+function calcularMetaPeriodo(
+  filtro: FiltroPeriodo
+) {
+  if (
+    META_MENSAL_ESCRITORIO ===
+      null ||
+    filtro === "todo-historico"
+  ) {
+    return null
+  }
+
+  if (
+    filtro ===
+      "mes-atual" ||
+    filtro ===
+      "mes-anterior"
+  ) {
+    return META_MENSAL_ESCRITORIO
+  }
+
+  if (
+    filtro ===
+    "ultimos-3-meses"
+  ) {
+    return (
+      META_MENSAL_ESCRITORIO *
+      3
+    )
+  }
+
+  /*
+   * Para o ano atual, a comparação futura será
+   * acumulada até o mês corrente, e não contra
+   * doze meses completos antes do encerramento
+   * do exercício.
+   */
+  const mesesDecorridos =
+    new Date().getMonth() + 1
+
+  return (
+    META_MENSAL_ESCRITORIO *
+    mesesDecorridos
+  )
+}
+
+function calcularSaudeVendas(
+  vendas: number,
+  meta: number | null
+): SaudeVendas {
+  if (
+    meta === null ||
+    meta <= 0
+  ) {
+    return {
+      nome: "Meta não configurada",
+      emoji: "⚪",
+      classe:
+        "border-slate-200 bg-slate-50 text-slate-700",
+      percentual: null,
+    }
+  }
+
+  const percentual =
+    (vendas / meta) * 100
+
+  if (
+    percentual >= 110
+  ) {
+    return {
+      nome: "Excelente",
+      emoji: "🟢",
+      classe:
+        "border-emerald-200 bg-emerald-50 text-emerald-800",
+      percentual,
+    }
+  }
+
+  if (
+    percentual >= 100
+  ) {
+    return {
+      nome: "Ótimo",
+      emoji: "🟢",
+      classe:
+        "border-green-200 bg-green-50 text-green-800",
+      percentual,
+    }
+  }
+
+  if (
+    percentual >= 80
+  ) {
+    return {
+      nome: "Regular",
+      emoji: "🟡",
+      classe:
+        "border-yellow-200 bg-yellow-50 text-yellow-800",
+      percentual,
+    }
+  }
+
+  if (
+    percentual >= 60
+  ) {
+    return {
+      nome: "Atenção",
+      emoji: "🟠",
+      classe:
+        "border-orange-200 bg-orange-50 text-orange-800",
+      percentual,
+    }
+  }
+
+  if (
+    percentual >= 40
+  ) {
+    return {
+      nome: "Ruim",
+      emoji: "🔴",
+      classe:
+        "border-red-200 bg-red-50 text-red-800",
+      percentual,
+    }
+  }
+
+  return {
+    nome: "Prejudicial",
+    emoji: "🔴",
+    classe:
+      "border-rose-200 bg-rose-50 text-rose-800",
+    percentual,
+  }
+}
+
 export default function VendasPage() {
   const [
     vendas,
@@ -353,6 +691,14 @@ export default function VendasPage() {
   ] =
     useState<FiltroStatus>(
       "todos"
+    )
+
+  const [
+    filtroPeriodo,
+    setFiltroPeriodo,
+  ] =
+    useState<FiltroPeriodo>(
+      "mes-atual"
     )
 
   async function carregarVendas(
@@ -434,6 +780,22 @@ export default function VendasPage() {
     }
   }, [])
 
+  const vendasNoPeriodo =
+    useMemo(
+      () =>
+        vendas.filter(
+          (venda) =>
+            pertenceAoPeriodo(
+              venda,
+              filtroPeriodo
+            )
+        ),
+      [
+        vendas,
+        filtroPeriodo,
+      ]
+    )
+
   const vendasFiltradas =
     useMemo(() => {
       const termo =
@@ -441,7 +803,7 @@ export default function VendasPage() {
           .trim()
           .toLowerCase()
 
-      return vendas.filter(
+      return vendasNoPeriodo.filter(
         (
           venda
         ) => {
@@ -543,7 +905,7 @@ export default function VendasPage() {
         }
       )
     }, [
-      vendas,
+      vendasNoPeriodo,
       busca,
       filtroStatus,
     ])
@@ -551,7 +913,7 @@ export default function VendasPage() {
   const totalVendas =
     useMemo(
       () =>
-        vendas.reduce(
+        vendasNoPeriodo.reduce(
           (
             total,
             venda
@@ -563,13 +925,13 @@ export default function VendasPage() {
             ),
           0
         ),
-      [vendas]
+      [vendasNoPeriodo]
     )
 
   const totalComissoes =
     useMemo(
       () =>
-        vendas.reduce(
+        vendasNoPeriodo.reduce(
           (
             total,
             venda
@@ -582,29 +944,60 @@ export default function VendasPage() {
             ),
           0
         ),
-      [vendas]
+      [vendasNoPeriodo]
     )
 
   const aguardandoEnvio =
     useMemo(
       () =>
-        vendas.filter(
+        vendasNoPeriodo.filter(
           (venda) =>
             venda.status ===
             "Aguardando envio"
         ).length,
-      [vendas]
+      [vendasNoPeriodo]
     )
 
   const aguardandoConfirmacao =
     useMemo(
       () =>
-        vendas.filter(
+        vendasNoPeriodo.filter(
           (venda) =>
             venda.status ===
             "Aguardando confirmação"
         ).length,
-      [vendas]
+      [vendasNoPeriodo]
+    )
+
+  const metaPeriodo =
+    useMemo(
+      () =>
+        calcularMetaPeriodo(
+          filtroPeriodo
+        ),
+      [filtroPeriodo]
+    )
+
+  const saudeVendas =
+    useMemo(
+      () =>
+        calcularSaudeVendas(
+          totalVendas,
+          metaPeriodo
+        ),
+      [
+        totalVendas,
+        metaPeriodo,
+      ]
+    )
+
+  const descricaoPeriodo =
+    useMemo(
+      () =>
+        descreverPeriodo(
+          filtroPeriodo
+        ),
+      [filtroPeriodo]
     )
 
   return (
@@ -627,7 +1020,7 @@ export default function VendasPage() {
             <SpreadsheetHandler
               moduleType="vendas"
               data={
-                vendas
+                vendasNoPeriodo
               }
             />
 
@@ -657,6 +1050,57 @@ export default function VendasPage() {
           </div>
         </div>
 
+        <div className="flex flex-col gap-3 rounded-lg border bg-white p-4 dark:bg-gray-950 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-medium">
+              Período de análise
+            </p>
+
+            <p className="text-xs text-muted-foreground">
+              {descricaoPeriodo}
+            </p>
+          </div>
+
+          <Select
+            value={
+              filtroPeriodo
+            }
+            onValueChange={(
+              value
+            ) =>
+              setFiltroPeriodo(
+                value as FiltroPeriodo
+              )
+            }
+          >
+            <SelectTrigger className="w-full md:w-[220px]">
+              <SelectValue placeholder="Selecione o período" />
+            </SelectTrigger>
+
+            <SelectContent>
+              <SelectItem value="mes-atual">
+                Mês atual
+              </SelectItem>
+
+              <SelectItem value="mes-anterior">
+                Mês anterior
+              </SelectItem>
+
+              <SelectItem value="ultimos-3-meses">
+                Últimos 3 meses
+              </SelectItem>
+
+              <SelectItem value="ano-atual">
+                Ano atual
+              </SelectItem>
+
+              <SelectItem value="todo-historico">
+                Todo o histórico
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardHeader className="py-3">
@@ -674,9 +1118,9 @@ export default function VendasPage() {
 
               <p className="mt-1 text-xs text-muted-foreground">
                 {
-                  vendas.length
+                  vendasNoPeriodo.length
                 }{" "}
-                venda(s) registrada(s)
+                venda(s) no período
               </p>
             </CardContent>
           </Card>
@@ -696,7 +1140,7 @@ export default function VendasPage() {
               </div>
 
               <p className="mt-1 text-xs text-muted-foreground">
-                Conforme regras comerciais aplicadas
+                Conforme regras comerciais no período
               </p>
             </CardContent>
           </Card>
@@ -716,7 +1160,7 @@ export default function VendasPage() {
               </div>
 
               <p className="mt-1 text-xs text-muted-foreground">
-                Vendas ainda não enviadas à Representada
+                Vendas do período ainda não enviadas
               </p>
             </CardContent>
           </Card>
@@ -736,11 +1180,143 @@ export default function VendasPage() {
               </div>
 
               <p className="mt-1 text-xs text-muted-foreground">
-                Pedidos enviados aguardando retorno
+                Pedidos do período aguardando retorno
               </p>
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-primary/10 p-2">
+                  <Target className="h-4 w-4 text-primary" />
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold">
+                    Saúde das Vendas
+                  </p>
+
+                  <p className="text-xs text-muted-foreground">
+                    Desempenho comercial comparado à meta do escritório
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${saudeVendas.classe}`}
+                >
+                  {saudeVendas.emoji}{" "}
+                  {saudeVendas.nome}
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  Meta:{" "}
+                  <span className="font-medium text-foreground">
+                    {metaPeriodo !== null
+                      ? formatarMoeda(
+                          metaPeriodo
+                        )
+                      : "ainda não configurada"}
+                  </span>
+                </div>
+
+                {saudeVendas.percentual !==
+                  null && (
+                  <div className="text-xs text-muted-foreground">
+                    Atingimento:{" "}
+                    <span className="font-medium text-foreground">
+                      {saudeVendas.percentual.toLocaleString(
+                        "pt-BR",
+                        {
+                          maximumFractionDigits: 1,
+                        }
+                      )}
+                      %
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 border-t pt-3">
+  <div className="mb-2 flex items-center justify-between">
+    <p className="text-xs font-medium">
+      Referência da Saúde das Vendas
+    </p>
+
+    <p className="text-[10px] text-muted-foreground">
+      Baseada no atingimento da meta
+    </p>
+  </div>
+
+  <div className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs sm:grid-cols-2 lg:grid-cols-3">
+    <div className="flex items-center justify-between rounded-md px-2 py-1">
+      <span className="text-muted-foreground">
+        ≥ 110%
+      </span>
+      <span className="font-medium">
+        🟢 Excelente
+      </span>
+    </div>
+
+    <div className="flex items-center justify-between rounded-md px-2 py-1">
+      <span className="text-muted-foreground">
+        100% a 109,99%
+      </span>
+      <span className="font-medium">
+        🟢 Ótimo
+      </span>
+    </div>
+
+    <div className="flex items-center justify-between rounded-md px-2 py-1">
+      <span className="text-muted-foreground">
+        80% a 99,99%
+      </span>
+      <span className="font-medium">
+        🟡 Regular
+      </span>
+    </div>
+
+    <div className="flex items-center justify-between rounded-md px-2 py-1">
+      <span className="text-muted-foreground">
+        60% a 79,99%
+      </span>
+      <span className="font-medium">
+        🟠 Atenção
+      </span>
+    </div>
+
+    <div className="flex items-center justify-between rounded-md px-2 py-1">
+      <span className="text-muted-foreground">
+        40% a 59,99%
+      </span>
+      <span className="font-medium">
+        🔴 Ruim
+      </span>
+    </div>
+
+    <div className="flex items-center justify-between rounded-md px-2 py-1">
+      <span className="text-muted-foreground">
+        &lt; 40%
+      </span>
+      <span className="font-medium">
+        🔴 Prejudicial
+      </span>
+    </div>
+  </div>
+
+  {metaPeriodo === null && (
+    <p className="mt-3 text-[11px] text-muted-foreground">
+      A classificação automática será ativada quando a meta real do escritório for definida a partir das metas das Representadas, custos operacionais e margem de crescimento.
+    </p>
+  )}
+</div>
+          </CardContent>
+        </Card>
 
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="relative w-full xl:w-96">
@@ -878,7 +1454,9 @@ export default function VendasPage() {
               {
                 vendasFiltradas.length
               }{" "}
-              registro(s) exibido(s). Atualização automática a cada 15 segundos.
+              registro(s) exibido(s) em{" "}
+              {descricaoPeriodo.toLowerCase()}.
+              Atualização automática a cada 15 segundos.
             </CardDescription>
           </CardHeader>
 
@@ -900,7 +1478,7 @@ export default function VendasPage() {
             ) : vendasFiltradas.length ===
               0 ? (
               <div className="p-6 text-sm text-muted-foreground">
-                Nenhuma venda encontrada para os filtros selecionados.
+                Nenhuma venda encontrada para o período e filtros selecionados.
               </div>
             ) : (
               <Table>

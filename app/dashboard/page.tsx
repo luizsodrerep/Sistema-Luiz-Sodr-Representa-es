@@ -1,20 +1,25 @@
 "use client"
 
 import {
+  useEffect,
+  useMemo,
   useState,
 } from "react"
 
+import Link from "next/link"
+
 import {
+  AlertCircle,
   BarChart3,
+  CircleDollarSign,
   Download,
   LineChart,
+  Loader2,
   PieChart,
+  RefreshCw,
   Target,
-  TrendingDown,
   TrendingUp,
 } from "lucide-react"
-
-import Link from "next/link"
 
 import {
   Button,
@@ -47,157 +52,471 @@ import {
   NavigationButtons,
 } from "@/components/navigation-buttons"
 
-type RepresentadaDashboard = {
-  nome: string
-  meta: string
-  atual: string
-  progresso: number
+type VendaDashboard = {
+  id: string
+
+  numeroSequencial: number
+
+  data: string
+
+  valorTotal:
+    | number
+    | null
+
+  comissao:
+    | number
+    | null
+
+  valorComissaoPrevista:
+    | number
+    | null
+
+  status: string
+
+  cliente: {
+    id: string
+
+    razaoSocial: string
+
+    nomeFantasia:
+      | string
+      | null
+  }
+
+  representada: {
+    id: string
+
+    nome: string
+
+    codigo:
+      | string
+      | null
+  }
 }
 
-type MesDashboard = {
-  mes: string
-  meta: string
-  vendas: string
-  diff: string
-  perc: number
-  comissao: string
-  status: string
+type PeriodoDashboard =
+  | "mes-atual"
+  | "mes-anterior"
+  | "ultimos-3-meses"
+  | "ano"
+  | "todo-historico"
+  | "personalizado"
+
+type ResumoRepresentada = {
+  id: string
+  nome: string
+
+  vendas: number
+  pedidos: number
+  comissao: number
+
+  participacao: number
+}
+
+type ResumoMes = {
+  numero: number
+  nome: string
+
+  vendas: number
+  pedidos: number
+  ticketMedio: number
+  comissao: number
 }
 
 /*
  * ======================================================
- * DADOS DO DASHBOARD
+ * META DO ESCRITÓRIO
  * ======================================================
  *
- * Os dados demonstrativos da versão inicial do front-end
- * foram removidos.
+ * Nenhum valor fictício será utilizado.
  *
- * As estruturas permanecem preservadas para receber
- * posteriormente dados reais do CRM.
+ * A futura meta deverá considerar dados reais como:
+ * - metas das Representadas;
+ * - custos fixos;
+ * - custos variáveis;
+ * - compromissos financeiros;
+ * - margem/reserva para crescimento saudável.
  */
-const REPRESENTADAS_DASHBOARD:
-  RepresentadaDashboard[] =
-  []
+const META_ESCRITORIO:
+  number | null =
+  null
 
-const MESES_DASHBOARD:
-  MesDashboard[] = [
+const NOMES_MESES = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+]
+
+function formatarMoeda(
+  valor: number
+) {
+  return new Intl.NumberFormat(
+    "pt-BR",
     {
-      mes: "Janeiro",
-      meta: "R$ 0,00",
-      vendas: "R$ 0,00",
-      diff: "R$ 0,00",
-      perc: 0,
-      comissao: "R$ 0,00",
-      status: "Sem dados",
-    },
+      style: "currency",
+      currency: "BRL",
+    }
+  ).format(
+    valor
+  )
+}
+
+function formatarPercentual(
+  valor: number
+) {
+  return `${valor.toLocaleString(
+    "pt-BR",
     {
-      mes: "Fevereiro",
-      meta: "R$ 0,00",
-      vendas: "R$ 0,00",
-      diff: "R$ 0,00",
-      perc: 0,
-      comissao: "R$ 0,00",
-      status: "Sem dados",
-    },
-    {
-      mes: "Março",
-      meta: "R$ 0,00",
-      vendas: "R$ 0,00",
-      diff: "R$ 0,00",
-      perc: 0,
-      comissao: "R$ 0,00",
-      status: "Sem dados",
-    },
-    {
-      mes: "Abril",
-      meta: "R$ 0,00",
-      vendas: "R$ 0,00",
-      diff: "R$ 0,00",
-      perc: 0,
-      comissao: "R$ 0,00",
-      status: "Sem dados",
-    },
-    {
-      mes: "Maio",
-      meta: "R$ 0,00",
-      vendas: "R$ 0,00",
-      diff: "R$ 0,00",
-      perc: 0,
-      comissao: "R$ 0,00",
-      status: "Sem dados",
-    },
-    {
-      mes: "Junho",
-      meta: "R$ 0,00",
-      vendas: "R$ 0,00",
-      diff: "R$ 0,00",
-      perc: 0,
-      comissao: "R$ 0,00",
-      status: "Sem dados",
-    },
-    {
-      mes: "Julho",
-      meta: "R$ 0,00",
-      vendas: "R$ 0,00",
-      diff: "R$ 0,00",
-      perc: 0,
-      comissao: "R$ 0,00",
-      status: "Sem dados",
-    },
-    {
-      mes: "Agosto",
-      meta: "R$ 0,00",
-      vendas: "R$ 0,00",
-      diff: "R$ 0,00",
-      perc: 0,
-      comissao: "R$ 0,00",
-      status: "Sem dados",
-    },
-    {
-      mes: "Setembro",
-      meta: "R$ 0,00",
-      vendas: "R$ 0,00",
-      diff: "R$ 0,00",
-      perc: 0,
-      comissao: "R$ 0,00",
-      status: "Sem dados",
-    },
-    {
-      mes: "Outubro",
-      meta: "R$ 0,00",
-      vendas: "R$ 0,00",
-      diff: "R$ 0,00",
-      perc: 0,
-      comissao: "R$ 0,00",
-      status: "Sem dados",
-    },
-    {
-      mes: "Novembro",
-      meta: "R$ 0,00",
-      vendas: "R$ 0,00",
-      diff: "R$ 0,00",
-      perc: 0,
-      comissao: "R$ 0,00",
-      status: "Sem dados",
-    },
-    {
-      mes: "Dezembro",
-      meta: "R$ 0,00",
-      vendas: "R$ 0,00",
-      diff: "R$ 0,00",
-      perc: 0,
-      comissao: "R$ 0,00",
-      status: "Sem dados",
-    },
-  ]
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }
+  )}%`
+}
+
+function inicioDoDia(
+  data: Date
+) {
+  const nova =
+    new Date(data)
+
+  nova.setHours(
+    0,
+    0,
+    0,
+    0
+  )
+
+  return nova
+}
+
+function fimDoDia(
+  data: Date
+) {
+  const nova =
+    new Date(data)
+
+  nova.setHours(
+    23,
+    59,
+    59,
+    999
+  )
+
+  return nova
+}
+
+function obterIntervaloPeriodo(
+  periodo: PeriodoDashboard,
+  anoSelecionado: number,
+  dataInicial: string,
+  dataFinal: string
+) {
+  const hoje =
+    new Date()
+
+  if (
+    periodo ===
+    "todo-historico"
+  ) {
+    return {
+      inicio:
+        null as Date | null,
+
+      fim:
+        null as Date | null,
+    }
+  }
+
+  if (
+    periodo ===
+    "personalizado"
+  ) {
+    const inicio =
+      dataInicial
+        ? inicioDoDia(
+            new Date(
+              `${dataInicial}T00:00:00`
+            )
+          )
+        : null
+
+    const fim =
+      dataFinal
+        ? fimDoDia(
+            new Date(
+              `${dataFinal}T00:00:00`
+            )
+          )
+        : null
+
+    return {
+      inicio,
+      fim,
+    }
+  }
+
+  if (
+    periodo ===
+    "mes-atual"
+  ) {
+    return {
+      inicio:
+        new Date(
+          hoje.getFullYear(),
+          hoje.getMonth(),
+          1
+        ),
+
+      fim:
+        new Date(
+          hoje.getFullYear(),
+          hoje.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999
+        ),
+    }
+  }
+
+  if (
+    periodo ===
+    "mes-anterior"
+  ) {
+    return {
+      inicio:
+        new Date(
+          hoje.getFullYear(),
+          hoje.getMonth() - 1,
+          1
+        ),
+
+      fim:
+        new Date(
+          hoje.getFullYear(),
+          hoje.getMonth(),
+          0,
+          23,
+          59,
+          59,
+          999
+        ),
+    }
+  }
+
+  if (
+    periodo ===
+    "ultimos-3-meses"
+  ) {
+    return {
+      inicio:
+        new Date(
+          hoje.getFullYear(),
+          hoje.getMonth() - 2,
+          1
+        ),
+
+      fim:
+        new Date(
+          hoje.getFullYear(),
+          hoje.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999
+        ),
+    }
+  }
+
+  return {
+    inicio:
+      new Date(
+        anoSelecionado,
+        0,
+        1
+      ),
+
+    fim:
+      new Date(
+        anoSelecionado,
+        11,
+        31,
+        23,
+        59,
+        59,
+        999
+      ),
+  }
+}
+
+function vendaNoIntervalo(
+  venda: VendaDashboard,
+  inicio: Date | null,
+  fim: Date | null
+) {
+  if (
+    !inicio &&
+    !fim
+  ) {
+    return true
+  }
+
+  const data =
+    new Date(
+      venda.data
+    )
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return false
+  }
+
+  if (
+    inicio &&
+    data < inicio
+  ) {
+    return false
+  }
+
+  if (
+    fim &&
+    data > fim
+  ) {
+    return false
+  }
+
+  return true
+}
+
+function descricaoPeriodo(
+  periodo: PeriodoDashboard,
+  anoSelecionado: number,
+  dataInicial: string,
+  dataFinal: string
+) {
+  if (
+    periodo ===
+    "mes-atual"
+  ) {
+    return "Mês atual"
+  }
+
+  if (
+    periodo ===
+    "mes-anterior"
+  ) {
+    return "Mês anterior"
+  }
+
+  if (
+    periodo ===
+    "ultimos-3-meses"
+  ) {
+    return "Últimos 3 meses"
+  }
+
+  if (
+    periodo ===
+    "ano"
+  ) {
+    return `Ano de ${anoSelecionado}`
+  }
+
+  if (
+    periodo ===
+    "personalizado"
+  ) {
+    if (
+      dataInicial &&
+      dataFinal
+    ) {
+      return `${new Date(
+        `${dataInicial}T00:00:00`
+      ).toLocaleDateString(
+        "pt-BR"
+      )} até ${new Date(
+        `${dataFinal}T00:00:00`
+      ).toLocaleDateString(
+        "pt-BR"
+      )}`
+    }
+
+    return "Período personalizado"
+  }
+
+  return "Todo o histórico"
+}
+
+function nomeArquivoData() {
+  const agora =
+    new Date()
+
+  const ano =
+    agora.getFullYear()
+
+  const mes =
+    String(
+      agora.getMonth() +
+        1
+    ).padStart(
+      2,
+      "0"
+    )
+
+  const dia =
+    String(
+      agora.getDate()
+    ).padStart(
+      2,
+      "0"
+    )
+
+  return `${ano}-${mes}-${dia}`
+}
 
 export default function DashboardPage() {
+  const [
+    vendas,
+    setVendas,
+  ] =
+    useState<VendaDashboard[]>(
+      []
+    )
+
+  const [
+    carregando,
+    setCarregando,
+  ] =
+    useState(true)
+
+  const [
+    erro,
+    setErro,
+  ] =
+    useState<
+      string | null
+    >(null)
+
   const [
     periodoSelecionado,
     setPeriodoSelecionado,
   ] =
-    useState(
-      "month"
+    useState<PeriodoDashboard>(
+      "mes-atual"
     )
 
   const [
@@ -205,896 +524,1823 @@ export default function DashboardPage() {
     setAnoSelecionado,
   ] =
     useState(
-      "2026"
+      new Date().getFullYear()
     )
+
+  const [
+    representadaSelecionada,
+    setRepresentadaSelecionada,
+  ] =
+    useState(
+      "all"
+    )
+
+  const [
+    dataInicial,
+    setDataInicial,
+  ] =
+    useState("")
+
+  const [
+    dataFinal,
+    setDataFinal,
+  ] =
+    useState("")
+
+  const [
+    ultimaAtualizacao,
+    setUltimaAtualizacao,
+  ] =
+    useState<Date | null>(
+      null
+    )
+
+  async function carregarVendas(
+    silencioso = false
+  ) {
+    try {
+      if (
+        !silencioso
+      ) {
+        setCarregando(
+          true
+        )
+      }
+
+      setErro(
+        null
+      )
+
+      const response =
+        await fetch(
+          "/api/vendas",
+          {
+            cache:
+              "no-store",
+          }
+        )
+
+      const dados =
+        await response
+          .json()
+          .catch(
+            () => []
+          )
+
+      if (
+        !response.ok
+      ) {
+        throw new Error(
+          dados?.message ||
+            "Erro ao carregar vendas."
+        )
+      }
+
+      setVendas(
+        Array.isArray(
+          dados
+        )
+          ? dados
+          : []
+      )
+
+      setUltimaAtualizacao(
+        new Date()
+      )
+    } catch (error) {
+      console.error(
+        "Erro ao carregar Dashboard:",
+        error
+      )
+
+      setErro(
+        "Não foi possível carregar os dados reais de vendas."
+      )
+    } finally {
+      if (
+        !silencioso
+      ) {
+        setCarregando(
+          false
+        )
+      }
+    }
+  }
+
+  useEffect(() => {
+    carregarVendas()
+
+    const intervalo =
+      window.setInterval(
+        () => {
+          carregarVendas(
+            true
+          )
+        },
+        30000
+      )
+
+    return () => {
+      window.clearInterval(
+        intervalo
+      )
+    }
+  }, [])
+
+  const anosDisponiveis =
+    useMemo(
+      () => {
+        const anos =
+          new Set<number>()
+
+        anos.add(
+          new Date().getFullYear()
+        )
+
+        vendas.forEach(
+          (
+            venda
+          ) => {
+            const data =
+              new Date(
+                venda.data
+              )
+
+            if (
+              !Number.isNaN(
+                data.getTime()
+              )
+            ) {
+              anos.add(
+                data.getFullYear()
+              )
+            }
+          }
+        )
+
+        return Array.from(
+          anos
+        ).sort(
+          (
+            a,
+            b
+          ) =>
+            b - a
+        )
+      },
+      [vendas]
+    )
+
+  const representadasDisponiveis =
+    useMemo(
+      () => {
+        const mapa =
+          new Map<
+            string,
+            string
+          >()
+
+        vendas.forEach(
+          (
+            venda
+          ) => {
+            if (
+              venda.representada
+                ?.id
+            ) {
+              mapa.set(
+                venda.representada.id,
+                venda.representada.nome
+              )
+            }
+          }
+        )
+
+        return Array.from(
+          mapa.entries()
+        )
+          .map(
+            ([
+              id,
+              nome,
+            ]) => ({
+              id,
+              nome,
+            })
+          )
+          .sort(
+            (
+              a,
+              b
+            ) =>
+              a.nome.localeCompare(
+                b.nome,
+                "pt-BR"
+              )
+          )
+      },
+      [vendas]
+    )
+
+  const intervaloSelecionado =
+    useMemo(
+      () =>
+        obterIntervaloPeriodo(
+          periodoSelecionado,
+          anoSelecionado,
+          dataInicial,
+          dataFinal
+        ),
+      [
+        periodoSelecionado,
+        anoSelecionado,
+        dataInicial,
+        dataFinal,
+      ]
+    )
+
+  const vendasPeriodo =
+    useMemo(
+      () =>
+        vendas.filter(
+          (
+            venda
+          ) => {
+            if (
+              venda.status ===
+              "Cancelado"
+            ) {
+              return false
+            }
+
+            if (
+              representadaSelecionada !==
+                "all" &&
+              venda.representada
+                .id !==
+                representadaSelecionada
+            ) {
+              return false
+            }
+
+            return vendaNoIntervalo(
+              venda,
+              intervaloSelecionado.inicio,
+              intervaloSelecionado.fim
+            )
+          }
+        ),
+      [
+        vendas,
+        representadaSelecionada,
+        intervaloSelecionado,
+      ]
+    )
+
+  const totalVendas =
+    useMemo(
+      () =>
+        vendasPeriodo.reduce(
+          (
+            total,
+            venda
+          ) =>
+            total +
+            Number(
+              venda.valorTotal ||
+                0
+            ),
+          0
+        ),
+      [vendasPeriodo]
+    )
+
+  const totalComissao =
+    useMemo(
+      () =>
+        vendasPeriodo.reduce(
+          (
+            total,
+            venda
+          ) =>
+            total +
+            Number(
+              venda.valorComissaoPrevista ??
+                venda.comissao ??
+                0
+            ),
+          0
+        ),
+      [vendasPeriodo]
+    )
+
+  const totalPedidos =
+    vendasPeriodo.length
+
+  const ticketMedio =
+    totalPedidos >
+    0
+      ? totalVendas /
+        totalPedidos
+      : 0
+
+  const vendasFaturadas =
+    useMemo(
+      () =>
+        vendasPeriodo.filter(
+          (
+            venda
+          ) =>
+            venda.status ===
+            "Faturado"
+        ),
+      [vendasPeriodo]
+    )
+
+  const totalFaturadas =
+    useMemo(
+      () =>
+        vendasFaturadas.reduce(
+          (
+            total,
+            venda
+          ) =>
+            total +
+            Number(
+              venda.valorTotal ||
+                0
+            ),
+          0
+        ),
+      [vendasFaturadas]
+    )
+
+  const vendasAindaNaoFaturadas =
+    Math.max(
+      totalVendas -
+        totalFaturadas,
+      0
+    )
+
+  const resumoRepresentadas =
+    useMemo<
+      ResumoRepresentada[]
+    >(
+      () => {
+        const mapa =
+          new Map<
+            string,
+            ResumoRepresentada
+          >()
+
+        vendasPeriodo.forEach(
+          (
+            venda
+          ) => {
+            const atual =
+              mapa.get(
+                venda.representada.id
+              )
+
+            const valor =
+              Number(
+                venda.valorTotal ||
+                  0
+              )
+
+            const comissao =
+              Number(
+                venda.valorComissaoPrevista ??
+                  venda.comissao ??
+                  0
+              )
+
+            if (
+              atual
+            ) {
+              atual.vendas +=
+                valor
+
+              atual.pedidos +=
+                1
+
+              atual.comissao +=
+                comissao
+            } else {
+              mapa.set(
+                venda.representada.id,
+                {
+                  id:
+                    venda.representada.id,
+
+                  nome:
+                    venda.representada.nome,
+
+                  vendas:
+                    valor,
+
+                  pedidos:
+                    1,
+
+                  comissao,
+
+                  participacao:
+                    0,
+                }
+              )
+            }
+          }
+        )
+
+        return Array.from(
+          mapa.values()
+        )
+          .map(
+            (
+              item
+            ) => ({
+              ...item,
+
+              participacao:
+                totalVendas >
+                0
+                  ? (
+                      item.vendas /
+                      totalVendas
+                    ) *
+                    100
+                  : 0,
+            })
+          )
+          .sort(
+            (
+              a,
+              b
+            ) =>
+              b.vendas -
+              a.vendas
+          )
+      },
+      [
+        vendasPeriodo,
+        totalVendas,
+      ]
+    )
+
+  const resumoMensal =
+    useMemo<
+      ResumoMes[]
+    >(
+      () => {
+        const meses =
+          NOMES_MESES.map(
+            (
+              nome,
+              numero
+            ) => ({
+              numero,
+              nome,
+
+              vendas: 0,
+              pedidos: 0,
+              ticketMedio: 0,
+              comissao: 0,
+            })
+          )
+
+        vendas.forEach(
+          (
+            venda
+          ) => {
+            if (
+              venda.status ===
+              "Cancelado"
+            ) {
+              return
+            }
+
+            const data =
+              new Date(
+                venda.data
+              )
+
+            if (
+              Number.isNaN(
+                data.getTime()
+              )
+            ) {
+              return
+            }
+
+            if (
+              data.getFullYear() !==
+              anoSelecionado
+            ) {
+              return
+            }
+
+            if (
+              representadaSelecionada !==
+                "all" &&
+              venda.representada
+                .id !==
+                representadaSelecionada
+            ) {
+              return
+            }
+
+            const mes =
+              meses[
+                data.getMonth()
+              ]
+
+            mes.vendas +=
+              Number(
+                venda.valorTotal ||
+                  0
+              )
+
+            mes.pedidos +=
+              1
+
+            mes.comissao +=
+              Number(
+                venda.valorComissaoPrevista ??
+                  venda.comissao ??
+                  0
+              )
+          }
+        )
+
+        meses.forEach(
+          (
+            mes
+          ) => {
+            mes.ticketMedio =
+              mes.pedidos >
+              0
+                ? mes.vendas /
+                  mes.pedidos
+                : 0
+          }
+        )
+
+        return meses
+      },
+      [
+        vendas,
+        anoSelecionado,
+        representadaSelecionada,
+      ]
+    )
+
+  const maiorVendaMensal =
+    useMemo(
+      () =>
+        Math.max(
+          ...resumoMensal.map(
+            (
+              mes
+            ) =>
+              mes.vendas
+          ),
+          0
+        ),
+      [resumoMensal]
+    )
+
+  const maiorVendaRepresentada =
+    useMemo(
+      () =>
+        Math.max(
+          ...resumoRepresentadas.map(
+            (
+              item
+            ) =>
+              item.vendas
+          ),
+          0
+        ),
+      [resumoRepresentadas]
+    )
+
+  const descricaoFiltro =
+    useMemo(
+      () =>
+        descricaoPeriodo(
+          periodoSelecionado,
+          anoSelecionado,
+          dataInicial,
+          dataFinal
+        ),
+      [
+        periodoSelecionado,
+        anoSelecionado,
+        dataInicial,
+        dataFinal,
+      ]
+    )
+
+  function exportarRelatorio() {
+    const cabecalho = [
+      "VEN",
+      "Data",
+      "Cliente",
+      "Representada",
+      "Status",
+      "Valor",
+      "Comissao Prevista",
+    ]
+
+    const linhas =
+      vendasPeriodo.map(
+        (
+          venda
+        ) => [
+          `VEN-${String(
+            venda.numeroSequencial
+          ).padStart(
+            6,
+            "0"
+          )}`,
+
+          new Date(
+            venda.data
+          ).toLocaleDateString(
+            "pt-BR"
+          ),
+
+          venda.cliente
+            .nomeFantasia ||
+            venda.cliente
+              .razaoSocial,
+
+          venda.representada
+            .nome,
+
+          venda.status,
+
+          Number(
+            venda.valorTotal ||
+              0
+          )
+            .toFixed(
+              2
+            )
+            .replace(
+              ".",
+              ","
+            ),
+
+          Number(
+            venda.valorComissaoPrevista ??
+              venda.comissao ??
+              0
+          )
+            .toFixed(
+              2
+            )
+            .replace(
+              ".",
+              ","
+            ),
+        ]
+      )
+
+    const escapar = (
+      valor:
+        | string
+        | number
+    ) =>
+      `"${String(
+        valor
+      ).replace(
+        /"/g,
+        '""'
+      )}"`
+
+    const csv = [
+      cabecalho
+        .map(
+          escapar
+        )
+        .join(
+          ";"
+        ),
+
+      ...linhas.map(
+        (
+          linha
+        ) =>
+          linha
+            .map(
+              escapar
+            )
+            .join(
+              ";"
+            )
+      ),
+    ].join(
+      "\n"
+    )
+
+    const blob =
+      new Blob(
+        [
+          `\uFEFF${csv}`,
+        ],
+        {
+          type:
+            "text/csv;charset=utf-8;",
+        }
+      )
+
+    const url =
+      URL.createObjectURL(
+        blob
+      )
+
+    const link =
+      document.createElement(
+        "a"
+      )
+
+    link.href =
+      url
+
+    link.download =
+      `dashboard-vendas-${nomeArquivoData()}.csv`
+
+    document.body.appendChild(
+      link
+    )
+
+    link.click()
+
+    document.body.removeChild(
+      link
+    )
+
+    URL.revokeObjectURL(
+      url
+    )
+  }
 
   return (
     <div className="flex flex-col">
-
       <div className="flex-1 space-y-4 p-8 pt-6">
-
-        {/* Botões de navegação */}
         <NavigationButtons
           backLabel="Voltar para Home"
         />
 
-        <div className="flex items-center justify-between space-y-2">
-
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-
             <h2 className="text-3xl font-bold tracking-tight">
               Dashboard de Vendas e Metas
             </h2>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Estrutura preservada para consolidação dos dados comerciais reais do CRM.
+              Consolidação dos dados comerciais reais registrados no CRM.
             </p>
 
+            {ultimaAtualizacao && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Última atualização:{" "}
+                {ultimaAtualizacao.toLocaleTimeString(
+                  "pt-BR",
+                  {
+                    hour:
+                      "2-digit",
+
+                    minute:
+                      "2-digit",
+
+                    second:
+                      "2-digit",
+                  }
+                )}
+              </p>
+            )}
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1"
+              onClick={() =>
+                carregarVendas()
+              }
+              disabled={
+                carregando
+              }
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${
+                  carregando
+                    ? "animate-spin"
+                    : ""
+                }`}
+              />
+
+              Atualizar
+            </Button>
 
             <Button
               variant="outline"
               size="sm"
               className="h-9 gap-1"
+              onClick={
+                exportarRelatorio
+              }
+              disabled={
+                vendasPeriodo.length ===
+                0
+              }
             >
               <Download className="h-4 w-4" />
 
-              <span>
-                Exportar Relatório
-              </span>
+              Exportar Relatório
             </Button>
-
           </div>
-
         </div>
 
-        {/* Filtros */}
-        <div className="flex flex-col space-y-4 md:flex-row md:items-center md:space-x-4 md:space-y-0">
+        {erro && (
+          <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <AlertCircle className="h-4 w-4" />
 
-          <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-3">
-
-            <div className="space-y-2">
-
-              <label className="text-sm font-medium">
-                Período
-              </label>
-
-              <Select
-                value={
-                  periodoSelecionado
-                }
-                onValueChange={
-                  setPeriodoSelecionado
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um período" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="week">
-                    Última semana
-                  </SelectItem>
-
-                  <SelectItem value="month">
-                    Último mês
-                  </SelectItem>
-
-                  <SelectItem value="quarter">
-                    Último trimestre
-                  </SelectItem>
-
-                  <SelectItem value="year">
-                    Último ano
-                  </SelectItem>
-
-                  <SelectItem value="custom">
-                    Personalizado
-                  </SelectItem>
-                </SelectContent>
-
-              </Select>
-
-            </div>
-
-            <div className="space-y-2">
-
-              <label className="text-sm font-medium">
-                Ano
-              </label>
-
-              <Select
-                value={
-                  anoSelecionado
-                }
-                onValueChange={
-                  setAnoSelecionado
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o ano" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="2023">
-                    2023
-                  </SelectItem>
-
-                  <SelectItem value="2024">
-                    2024
-                  </SelectItem>
-
-                  <SelectItem value="2025">
-                    2025
-                  </SelectItem>
-
-                  <SelectItem value="2026">
-                    2026
-                  </SelectItem>
-                </SelectContent>
-
-              </Select>
-
-            </div>
-
-            <div className="space-y-2">
-
-              <label className="text-sm font-medium">
-                Representada
-              </label>
-
-              <Select
-                defaultValue="all"
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma representada" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="all">
-                    Todas as representadas
-                  </SelectItem>
-                </SelectContent>
-
-              </Select>
-
-              <p className="text-xs text-muted-foreground">
-                As Representadas reais serão carregadas do cadastro do CRM.
-              </p>
-
-            </div>
-
+            {
+              erro
+            }
           </div>
-
-          <Button>
-            Aplicar Filtros
-          </Button>
-
-        </div>
-
-        {/* Resumo de Metas e Vendas */}
-        <div className="grid gap-4 md:grid-cols-5">
-
-          <Card>
-
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-
-              <CardTitle className="text-sm font-medium">
-                Total de Vendas
-              </CardTitle>
-
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-
-            </CardHeader>
-
-            <CardContent>
-
-              <div className="text-2xl font-bold">
-                R$ 0,00
-              </div>
-
-              <div className="flex items-center space-x-2">
-
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-
-                <p className="text-xs text-muted-foreground">
-                  Sem comparação real disponível
-                </p>
-
-              </div>
-
-            </CardContent>
-
-          </Card>
-
-          <Card>
-
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-
-              <CardTitle className="text-sm font-medium">
-                Meta Mensal
-              </CardTitle>
-
-              <Target className="h-4 w-4 text-muted-foreground" />
-
-            </CardHeader>
-
-            <CardContent>
-
-              <div className="text-2xl font-bold">
-                R$ 0,00
-              </div>
-
-              <div className="mt-2">
-
-                <div className="flex items-center justify-between text-xs">
-
-                  <span>
-                    Progresso: 0,0%
-                  </span>
-
-                  <span>
-                    R$ 0,00 / R$ 0,00
-                  </span>
-
-                </div>
-
-                <div className="mt-1 h-2 w-full rounded-full bg-muted">
-
-                  <div
-                    className="h-2 rounded-full bg-primary"
-                    style={{
-                      width:
-                        "0%",
-                    }}
-                  />
-
-                </div>
-
-              </div>
-
-            </CardContent>
-
-          </Card>
-
-          <Card>
-
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-
-              <CardTitle className="text-sm font-medium">
-                Ticket Médio
-              </CardTitle>
-
-              <LineChart className="h-4 w-4 text-muted-foreground" />
-
-            </CardHeader>
-
-            <CardContent>
-
-              <div className="text-2xl font-bold">
-                R$ 0,00
-              </div>
-
-              <div className="flex items-center space-x-2">
-
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-
-                <p className="text-xs text-muted-foreground">
-                  Sem comparação real disponível
-                </p>
-
-              </div>
-
-            </CardContent>
-
-          </Card>
-
-          <Card>
-
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-
-              <CardTitle className="text-sm font-medium">
-                Total de Pedidos
-              </CardTitle>
-
-              <PieChart className="h-4 w-4 text-muted-foreground" />
-
-            </CardHeader>
-
-            <CardContent>
-
-              <div className="text-2xl font-bold">
-                0
-              </div>
-
-              <div className="flex items-center space-x-2">
-
-                <TrendingDown className="h-4 w-4 text-muted-foreground" />
-
-                <p className="text-xs text-muted-foreground">
-                  Sem comparação real disponível
-                </p>
-
-              </div>
-
-            </CardContent>
-
-          </Card>
-
-          <Card>
-
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-
-              <CardTitle className="text-sm font-medium">
-                Diferenças no Faturamento
-              </CardTitle>
-
-              <TrendingDown className="h-4 w-4 text-muted-foreground" />
-
-            </CardHeader>
-
-            <CardContent>
-
-              <div className="text-2xl font-bold">
-                R$ 0,00
-              </div>
-
-              <div className="flex items-center space-x-2">
-
-                <TrendingDown className="h-4 w-4 text-muted-foreground" />
-
-                <p className="text-xs text-muted-foreground">
-                  Nenhuma diferença real consolidada
-                </p>
-
-              </div>
-
-              <div className="mt-2">
-
-                <Link
-                  href="/vendas"
-                  className="text-xs text-primary hover:underline"
+        )}
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              Filtros do Dashboard
+            </CardTitle>
+
+            <CardDescription>
+              Todos os indicadores abaixo respondem aos filtros selecionados.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Período
+                </label>
+
+                <Select
+                  value={
+                    periodoSelecionado
+                  }
+                  onValueChange={(
+                    valor
+                  ) =>
+                    setPeriodoSelecionado(
+                      valor as PeriodoDashboard
+                    )
+                  }
                 >
-                  Ver análise detalhada
-                </Link>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um período" />
+                  </SelectTrigger>
 
+                  <SelectContent>
+                    <SelectItem value="mes-atual">
+                      Mês atual
+                    </SelectItem>
+
+                    <SelectItem value="mes-anterior">
+                      Mês anterior
+                    </SelectItem>
+
+                    <SelectItem value="ultimos-3-meses">
+                      Últimos 3 meses
+                    </SelectItem>
+
+                    <SelectItem value="ano">
+                      Ano selecionado
+                    </SelectItem>
+
+                    <SelectItem value="todo-historico">
+                      Todo o histórico
+                    </SelectItem>
+
+                    <SelectItem value="personalizado">
+                      Personalizado
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-            </CardContent>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Ano
+                </label>
 
-          </Card>
+                <Select
+                  value={
+                    String(
+                      anoSelecionado
+                    )
+                  }
+                  onValueChange={(
+                    valor
+                  ) =>
+                    setAnoSelecionado(
+                      Number(
+                        valor
+                      )
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o ano" />
+                  </SelectTrigger>
 
-        </div>
+                  <SelectContent>
+                    {anosDisponiveis.map(
+                      (
+                        ano
+                      ) => (
+                        <SelectItem
+                          key={
+                            ano
+                          }
+                          value={
+                            String(
+                              ano
+                            )
+                          }
+                        >
+                          {
+                            ano
+                          }
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
 
-        <Tabs
-          defaultValue="vendas-metas"
-        >
+                <p className="text-xs text-muted-foreground">
+                  Usado na análise anual e mensal.
+                </p>
+              </div>
 
-          <TabsList className="grid w-full grid-cols-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Representada
+                </label>
 
-            <TabsTrigger value="vendas-metas">
-              Vendas vs Metas
-            </TabsTrigger>
+                <Select
+                  value={
+                    representadaSelecionada
+                  }
+                  onValueChange={
+                    setRepresentadaSelecionada
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma representada" />
+                  </SelectTrigger>
 
-            <TabsTrigger value="representadas">
-              Desempenho por Representada
-            </TabsTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      Todas as Representadas
+                    </SelectItem>
 
-            <TabsTrigger value="mensal">
-              Análise Mensal
-            </TabsTrigger>
+                    {representadasDisponiveis.map(
+                      (
+                        representada
+                      ) => (
+                        <SelectItem
+                          key={
+                            representada.id
+                          }
+                          value={
+                            representada.id
+                          }
+                        >
+                          {
+                            representada.nome
+                          }
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
 
-          </TabsList>
+                <p className="text-xs text-muted-foreground">
+                  Lista baseada nas vendas reais registradas.
+                </p>
+              </div>
 
-          {/* VENDAS X METAS */}
-          <TabsContent
-            value="vendas-metas"
-            className="space-y-4"
-          >
+              <div className="rounded-md border bg-muted/20 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Período em análise
+                </p>
 
-            <div className="grid gap-4 md:grid-cols-2">
+                <p className="mt-1 font-semibold">
+                  {
+                    descricaoFiltro
+                  }
+                </p>
 
-              <Card className="col-span-1">
-
-                <CardHeader>
-
-                  <CardTitle>
-                    Vendas vs Metas (Anual)
-                  </CardTitle>
-
-                  <CardDescription>
-                    Comparativo entre vendas realizadas e metas estabelecidas
-                  </CardDescription>
-
-                </CardHeader>
-
-                <CardContent className="pl-2">
-
-                  <div className="flex h-[300px] w-full flex-col items-center justify-center rounded-md bg-muted/20">
-
-                    <LineChart className="h-8 w-8 text-muted-foreground" />
-
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Sem dados reais para o gráfico
-                    </p>
-
-                  </div>
-
-                </CardContent>
-
-              </Card>
-
-              <Card className="col-span-1">
-
-                <CardHeader>
-
-                  <CardTitle>
-                    Distribuição de Vendas
-                  </CardTitle>
-
-                  <CardDescription>
-                    Vendas por representada no período
-                  </CardDescription>
-
-                </CardHeader>
-
-                <CardContent className="pl-2">
-
-                  <div className="flex h-[300px] w-full flex-col items-center justify-center rounded-md bg-muted/20">
-
-                    <PieChart className="h-8 w-8 text-muted-foreground" />
-
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Sem dados reais para o gráfico
-                    </p>
-
-                  </div>
-
-                </CardContent>
-
-              </Card>
-
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Vendas canceladas não entram nos indicadores.
+                </p>
+              </div>
             </div>
 
-            <Card>
+            {periodoSelecionado ===
+              "personalizado" && (
+              <div className="mt-4 grid gap-4 border-t pt-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Data inicial
+                  </label>
 
-              <CardHeader>
-
-                <CardTitle>
-                  Progresso de Metas por Representada
-                </CardTitle>
-
-                <CardDescription>
-                  Acompanhamento do progresso em relação às metas estabelecidas
-                </CardDescription>
-
-              </CardHeader>
-
-              <CardContent>
-
-                {REPRESENTADAS_DASHBOARD.length ===
-                0 ? (
-
-                  <div className="rounded-lg border border-dashed p-8 text-center">
-
-                    <p className="font-medium">
-                      Nenhum dado real consolidado por Representada
-                    </p>
-
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      A estrutura permanece preparada para receber metas e vendas reais.
-                    </p>
-
-                  </div>
-
-                ) : (
-
-                  <div className="space-y-4">
-
-                    {REPRESENTADAS_DASHBOARD.map(
-                      (
-                        rep
-                      ) => (
-                        <div
-                          key={
-                            rep.nome
-                          }
-                          className="space-y-1"
-                        >
-
-                          <div className="flex items-center justify-between">
-
-                            <span className="font-medium">
-                              {
-                                rep.nome
-                              }
-                            </span>
-
-                            <span>
-                              {rep.atual} / {rep.meta}
-                            </span>
-
-                          </div>
-
-                          <div className="flex items-center justify-between text-xs">
-
-                            <span>
-                              Progresso:{" "}
-                              {rep.progresso.toFixed(
-                                1
-                              )}
-                              %
-                            </span>
-
-                            <span
-                              className={
-                                rep.progresso >=
-                                80
-                                  ? "text-green-500"
-                                  : rep.progresso >=
-                                      60
-                                    ? "text-yellow-500"
-                                    : "text-red-500"
-                              }
-                            >
-                              {rep.progresso >=
-                              80
-                                ? "Bom"
-                                : rep.progresso >=
-                                    60
-                                  ? "Regular"
-                                  : "Abaixo do esperado"}
-                            </span>
-
-                          </div>
-
-                          <div className="h-2 w-full rounded-full bg-muted">
-
-                            <div
-                              className={`h-2 rounded-full ${
-                                rep.progresso >=
-                                80
-                                  ? "bg-green-500"
-                                  : rep.progresso >=
-                                      60
-                                    ? "bg-yellow-500"
-                                    : "bg-red-500"
-                              }`}
-                              style={{
-                                width:
-                                  `${rep.progresso}%`,
-                              }}
-                            />
-
-                          </div>
-
-                        </div>
+                  <input
+                    type="date"
+                    value={
+                      dataInicial
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setDataInicial(
+                        event.target.value
                       )
-                    )}
+                    }
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  />
+                </div>
 
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Data final
+                  </label>
 
-                )}
-
-              </CardContent>
-
-            </Card>
-
-          </TabsContent>
-
-          {/* REPRESENTADAS */}
-          <TabsContent
-            value="representadas"
-            className="space-y-4"
-          >
-
-            <Card>
-
-              <CardHeader>
-
-                <CardTitle>
-                  Desempenho por Representada
-                </CardTitle>
-
-                <CardDescription>
-                  Análise detalhada de vendas e metas por representada
-                </CardDescription>
-
-              </CardHeader>
-
-              <CardContent>
-
-                {REPRESENTADAS_DASHBOARD.length ===
-                0 ? (
-
-                  <div className="rounded-lg border border-dashed p-8 text-center">
-
-                    <p className="font-medium">
-                      Nenhum desempenho real consolidado
-                    </p>
-
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Esta área permanece preparada para análise individual das Representadas.
-                    </p>
-
-                  </div>
-
-                ) : (
-
-                  <div className="space-y-6">
-
-                    {REPRESENTADAS_DASHBOARD.map(
-                      (
-                        rep
-                      ) => (
-                        <div
-                          key={
-                            rep.nome
-                          }
-                          className="space-y-3 rounded-lg border p-4"
-                        >
-
-                          <div className="flex items-center justify-between">
-
-                            <h3 className="text-lg font-bold">
-                              {
-                                rep.nome
-                              }
-                            </h3>
-
-                            <div
-                              className={`rounded-full px-2 py-1 text-xs font-medium ${
-                                rep.progresso >=
-                                80
-                                  ? "bg-green-100 text-green-800"
-                                  : rep.progresso >=
-                                      60
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {rep.progresso.toFixed(
-                                1
-                              )}
-                              % da meta
-                            </div>
-
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-
-                            <div>
-
-                              <div className="text-sm text-muted-foreground">
-                                Meta Mensal
-                              </div>
-
-                              <div className="text-xl font-bold">
-                                {
-                                  rep.meta
-                                }
-                              </div>
-
-                            </div>
-
-                            <div>
-
-                              <div className="text-sm text-muted-foreground">
-                                Vendas Realizadas
-                              </div>
-
-                              <div className="text-xl font-bold">
-                                {
-                                  rep.atual
-                                }
-                              </div>
-
-                            </div>
-
-                          </div>
-
-                          <div className="space-y-1">
-
-                            <div className="flex items-center justify-between text-xs">
-
-                              <span>
-                                Progresso
-                              </span>
-
-                              <span>
-                                {rep.atual} / {rep.meta}
-                              </span>
-
-                            </div>
-
-                            <div className="h-2 w-full rounded-full bg-muted">
-
-                              <div
-                                className={`h-2 rounded-full ${
-                                  rep.progresso >=
-                                  80
-                                    ? "bg-green-500"
-                                    : rep.progresso >=
-                                        60
-                                      ? "bg-yellow-500"
-                                      : "bg-red-500"
-                                }`}
-                                style={{
-                                  width:
-                                    `${rep.progresso}%`,
-                                }}
-                              />
-
-                            </div>
-
-                          </div>
-
-                          <div className="flex h-[150px] w-full items-center justify-center rounded-md bg-muted/20">
-
-                            <LineChart className="h-6 w-6 text-muted-foreground" />
-
-                          </div>
-
-                        </div>
+                  <input
+                    type="date"
+                    value={
+                      dataFinal
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setDataFinal(
+                        event.target.value
                       )
-                    )}
+                    }
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
+        {carregando ? (
+          <Card>
+            <CardContent className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+
+              Carregando vendas reais...
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Total de Vendas
+                  </CardTitle>
+
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatarMoeda(
+                      totalVendas
+                    )}
                   </div>
 
-                )}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {
+                      totalPedidos
+                    }{" "}
+                    pedido(s) considerados
+                  </p>
+                </CardContent>
+              </Card>
 
-              </CardContent>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Meta
+                  </CardTitle>
 
-            </Card>
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
 
-          </TabsContent>
+                <CardContent>
+                  <div className="text-xl font-bold">
+                    {META_ESCRITORIO ===
+                    null
+                      ? "Não configurada"
+                      : formatarMoeda(
+                          META_ESCRITORIO
+                        )}
+                  </div>
 
-          {/* ANÁLISE MENSAL */}
-          <TabsContent
-            value="mensal"
-            className="space-y-4"
-          >
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Aguardando definição financeira real
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Ticket Médio
+                  </CardTitle>
 
-              <CardHeader>
+                  <LineChart className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
 
-                <CardTitle>
-                  Análise Mensal de Vendas e Metas
-                </CardTitle>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatarMoeda(
+                      ticketMedio
+                    )}
+                  </div>
 
-                <CardDescription>
-                  Desempenho mês a mês durante o ano
-                </CardDescription>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Valor médio por pedido
+                  </p>
+                </CardContent>
+              </Card>
 
-              </CardHeader>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Total de Pedidos
+                  </CardTitle>
 
-              <CardContent>
+                  <PieChart className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
 
-                <div className="mb-4 flex h-[400px] w-full flex-col items-center justify-center rounded-md bg-muted/20">
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {
+                      totalPedidos
+                    }
+                  </div>
 
-                  <BarChart3 className="h-8 w-8 text-muted-foreground" />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    No período selecionado
+                  </p>
+                </CardContent>
+              </Card>
 
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Gráfico aguardando dados reais
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Comissão Prevista
+                  </CardTitle>
+
+                  <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatarMoeda(
+                      totalComissao
+                    )}
+                  </div>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Conforme regras aplicadas nas vendas
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Ainda não Faturadas
+                  </CardTitle>
+
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatarMoeda(
+                      vendasAindaNaoFaturadas
+                    )}
+                  </div>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Venda registrada sem status Faturado
                   </p>
 
+                  <Link
+                    href="/faturamentos"
+                    className="mt-2 inline-block text-xs text-primary hover:underline"
+                  >
+                    Abrir Faturamentos
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="rounded-md border bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground">
+                <strong className="text-foreground">
+                  Observação:
+                </strong>{" "}
+                “Ainda não Faturadas” usa o status atual da Venda. A comparação contábil definitiva entre valor vendido e notas efetivamente faturadas será consolidada posteriormente com o módulo Faturamentos, sem presumir diferenças.
+              </p>
+            </div>
+
+            <Tabs
+              defaultValue="vendas-metas"
+            >
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="vendas-metas">
+                  Vendas e Metas
+                </TabsTrigger>
+
+                <TabsTrigger value="representadas">
+                  Por Representada
+                </TabsTrigger>
+
+                <TabsTrigger value="mensal">
+                  Análise Mensal
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent
+                value="vendas-metas"
+                className="space-y-4"
+              >
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>
+                        Evolução de Vendas — {anoSelecionado}
+                      </CardTitle>
+
+                      <CardDescription>
+                        Vendas reais mês a mês. A meta será acrescentada quando estiver definida.
+                      </CardDescription>
+                    </CardHeader>
+
+                    <CardContent>
+                      <div className="space-y-3">
+                        {resumoMensal.map(
+                          (
+                            mes
+                          ) => {
+                            const largura =
+                              maiorVendaMensal >
+                              0
+                                ? (
+                                    mes.vendas /
+                                    maiorVendaMensal
+                                  ) *
+                                  100
+                                : 0
+
+                            return (
+                              <div
+                                key={
+                                  mes.numero
+                                }
+                                className="space-y-1"
+                              >
+                                <div className="flex items-center justify-between gap-4 text-xs">
+                                  <span className="w-20 font-medium">
+                                    {
+                                      mes.nome
+                                    }
+                                  </span>
+
+                                  <span>
+                                    {formatarMoeda(
+                                      mes.vendas
+                                    )}
+                                  </span>
+                                </div>
+
+                                <div className="h-2 w-full rounded-full bg-muted">
+                                  <div
+                                    className="h-2 rounded-full bg-primary"
+                                    style={{
+                                      width:
+                                        `${largura}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            )
+                          }
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>
+                        Distribuição de Vendas
+                      </CardTitle>
+
+                      <CardDescription>
+                        Participação real de cada Representada no período filtrado.
+                      </CardDescription>
+                    </CardHeader>
+
+                    <CardContent>
+                      {resumoRepresentadas.length ===
+                      0 ? (
+                        <div className="rounded-lg border border-dashed p-8 text-center">
+                          <p className="font-medium">
+                            Nenhuma venda no período
+                          </p>
+
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Altere os filtros para consultar outro período.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {resumoRepresentadas.map(
+                            (
+                              representada
+                            ) => (
+                              <div
+                                key={
+                                  representada.id
+                                }
+                                className="space-y-1"
+                              >
+                                <div className="flex items-center justify-between gap-3 text-sm">
+                                  <span className="truncate font-medium">
+                                    {
+                                      representada.nome
+                                    }
+                                  </span>
+
+                                  <span className="whitespace-nowrap">
+                                    {formatarPercentual(
+                                      representada.participacao
+                                    )}
+                                  </span>
+                                </div>
+
+                                <div className="h-2 w-full rounded-full bg-muted">
+                                  <div
+                                    className="h-2 rounded-full bg-primary"
+                                    style={{
+                                      width:
+                                        `${Math.min(
+                                          representada.participacao,
+                                          100
+                                        )}%`,
+                                    }}
+                                  />
+                                </div>
+
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                  <span>
+                                    {
+                                      representada.pedidos
+                                    }{" "}
+                                    pedido(s)
+                                  </span>
+
+                                  <span>
+                                    {formatarMoeda(
+                                      representada.vendas
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
 
-                <div className="overflow-x-auto rounded-md border">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      Vendas por Representada
+                    </CardTitle>
 
-                  <div className="min-w-[760px]">
+                    <CardDescription>
+                      Valores reais consolidados. Metas individuais ainda não foram configuradas.
+                    </CardDescription>
+                  </CardHeader>
 
-                    <div className="grid grid-cols-7 bg-muted/20 p-2 text-xs font-medium">
+                  <CardContent>
+                    {resumoRepresentadas.length ===
+                    0 ? (
+                      <div className="rounded-lg border border-dashed p-8 text-center">
+                        <p className="font-medium">
+                          Nenhuma venda real encontrada
+                        </p>
 
-                      <div>
-                        Mês
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Não existem vendas para os filtros selecionados.
+                        </p>
                       </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {resumoRepresentadas.map(
+                          (
+                            representada
+                          ) => {
+                            const largura =
+                              maiorVendaRepresentada >
+                              0
+                                ? (
+                                    representada.vendas /
+                                    maiorVendaRepresentada
+                                  ) *
+                                  100
+                                : 0
 
-                      <div>
-                        Meta
-                      </div>
+                            return (
+                              <div
+                                key={
+                                  representada.id
+                                }
+                                className="rounded-lg border p-4"
+                              >
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                  <div>
+                                    <p className="font-semibold">
+                                      {
+                                        representada.nome
+                                      }
+                                    </p>
 
-                      <div>
-                        Vendas
-                      </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      {
+                                        representada.pedidos
+                                      }{" "}
+                                      pedido(s)
+                                    </p>
+                                  </div>
 
-                      <div>
-                        Diferença
-                      </div>
+                                  <div className="text-left sm:text-right">
+                                    <p className="font-bold">
+                                      {formatarMoeda(
+                                        representada.vendas
+                                      )}
+                                    </p>
 
-                      <div>
-                        % Atingido
-                      </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      Comissão:{" "}
+                                      {formatarMoeda(
+                                        representada.comissao
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
 
-                      <div>
-                        Comissão
-                      </div>
+                                <div className="mt-3 h-2 w-full rounded-full bg-muted">
+                                  <div
+                                    className="h-2 rounded-full bg-primary"
+                                    style={{
+                                      width:
+                                        `${largura}%`,
+                                    }}
+                                  />
+                                </div>
 
-                      <div>
-                        Status
-                      </div>
+                                <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                                  <span>
+                                    Participação nas vendas
+                                  </span>
 
-                    </div>
-
-                    {MESES_DASHBOARD.map(
-                      (
-                        mes
-                      ) => (
-                        <div
-                          key={
-                            mes.mes
+                                  <span>
+                                    {formatarPercentual(
+                                      representada.participacao
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            )
                           }
-                          className="grid grid-cols-7 border-t p-2 text-xs"
-                        >
-
-                          <div>
-                            {
-                              mes.mes
-                            }
-                          </div>
-
-                          <div>
-                            {
-                              mes.meta
-                            }
-                          </div>
-
-                          <div>
-                            {
-                              mes.vendas
-                            }
-                          </div>
-
-                          <div>
-                            {
-                              mes.diff
-                            }
-                          </div>
-
-                          <div>
-                            {
-                              mes.perc
-                            }
-                            %
-                          </div>
-
-                          <div>
-                            {
-                              mes.comissao
-                            }
-                          </div>
-
-                          <div>
-
-                            <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-700">
-                              {
-                                mes.status
-                              }
-                            </span>
-
-                          </div>
-
-                        </div>
-                      )
+                        )}
+                      </div>
                     )}
 
-                  </div>
+                    <div className="mt-4 rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                      Quando as metas reais de cada Representada forem cadastradas, esta mesma área poderá comparar realizado × meta sem alterar o histórico de vendas.
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                </div>
+              <TabsContent
+                value="representadas"
+                className="space-y-4"
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      Desempenho por Representada
+                    </CardTitle>
 
-              </CardContent>
+                    <CardDescription>
+                      Vendas, pedidos, comissão prevista e participação no período selecionado.
+                    </CardDescription>
+                  </CardHeader>
 
-            </Card>
+                  <CardContent>
+                    {resumoRepresentadas.length ===
+                    0 ? (
+                      <div className="rounded-lg border border-dashed p-8 text-center">
+                        <p className="font-medium">
+                          Nenhum desempenho para exibir
+                        </p>
 
-          </TabsContent>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Não há vendas reais no período selecionado.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        {resumoRepresentadas.map(
+                          (
+                            representada
+                          ) => (
+                            <Card
+                              key={
+                                representada.id
+                              }
+                            >
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-base">
+                                  {
+                                    representada.nome
+                                  }
+                                </CardTitle>
+                              </CardHeader>
 
-        </Tabs>
+                              <CardContent>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">
+                                      Vendas
+                                    </p>
 
+                                    <p className="font-bold">
+                                      {formatarMoeda(
+                                        representada.vendas
+                                      )}
+                                    </p>
+                                  </div>
+
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">
+                                      Pedidos
+                                    </p>
+
+                                    <p className="font-bold">
+                                      {
+                                        representada.pedidos
+                                      }
+                                    </p>
+                                  </div>
+
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">
+                                      Comissão prevista
+                                    </p>
+
+                                    <p className="font-bold">
+                                      {formatarMoeda(
+                                        representada.comissao
+                                      )}
+                                    </p>
+                                  </div>
+
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">
+                                      Participação
+                                    </p>
+
+                                    <p className="font-bold">
+                                      {formatarPercentual(
+                                        representada.participacao
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <Link
+                                  href={`/representadas/${representada.id}`}
+                                  className="mt-4 inline-block text-xs text-primary hover:underline"
+                                >
+                                  Abrir Representada
+                                </Link>
+                              </CardContent>
+                            </Card>
+                          )
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent
+                value="mensal"
+                className="space-y-4"
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      Análise Mensal — {anoSelecionado}
+                    </CardTitle>
+
+                    <CardDescription>
+                      Vendas e comissões reais mês a mês. Meta permanece em aberto até definição oficial.
+                    </CardDescription>
+                  </CardHeader>
+
+                  <CardContent>
+                    <div className="mb-6 space-y-3">
+                      {resumoMensal.map(
+                        (
+                          mes
+                        ) => {
+                          const largura =
+                            maiorVendaMensal >
+                            0
+                              ? (
+                                  mes.vendas /
+                                  maiorVendaMensal
+                                ) *
+                                100
+                              : 0
+
+                          return (
+                            <div
+                              key={
+                                mes.numero
+                              }
+                              className="grid grid-cols-[80px_1fr_auto] items-center gap-3"
+                            >
+                              <span className="text-xs font-medium">
+                                {
+                                  mes.nome
+                                }
+                              </span>
+
+                              <div className="h-3 rounded-full bg-muted">
+                                <div
+                                  className="h-3 rounded-full bg-primary"
+                                  style={{
+                                    width:
+                                      `${largura}%`,
+                                  }}
+                                />
+                              </div>
+
+                              <span className="text-xs font-medium">
+                                {formatarMoeda(
+                                  mes.vendas
+                                )}
+                              </span>
+                            </div>
+                          )
+                        }
+                      )}
+                    </div>
+
+                    <div className="overflow-x-auto rounded-md border">
+                      <div className="min-w-[920px]">
+                        <div className="grid grid-cols-7 bg-muted/20 p-3 text-xs font-medium">
+                          <div>
+                            Mês
+                          </div>
+
+                          <div>
+                            Meta
+                          </div>
+
+                          <div>
+                            Vendas
+                          </div>
+
+                          <div>
+                            Pedidos
+                          </div>
+
+                          <div>
+                            Ticket Médio
+                          </div>
+
+                          <div>
+                            Comissão
+                          </div>
+
+                          <div>
+                            Status
+                          </div>
+                        </div>
+
+                        {resumoMensal.map(
+                          (
+                            mes
+                          ) => (
+                            <div
+                              key={
+                                mes.numero
+                              }
+                              className="grid grid-cols-7 border-t p-3 text-xs"
+                            >
+                              <div className="font-medium">
+                                {
+                                  mes.nome
+                                }
+                              </div>
+
+                              <div className="text-muted-foreground">
+                                —
+                              </div>
+
+                              <div>
+                                {formatarMoeda(
+                                  mes.vendas
+                                )}
+                              </div>
+
+                              <div>
+                                {
+                                  mes.pedidos
+                                }
+                              </div>
+
+                              <div>
+                                {formatarMoeda(
+                                  mes.ticketMedio
+                                )}
+                              </div>
+
+                              <div>
+                                {formatarMoeda(
+                                  mes.comissao
+                                )}
+                              </div>
+
+                              <div>
+                                <span
+                                  className={`rounded-full px-2 py-1 text-[10px] ${
+                                    mes.pedidos >
+                                    0
+                                      ? "bg-blue-50 text-blue-700"
+                                      : "bg-gray-100 text-gray-700"
+                                  }`}
+                                >
+                                  {mes.pedidos >
+                                  0
+                                    ? "Vendas registradas"
+                                    : "Sem vendas"}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                      Meta, diferença e percentual de atingimento não são exibidos enquanto a Meta do Escritório e as metas das Representadas não forem formalmente definidas.
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
       </div>
-
     </div>
   )
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  type FormEvent,
   useEffect,
   useState,
 } from "react"
@@ -65,23 +66,32 @@ type RegraComercial = {
   representadaId: string
   clienteId: string | null
   contratoId: string | null
+
   nome: string
   tipoEscopo: string
+
   vigenciaInicio: string
   vigenciaFim: string | null
+
   ativa: boolean
+
   pedidoMinimo: number | null
   minimoParcela: number | null
+
   prazoEntregaDias: number | null
   prazoFaturamentoDias: number | null
+
   frete: string | null
   regiao: string | null
+
   tipoComissao: string | null
   percentualComissao: number | null
   faixasComissao: string | null
+
   reconhecimentoComissao: string | null
   fechamentoComissao: string | null
   pagamentoComissao: string | null
+
   observacoes: string | null
 
   cliente: Cliente | null
@@ -96,6 +106,25 @@ type Representada = {
   id: string
   nome: string
   codigo: string | null
+
+  comissao: number | null
+
+  tipoComissao:
+    | "fixa"
+    | "variada"
+    | null
+
+  faixasComissao: string | null
+
+  pedidoMinimo: number | null
+  minimoParcela: number | null
+
+  politicaFrete: string | null
+  regiaoAtendimento: string | null
+
+  prazoEntregaDias: number | null
+  prazoFaturamentoDias: number | null
+
   regraReconhecimentoComissao: string | null
   fechamentoComissao: string | null
   pagamentoComissao: string | null
@@ -109,45 +138,71 @@ type Faixa = {
 type FormRegra = {
   nome: string
   tipoEscopo: string
+
   clienteId: string
   contratoId: string
+
   vigenciaInicio: string
   vigenciaFim: string
+
   ativa: boolean
+
   pedidoMinimo: string
   minimoParcela: string
+
   prazoEntregaDias: string
   prazoFaturamentoDias: string
+
   frete: string
   regiao: string
+
   tipoComissao: string
   percentualComissao: string
+
   reconhecimentoComissao: string
   fechamentoComissao: string
   pagamentoComissao: string
+
   observacoes: string
 }
 
 const FORM_INICIAL: FormRegra = {
   nome: "",
   tipoEscopo: "Padrao",
+
   clienteId: "",
   contratoId: "",
+
   vigenciaInicio: "",
   vigenciaFim: "",
+
   ativa: true,
+
   pedidoMinimo: "",
   minimoParcela: "",
+
   prazoEntregaDias: "",
   prazoFaturamentoDias: "",
+
   frete: "",
   regiao: "",
+
   tipoComissao: "fixa",
   percentualComissao: "",
+
   reconhecimentoComissao: "",
   fechamentoComissao: "",
   pagamentoComissao: "",
+
   observacoes: "",
+}
+
+function numeroParaInput(
+  valor: number | null
+) {
+  return valor === null
+    ? ""
+    : String(valor)
 }
 
 function converterDataParaInput(
@@ -210,6 +265,12 @@ function formatarValor(
     return "-"
   }
 
+  if (
+    valor === 0
+  ) {
+    return "Não se aplica"
+  }
+
   return valor.toLocaleString(
     "pt-BR",
     {
@@ -246,15 +307,26 @@ function parseFaixas(
       resultado.length >
         0
     ) {
-      return resultado
+      return resultado.map(
+        (
+          faixa
+        ) => ({
+          desconto:
+            String(
+              faixa?.desconto ??
+                ""
+            ),
+
+          comissao:
+            String(
+              faixa?.comissao ??
+                ""
+            ),
+        })
+      )
     }
   } catch {
-    return [
-      {
-        desconto: "",
-        comissao: "",
-      },
-    ]
+    // usa faixa vazia
   }
 
   return [
@@ -263,6 +335,95 @@ function parseFaixas(
       comissao: "",
     },
   ]
+}
+
+function montarFormularioDoCadastro(
+  representada: Representada
+): FormRegra {
+  return {
+    nome:
+      `Regra padrão - ${representada.nome}`,
+
+    tipoEscopo:
+      "Padrao",
+
+    clienteId:
+      "",
+
+    contratoId:
+      "",
+
+    /*
+     * A vigência não é presumida.
+     * O usuário deve informar a data real
+     * em que esta versão passa a valer.
+     */
+    vigenciaInicio:
+      "",
+
+    vigenciaFim:
+      "",
+
+    ativa:
+      true,
+
+    pedidoMinimo:
+      numeroParaInput(
+        representada.pedidoMinimo
+      ),
+
+    minimoParcela:
+      numeroParaInput(
+        representada.minimoParcela
+      ),
+
+    prazoEntregaDias:
+      numeroParaInput(
+        representada.prazoEntregaDias
+      ),
+
+    prazoFaturamentoDias:
+      numeroParaInput(
+        representada.prazoFaturamentoDias
+      ),
+
+    frete:
+      representada.politicaFrete ||
+      "",
+
+    regiao:
+      representada.regiaoAtendimento ||
+      "",
+
+    tipoComissao:
+      representada.tipoComissao ===
+      "variada"
+        ? "variada"
+        : "fixa",
+
+    percentualComissao:
+      representada.comissao ===
+      null
+        ? ""
+        : String(
+            representada.comissao
+          ),
+
+    reconhecimentoComissao:
+      representada.regraReconhecimentoComissao ||
+      "",
+
+    fechamentoComissao:
+      representada.fechamentoComissao ||
+      "",
+
+    pagamentoComissao:
+      representada.pagamentoComissao ||
+      "",
+
+    observacoes:
+      "",
+  }
 }
 
 export default function RegrasComerciaisPage() {
@@ -345,6 +506,12 @@ export default function RegrasComerciaisPage() {
     >(null)
 
   const [
+    dadosReaproveitados,
+    setDadosReaproveitados,
+  ] =
+    useState(false)
+
+  const [
     carregando,
     setCarregando,
   ] =
@@ -397,19 +564,35 @@ export default function RegrasComerciaisPage() {
         ] =
           await Promise.all([
             fetch(
-              `/api/representadas/${representadaId}`
+              `/api/representadas/${representadaId}`,
+              {
+                cache:
+                  "no-store",
+              }
             ),
 
             fetch(
-              `/api/representadas/${representadaId}/regras-comerciais`
+              `/api/representadas/${representadaId}/regras-comerciais`,
+              {
+                cache:
+                  "no-store",
+              }
             ),
 
             fetch(
-              `/api/representadas/${representadaId}/contratos`
+              `/api/representadas/${representadaId}/contratos`,
+              {
+                cache:
+                  "no-store",
+              }
             ),
 
             fetch(
-              "/api/clientes"
+              "/api/clientes",
+              {
+                cache:
+                  "no-store",
+              }
             ),
           ])
 
@@ -476,6 +659,43 @@ export default function RegrasComerciaisPage() {
         setClientes(
           dadosClientes
         )
+
+        /*
+         * Se ainda não existe uma regra padrão ativa,
+         * aproveitamos os dados comerciais já gravados
+         * no cadastro principal da Representada.
+         *
+         * Não há nova gravação no banco neste momento.
+         */
+        const existeRegraPadraoAtiva =
+          dadosRegras.some(
+            (
+              regra
+            ) =>
+              regra.tipoEscopo ===
+                "Padrao" &&
+              regra.ativa
+          )
+
+        if (
+          !existeRegraPadraoAtiva
+        ) {
+          setForm(
+            montarFormularioDoCadastro(
+              dadosRepresentada
+            )
+          )
+
+          setFaixas(
+            parseFaixas(
+              dadosRepresentada.faixasComissao
+            )
+          )
+
+          setDadosReaproveitados(
+            true
+          )
+        }
       } catch (error) {
         const mensagem =
           error instanceof
@@ -522,6 +742,38 @@ export default function RegrasComerciaisPage() {
     }
   }
 
+  function reaproveitarCadastroPrincipal() {
+    if (
+      !representada
+    ) {
+      return
+    }
+
+    setForm(
+      montarFormularioDoCadastro(
+        representada
+      )
+    )
+
+    setFaixas(
+      parseFaixas(
+        representada.faixasComissao
+      )
+    )
+
+    setRegraEditandoId(
+      null
+    )
+
+    setDadosReaproveitados(
+      true
+    )
+
+    setErro(
+      null
+    )
+  }
+
   function limparFormulario() {
     setForm(
       FORM_INICIAL
@@ -538,6 +790,10 @@ export default function RegrasComerciaisPage() {
       null
     )
 
+    setDadosReaproveitados(
+      false
+    )
+
     setErro(
       null
     )
@@ -549,6 +805,10 @@ export default function RegrasComerciaisPage() {
   ) {
     setRegraEditandoId(
       regra.id
+    )
+
+    setDadosReaproveitados(
+      false
     )
 
     setForm({
@@ -581,20 +841,24 @@ export default function RegrasComerciaisPage() {
         regra.ativa,
 
       pedidoMinimo:
-        regra.pedidoMinimo?.toString() ||
-        "",
+        numeroParaInput(
+          regra.pedidoMinimo
+        ),
 
       minimoParcela:
-        regra.minimoParcela?.toString() ||
-        "",
+        numeroParaInput(
+          regra.minimoParcela
+        ),
 
       prazoEntregaDias:
-        regra.prazoEntregaDias?.toString() ||
-        "",
+        numeroParaInput(
+          regra.prazoEntregaDias
+        ),
 
       prazoFaturamentoDias:
-        regra.prazoFaturamentoDias?.toString() ||
-        "",
+        numeroParaInput(
+          regra.prazoFaturamentoDias
+        ),
 
       frete:
         regra.frete ||
@@ -609,8 +873,9 @@ export default function RegrasComerciaisPage() {
         "fixa",
 
       percentualComissao:
-        regra.percentualComissao?.toString() ||
-        "",
+        numeroParaInput(
+          regra.percentualComissao
+        ),
 
       reconhecimentoComissao:
         regra.reconhecimentoComissao ||
@@ -651,7 +916,11 @@ export default function RegrasComerciaisPage() {
 
     const resposta =
       await fetch(
-        `/api/representadas/${representadaId}/regras-comerciais`
+        `/api/representadas/${representadaId}/regras-comerciais`,
+        {
+          cache:
+            "no-store",
+        }
       )
 
     if (
@@ -742,7 +1011,7 @@ export default function RegrasComerciaisPage() {
 
   async function salvarRegra(
     event:
-      React.FormEvent
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault()
 
@@ -770,7 +1039,19 @@ export default function RegrasComerciaisPage() {
       !form.vigenciaInicio
     ) {
       setErro(
-        "Informe o início da vigência."
+        "Informe o início real da vigência da regra comercial."
+      )
+
+      return
+    }
+
+    if (
+      form.vigenciaFim &&
+      form.vigenciaFim <
+        form.vigenciaInicio
+    ) {
+      setErro(
+        "O fim da vigência não pode ser anterior ao início."
       )
 
       return
@@ -881,20 +1162,28 @@ export default function RegrasComerciaisPage() {
           form.ativa,
 
         pedidoMinimo:
-          form.pedidoMinimo ||
-          null,
+          form.pedidoMinimo ===
+          ""
+            ? null
+            : form.pedidoMinimo,
 
         minimoParcela:
-          form.minimoParcela ||
-          null,
+          form.minimoParcela ===
+          ""
+            ? null
+            : form.minimoParcela,
 
         prazoEntregaDias:
-          form.prazoEntregaDias ||
-          null,
+          form.prazoEntregaDias ===
+          ""
+            ? null
+            : form.prazoEntregaDias,
 
         prazoFaturamentoDias:
-          form.prazoFaturamentoDias ||
-          null,
+          form.prazoFaturamentoDias ===
+          ""
+            ? null
+            : form.prazoFaturamentoDias,
 
         frete:
           form.frete ||
@@ -1102,7 +1391,7 @@ export default function RegrasComerciaisPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl space-y-6 p-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <Button
               type="button"
@@ -1134,19 +1423,38 @@ export default function RegrasComerciaisPage() {
             </div>
           </div>
 
-          <div className="text-sm text-muted-foreground">
-            {regras.length}{" "}
-            regra
-            {regras.length ===
-            1
-              ? ""
-              : "s"}
+          <div className="flex flex-wrap items-center gap-2">
+            {!regraEditandoId &&
+              representada && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={
+                  reaproveitarCadastroPrincipal
+                }
+                disabled={
+                  salvando
+                }
+              >
+                Reaproveitar cadastro principal
+              </Button>
+            )}
+
+            <div className="text-sm text-muted-foreground">
+              {regras.length}{" "}
+              regra
+              {regras.length ===
+              1
+                ? ""
+                : "s"}
+            </div>
           </div>
         </div>
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle>
                 {regraEditandoId
                   ? "Editar regra comercial"
@@ -1180,6 +1488,23 @@ export default function RegrasComerciaisPage() {
               }
               className="space-y-5"
             >
+              {dadosReaproveitados &&
+                !regraEditandoId && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="font-semibold text-emerald-900">
+                    Dados reaproveitados automaticamente
+                  </p>
+
+                  <p className="mt-1 text-sm text-emerald-800">
+                    Pedido mínimo, parcela mínima, comissão, frete, região e prazos foram carregados do cadastro principal da Representada.
+                  </p>
+
+                  <p className="mt-1 text-sm font-medium text-emerald-900">
+                    Confira os dados e informe principalmente a data real de início da vigência antes de salvar.
+                  </p>
+                </div>
+              )}
+
               {erro && (
                 <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                   {erro}
@@ -1202,9 +1527,7 @@ export default function RegrasComerciaisPage() {
                     ) =>
                       atualizarCampo(
                         "nome",
-                        event
-                          .target
-                          .value
+                        event.target.value
                       )
                     }
                     disabled={
@@ -1212,7 +1535,7 @@ export default function RegrasComerciaisPage() {
                     }
                     placeholder={
                       regraPadrao
-                        ? "Ex.: Regra padrão Massari"
+                        ? "Ex.: Regra padrão da Representada"
                         : "Ex.: Regra especial Cliente X"
                     }
                   />
@@ -1235,9 +1558,7 @@ export default function RegrasComerciaisPage() {
                     ) =>
                       atualizarCampo(
                         "ativa",
-                        event
-                          .target
-                          .value ===
+                        event.target.value ===
                           "ativa"
                       )
                     }
@@ -1284,8 +1605,8 @@ export default function RegrasComerciaisPage() {
                   }`}
                 >
                   {regraPadrao
-                    ? "Esta regra será utilizada como condição comercial geral da Representada para todos os clientes que não possuam uma regra específica."
-                    : "Esta regra será utilizada somente para o cliente selecionado e prevalecerá sobre a regra padrão da Representada para esse cliente."}
+                    ? "Será utilizada como condição geral para clientes sem regra específica."
+                    : "Será utilizada somente para o cliente selecionado e prevalecerá sobre a regra padrão."}
                 </p>
               </div>
 
@@ -1304,9 +1625,7 @@ export default function RegrasComerciaisPage() {
                       event
                     ) => {
                       const valor =
-                        event
-                          .target
-                          .value
+                        event.target.value
 
                       setForm(
                         (
@@ -1346,12 +1665,6 @@ export default function RegrasComerciaisPage() {
                       Cliente específico
                     </option>
                   </select>
-
-                  <p className="text-xs text-muted-foreground">
-                    {regraPadrao
-                      ? "Use para as condições normais da Representada."
-                      : "Use somente quando este cliente possuir condição diferente da regra padrão."}
-                  </p>
                 </div>
 
                 <div className="space-y-1">
@@ -1371,9 +1684,7 @@ export default function RegrasComerciaisPage() {
                     ) =>
                       atualizarCampo(
                         "clienteId",
-                        event
-                          .target
-                          .value
+                        event.target.value
                       )
                     }
                     disabled={
@@ -1411,12 +1722,6 @@ export default function RegrasComerciaisPage() {
                         )
                       )}
                   </select>
-
-                  <p className="text-xs text-muted-foreground">
-                    {regraPadrao
-                      ? "Nenhum cliente deve ser selecionado em uma regra padrão."
-                      : "Obrigatório. Esta regra valerá somente para o cliente escolhido."}
-                  </p>
                 </div>
 
                 <div className="space-y-1">
@@ -1434,9 +1739,7 @@ export default function RegrasComerciaisPage() {
                     ) =>
                       atualizarCampo(
                         "contratoId",
-                        event
-                          .target
-                          .value
+                        event.target.value
                       )
                     }
                     disabled={
@@ -1491,15 +1794,20 @@ export default function RegrasComerciaisPage() {
                     ) =>
                       atualizarCampo(
                         "vigenciaInicio",
-                        event
-                          .target
-                          .value
+                        event.target.value
                       )
                     }
                     disabled={
                       salvando
                     }
                   />
+
+                  {dadosReaproveitados &&
+                    !form.vigenciaInicio && (
+                    <p className="text-xs font-medium text-amber-700">
+                      Informe a data real. O sistema não presume a vigência histórica.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -1518,15 +1826,17 @@ export default function RegrasComerciaisPage() {
                     ) =>
                       atualizarCampo(
                         "vigenciaFim",
-                        event
-                          .target
-                          .value
+                        event.target.value
                       )
                     }
                     disabled={
                       salvando
                     }
                   />
+
+                  <p className="text-xs text-muted-foreground">
+                    Deixe vazio enquanto a regra não possuir data final definida.
+                  </p>
                 </div>
               </div>
 
@@ -1549,9 +1859,7 @@ export default function RegrasComerciaisPage() {
                     ) =>
                       atualizarCampo(
                         "pedidoMinimo",
-                        event
-                          .target
-                          .value
+                        event.target.value
                       )
                     }
                     disabled={
@@ -1578,9 +1886,7 @@ export default function RegrasComerciaisPage() {
                     ) =>
                       atualizarCampo(
                         "minimoParcela",
-                        event
-                          .target
-                          .value
+                        event.target.value
                       )
                     }
                     disabled={
@@ -1607,9 +1913,7 @@ export default function RegrasComerciaisPage() {
                     ) =>
                       atualizarCampo(
                         "prazoEntregaDias",
-                        event
-                          .target
-                          .value
+                        event.target.value
                       )
                     }
                     disabled={
@@ -1636,9 +1940,7 @@ export default function RegrasComerciaisPage() {
                     ) =>
                       atualizarCampo(
                         "prazoFaturamentoDias",
-                        event
-                          .target
-                          .value
+                        event.target.value
                       )
                     }
                     disabled={
@@ -1664,9 +1966,7 @@ export default function RegrasComerciaisPage() {
                     ) =>
                       atualizarCampo(
                         "frete",
-                        event
-                          .target
-                          .value
+                        event.target.value
                       )
                     }
                     disabled={
@@ -1690,9 +1990,7 @@ export default function RegrasComerciaisPage() {
                     ) =>
                       atualizarCampo(
                         "regiao",
-                        event
-                          .target
-                          .value
+                        event.target.value
                       )
                     }
                     disabled={
@@ -1719,9 +2017,7 @@ export default function RegrasComerciaisPage() {
                       ) =>
                         atualizarCampo(
                           "tipoComissao",
-                          event
-                            .target
-                            .value
+                          event.target.value
                         )
                       }
                       disabled={
@@ -1750,6 +2046,7 @@ export default function RegrasComerciaisPage() {
                         id="percentualComissao"
                         type="number"
                         min="0"
+                        max="100"
                         step="0.01"
                         value={
                           form.percentualComissao
@@ -1759,9 +2056,7 @@ export default function RegrasComerciaisPage() {
                         ) =>
                           atualizarCampo(
                             "percentualComissao",
-                            event
-                              .target
-                              .value
+                            event.target.value
                           )
                         }
                         disabled={
@@ -1793,6 +2088,8 @@ export default function RegrasComerciaisPage() {
 
                             <Input
                               type="number"
+                              min="0"
+                              max="100"
                               step="0.01"
                               value={
                                 faixa.desconto
@@ -1803,9 +2100,7 @@ export default function RegrasComerciaisPage() {
                                 atualizarFaixa(
                                   index,
                                   "desconto",
-                                  event
-                                    .target
-                                    .value
+                                  event.target.value
                                 )
                               }
                               disabled={
@@ -1821,6 +2116,8 @@ export default function RegrasComerciaisPage() {
 
                             <Input
                               type="number"
+                              min="0"
+                              max="100"
                               step="0.01"
                               value={
                                 faixa.comissao
@@ -1831,9 +2128,7 @@ export default function RegrasComerciaisPage() {
                                 atualizarFaixa(
                                   index,
                                   "comissao",
-                                  event
-                                    .target
-                                    .value
+                                  event.target.value
                                 )
                               }
                               disabled={
@@ -1888,7 +2183,7 @@ export default function RegrasComerciaisPage() {
                   </p>
 
                   <p className="mt-1 text-sm text-slate-600">
-                    Estas informações são herdadas do cadastro da Representada e não podem ser alteradas por uma Regra Comercial.
+                    Estas informações vêm do cadastro principal e são preservadas na nova regra versionada.
                   </p>
                 </div>
 
@@ -1945,9 +2240,7 @@ export default function RegrasComerciaisPage() {
                   ) =>
                     atualizarCampo(
                       "observacoes",
-                      event
-                        .target
-                        .value
+                      event.target.value
                     )
                   }
                   disabled={
@@ -1999,7 +2292,7 @@ export default function RegrasComerciaisPage() {
             {regras.length ===
             0 ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
-                Nenhuma regra comercial cadastrada.
+                Nenhuma regra comercial versionada cadastrada.
               </div>
             ) : (
               <div className="space-y-3">
@@ -2053,7 +2346,7 @@ export default function RegrasComerciaisPage() {
                             </span>
                           </div>
 
-                          <div className="space-y-1 text-sm">
+                          <div className="grid gap-1 text-sm md:grid-cols-2 md:gap-x-8">
                             <p>
                               Vigência:{" "}
                               {formatarData(
@@ -2085,6 +2378,41 @@ export default function RegrasComerciaisPage() {
                             </p>
 
                             <p>
+                              Mínimo parcela:{" "}
+                              {formatarValor(
+                                regra.minimoParcela
+                              )}
+                            </p>
+
+                            <p>
+                              Prazo entrega:{" "}
+                              {regra.prazoEntregaDias !==
+                              null
+                                ? `${regra.prazoEntregaDias} dia(s)`
+                                : "-"}
+                            </p>
+
+                            <p>
+                              Prazo faturamento:{" "}
+                              {regra.prazoFaturamentoDias !==
+                              null
+                                ? `${regra.prazoFaturamentoDias} dia(s)`
+                                : "-"}
+                            </p>
+
+                            <p>
+                              Frete:{" "}
+                              {regra.frete ||
+                                "-"}
+                            </p>
+
+                            <p>
+                              Região:{" "}
+                              {regra.regiao ||
+                                "-"}
+                            </p>
+
+                            <p>
                               Comissão:{" "}
                               {regra.tipoComissao ===
                               "fixa"
@@ -2105,6 +2433,18 @@ export default function RegrasComerciaisPage() {
                                 "-"}
                             </p>
                           </div>
+
+                          {regra.observacoes && (
+                            <div className="mt-2 rounded-md bg-muted/40 p-3 text-sm">
+                              <span className="font-medium">
+                                Observações:{" "}
+                              </span>
+
+                              {
+                                regra.observacoes
+                              }
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex gap-2">
