@@ -1,7 +1,23 @@
-import { podeExecutarAcao } from "@/lib/auth/permissions"
-import { exigirSessao } from "@/lib/auth/server"
-import { prisma } from "@/lib/prisma"
-import { NextRequest, NextResponse } from "next/server"
+import {
+  randomUUID,
+} from "crypto"
+
+import {
+  podeExecutarAcao,
+} from "@/lib/auth/permissions"
+
+import {
+  exigirSessao,
+} from "@/lib/auth/server"
+
+import {
+  prisma,
+} from "@/lib/prisma"
+
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server"
 
 const TIPOS_PERMITIDOS = [
   "Entrada",
@@ -15,43 +31,75 @@ const STATUS_PERMITIDOS = [
   "Cancelado",
 ] as const
 
+const CATEGORIA_TRANSFERENCIA =
+  "Transferência entre contas"
+
+const PREFIXO_TRANSFERENCIA =
+  "TRANSFERENCIA_INTERNA:"
+
 type TipoFinanceiro =
   (typeof TIPOS_PERMITIDOS)[number]
 
 type StatusFinanceiro =
   (typeof STATUS_PERMITIDOS)[number]
 
+type MovimentoParaResumo = {
+  tipo: string
+  status: string
+  valor: number
+  vencimento: Date | null
+}
+
+type ResumoFinanceiro = {
+  saldoInicial: number
+
+  entradasRealizadas: number
+  saidasRealizadas: number
+
+  saldoRealizado: number
+
+  entradasPendentes: number
+  saidasPendentes: number
+
+  saldoProjetado: number
+
+  quantidadeVencidas: number
+  valorVencido: number
+}
+
 function textoOpcional(
   valor: unknown
-) {
+): string | null {
   if (
     typeof valor !== "string"
   ) {
     return null
   }
 
-  const texto = valor.trim()
+  const texto =
+    valor.trim()
 
   return texto || null
 }
 
 function textoObrigatorio(
   valor: unknown
-) {
+): string | null {
   if (
     typeof valor !== "string"
   ) {
     return null
   }
 
-  const texto = valor.trim()
+  const texto =
+    valor.trim()
 
   return texto || null
 }
 
 function numeroFinito(
   valor: unknown
-) {
+): number | null {
   if (
     typeof valor === "number" &&
     Number.isFinite(valor)
@@ -67,7 +115,9 @@ function numeroFinito(
       Number(valor)
 
     if (
-      Number.isFinite(convertido)
+      Number.isFinite(
+        convertido
+      )
     ) {
       return convertido
     }
@@ -79,7 +129,7 @@ function numeroFinito(
 function inteiroPositivo(
   valor: unknown,
   padrao: number
-) {
+): number | null {
   if (
     valor === undefined ||
     valor === null ||
@@ -88,10 +138,13 @@ function inteiroPositivo(
     return padrao
   }
 
-  const numero = Number(valor)
+  const numero =
+    Number(valor)
 
   if (
-    !Number.isInteger(numero) ||
+    !Number.isInteger(
+      numero
+    ) ||
     numero <= 0
   ) {
     return null
@@ -102,7 +155,7 @@ function inteiroPositivo(
 
 function dataValida(
   valor: unknown
-) {
+): Date | null {
   if (
     typeof valor !== "string" ||
     !valor.trim()
@@ -110,18 +163,20 @@ function dataValida(
     return null
   }
 
-  const texto = valor.trim()
+  const texto =
+    valor.trim()
 
   const somenteData =
     /^\d{4}-\d{2}-\d{2}$/.test(
       texto
     )
 
-  const data = somenteData
-    ? new Date(
-        `${texto}T12:00:00.000Z`
-      )
-    : new Date(texto)
+  const data =
+    somenteData
+      ? new Date(
+          `${texto}T12:00:00.000Z`
+        )
+      : new Date(texto)
 
   if (
     Number.isNaN(
@@ -135,7 +190,8 @@ function dataValida(
 }
 
 function hojeUtcMeioDia() {
-  const agora = new Date()
+  const agora =
+    new Date()
 
   return new Date(
     Date.UTC(
@@ -219,7 +275,8 @@ function distribuirValorParcelas(
 
   return Array.from(
     {
-      length: quantidade,
+      length:
+        quantidade,
     },
     (_, indice) => {
       const adicional =
@@ -254,6 +311,23 @@ function statusPermitido(
     typeof valor === "string" &&
     STATUS_PERMITIDOS.includes(
       valor as StatusFinanceiro
+    )
+  )
+}
+
+function ehTransferenciaInterna(
+  movimento: {
+    categoria: string | null
+    origem: string | null
+  }
+) {
+  return (
+    movimento.categoria ===
+      CATEGORIA_TRANSFERENCIA &&
+    typeof movimento.origem ===
+      "string" &&
+    movimento.origem.startsWith(
+      PREFIXO_TRANSFERENCIA
     )
   )
 }
@@ -297,12 +371,141 @@ function respostaErro(
 
   return NextResponse.json(
     {
-      erro: mensagemPadrao,
+      erro:
+        mensagemPadrao,
     },
     {
       status: 500,
     }
   )
+}
+
+function criarResumoVazio(): ResumoFinanceiro {
+  return {
+    saldoInicial: 0,
+
+    entradasRealizadas: 0,
+    saidasRealizadas: 0,
+
+    saldoRealizado: 0,
+
+    entradasPendentes: 0,
+    saidasPendentes: 0,
+
+    saldoProjetado: 0,
+
+    quantidadeVencidas: 0,
+    valorVencido: 0,
+  }
+}
+
+function aplicarMovimentoNoResumo(
+  resumo: ResumoFinanceiro,
+  movimento: MovimentoParaResumo,
+  hojeReferencia: Date
+) {
+  if (
+    movimento.status ===
+    "Cancelado"
+  ) {
+    return
+  }
+
+  if (
+    movimento.status ===
+    "Realizado"
+  ) {
+    if (
+      movimento.tipo ===
+      "SaldoInicial"
+    ) {
+      resumo.saldoInicial +=
+        movimento.valor
+
+      resumo.saldoRealizado +=
+        movimento.valor
+
+      resumo.saldoProjetado +=
+        movimento.valor
+
+      return
+    }
+
+    if (
+      movimento.tipo ===
+      "Entrada"
+    ) {
+      resumo.entradasRealizadas +=
+        movimento.valor
+
+      resumo.saldoRealizado +=
+        movimento.valor
+
+      resumo.saldoProjetado +=
+        movimento.valor
+
+      return
+    }
+
+    if (
+      movimento.tipo ===
+      "Saida"
+    ) {
+      resumo.saidasRealizadas +=
+        movimento.valor
+
+      resumo.saldoRealizado -=
+        movimento.valor
+
+      resumo.saldoProjetado -=
+        movimento.valor
+    }
+
+    return
+  }
+
+  if (
+    movimento.status !==
+    "Pendente"
+  ) {
+    return
+  }
+
+  if (
+    movimento.tipo ===
+    "Entrada"
+  ) {
+    resumo.entradasPendentes +=
+      movimento.valor
+
+    resumo.saldoProjetado +=
+      movimento.valor
+
+    return
+  }
+
+  if (
+    movimento.tipo ===
+    "Saida"
+  ) {
+    resumo.saidasPendentes +=
+      movimento.valor
+
+    resumo.saldoProjetado -=
+      movimento.valor
+
+    if (
+      movimento.vencimento &&
+      movimento.vencimento.getTime() <
+        hojeReferencia.getTime()
+    ) {
+      resumo.quantidadeVencidas +=
+        1
+
+      resumo.valorVencido +=
+        movimento.valor
+    }
+  }
 }
 
 export async function GET() {
@@ -320,161 +523,238 @@ export async function GET() {
       return respostaNaoAutorizada()
     }
 
-    const movimentos =
-      await prisma.financeiro.findMany(
-        {
+    const [
+      movimentos,
+      contasBancarias,
+    ] =
+      await Promise.all([
+        prisma.financeiro.findMany({
           where: {
             escritorioId:
               sessao.escritorioId,
           },
+
           orderBy: [
             {
-              data: "desc",
+              data:
+                "desc",
             },
+
             {
-              criadoEm: "desc",
+              criadoEm:
+                "desc",
             },
           ],
+
           select: {
             id: true,
+
             data: true,
+
             tipo: true,
-            categoria: true,
-            descricao: true,
+
+            categoria:
+              true,
+
+            descricao:
+              true,
+
             origem: true,
-            origemExterna: true,
+
+            origemExterna:
+              true,
+
             valor: true,
+
             status: true,
-            vencimento: true,
-            contaBancariaId: true,
-            criadoEm: true,
-            atualizadoEm: true,
+
+            vencimento:
+              true,
+
+            contaBancariaId:
+              true,
+
+            criadoEm:
+              true,
+
+            atualizadoEm:
+              true,
+
             contaBancaria: {
               select: {
                 id: true,
+
                 nome: true,
+
                 banco: true,
+
+                agencia:
+                  true,
+
+                conta:
+                  true,
+
+                ativa:
+                  true,
               },
             },
           },
-        }
-      )
+        }),
 
-    let saldoRealizado = 0
-    let entradasRealizadas = 0
-    let saidasRealizadas = 0
-    let entradasPendentes = 0
-    let saidasPendentes = 0
-    let quantidadeVencidas = 0
-    let valorVencido = 0
+        prisma.contaBancaria.findMany({
+          where: {
+            escritorioId:
+              sessao.escritorioId,
+          },
 
-    const agora = new Date()
+          select: {
+            id: true,
+
+            nome: true,
+
+            banco: true,
+
+            tipoTitular:
+              true,
+
+            titular:
+              true,
+
+            agencia:
+              true,
+
+            conta: true,
+
+            pix: true,
+
+            ativa: true,
+
+            empresaEscritorioId:
+              true,
+
+            usuarioTitularId:
+              true,
+          },
+
+          orderBy: [
+            {
+              ativa:
+                "desc",
+            },
+
+            {
+              nome:
+                "asc",
+            },
+          ],
+        }),
+      ])
+
+    const hojeReferencia =
+      hojeUtcMeioDia()
+
+    const resumo =
+      criarResumoVazio()
+
+    const resumoPorConta =
+      new Map<
+        string,
+        ResumoFinanceiro
+      >()
 
     for (
-      const movimento of movimentos
+      const conta of
+      contasBancarias
     ) {
-      if (
-        movimento.status ===
-        "Cancelado"
-      ) {
-        continue
-      }
-
-      if (
-        movimento.status ===
-        "Realizado"
-      ) {
-        if (
-          movimento.tipo ===
-          "SaldoInicial"
-        ) {
-          saldoRealizado +=
-            movimento.valor
-
-          continue
-        }
-
-        if (
-          movimento.tipo ===
-          "Entrada"
-        ) {
-          entradasRealizadas +=
-            movimento.valor
-
-          saldoRealizado +=
-            movimento.valor
-
-          continue
-        }
-
-        if (
-          movimento.tipo ===
-          "Saida"
-        ) {
-          saidasRealizadas +=
-            movimento.valor
-
-          saldoRealizado -=
-            movimento.valor
-        }
-
-        continue
-      }
-
-      if (
-        movimento.status !==
-        "Pendente"
-      ) {
-        continue
-      }
-
-      if (
-        movimento.tipo ===
-        "Entrada"
-      ) {
-        entradasPendentes +=
-          movimento.valor
-
-        continue
-      }
-
-      if (
-        movimento.tipo ===
-        "Saida"
-      ) {
-        saidasPendentes +=
-          movimento.valor
-
-        if (
-          movimento.vencimento &&
-          movimento.vencimento.getTime() <
-            agora.getTime()
-        ) {
-          quantidadeVencidas += 1
-          valorVencido +=
-            movimento.valor
-        }
-      }
+      resumoPorConta.set(
+        conta.id,
+        criarResumoVazio()
+      )
     }
 
-    const saldoProjetado =
-      saldoRealizado +
-      entradasPendentes -
-      saidasPendentes
+    const resumoSemConta =
+      criarResumoVazio()
 
-    return NextResponse.json({
-      movimentos,
-      resumo: {
-        saldoRealizado,
-        entradasRealizadas,
-        saidasRealizadas,
-        entradasPendentes,
-        saidasPendentes,
-        saldoProjetado,
-        quantidadeVencidas,
-        valorVencido,
+    let quantidadeSemConta =
+      0
+
+    for (
+      const movimento of
+      movimentos
+    ) {
+      aplicarMovimentoNoResumo(
+        resumo,
+        movimento,
+        hojeReferencia
+      )
+
+      if (
+        movimento.contaBancariaId
+      ) {
+        const resumoConta =
+          resumoPorConta.get(
+            movimento.contaBancariaId
+          )
+
+        if (
+          resumoConta
+        ) {
+          aplicarMovimentoNoResumo(
+            resumoConta,
+            movimento,
+            hojeReferencia
+          )
+        }
+
+        continue
+      }
+
+      quantidadeSemConta +=
+        1
+
+      aplicarMovimentoNoResumo(
+        resumoSemConta,
+        movimento,
+        hojeReferencia
+      )
+    }
+
+    const contas =
+      contasBancarias.map(
+        (conta) => ({
+          ...conta,
+
+          resumo:
+            resumoPorConta.get(
+              conta.id
+            ) ??
+            criarResumoVazio(),
+        })
+      )
+
+    return NextResponse.json(
+      {
+        movimentos,
+
+        resumo,
+
+        contas,
+
+        semConta: {
+          quantidade:
+            quantidadeSemConta,
+
+          resumo:
+            resumoSemConta,
+        },
       },
-    })
+      {
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
+    )
   } catch (error) {
     return respostaErro(
       error,
@@ -502,6 +782,296 @@ export async function POST(
 
     const body =
       await request.json()
+
+    /*
+     * TRANSFERÊNCIA ENTRE CONTAS
+     *
+     * É uma única operação lógica,
+     * registrada contabilmente em duas pontas:
+     *
+     * - saída na conta de origem;
+     * - entrada na conta de destino.
+     *
+     * Como os valores são iguais, o saldo
+     * consolidado do escritório não muda.
+     */
+    if (
+      body.operacao ===
+      "Transferencia"
+    ) {
+      const contaOrigemId =
+        textoObrigatorio(
+          body.contaOrigemId
+        )
+
+      const contaDestinoId =
+        textoObrigatorio(
+          body.contaDestinoId
+        )
+
+      if (
+        !contaOrigemId ||
+        !contaDestinoId
+      ) {
+        return NextResponse.json(
+          {
+            erro:
+              "Selecione a conta de origem e a conta de destino.",
+          },
+          {
+            status: 400,
+          }
+        )
+      }
+
+      if (
+        contaOrigemId ===
+        contaDestinoId
+      ) {
+        return NextResponse.json(
+          {
+            erro:
+              "A conta de origem e a conta de destino precisam ser diferentes.",
+          },
+          {
+            status: 400,
+          }
+        )
+      }
+
+      const valor =
+        numeroFinito(
+          body.valor
+        )
+
+      if (
+        valor === null ||
+        valor <= 0
+      ) {
+        return NextResponse.json(
+          {
+            erro:
+              "Informe um valor de transferência maior que zero.",
+          },
+          {
+            status: 400,
+          }
+        )
+      }
+
+      const data =
+        dataValida(
+          body.data
+        ) ??
+        hojeUtcMeioDia()
+
+      const [
+        contaOrigem,
+        contaDestino,
+      ] =
+        await Promise.all([
+          prisma.contaBancaria.findFirst({
+            where: {
+              id:
+                contaOrigemId,
+
+              escritorioId:
+                sessao.escritorioId,
+
+              ativa: true,
+            },
+
+            select: {
+              id: true,
+
+              nome: true,
+
+              banco: true,
+            },
+          }),
+
+          prisma.contaBancaria.findFirst({
+            where: {
+              id:
+                contaDestinoId,
+
+              escritorioId:
+                sessao.escritorioId,
+
+              ativa: true,
+            },
+
+            select: {
+              id: true,
+
+              nome: true,
+
+              banco: true,
+            },
+          }),
+        ])
+
+      if (
+        !contaOrigem
+      ) {
+        return NextResponse.json(
+          {
+            erro:
+              "Conta de origem inválida ou inativa.",
+          },
+          {
+            status: 400,
+          }
+        )
+      }
+
+      if (
+        !contaDestino
+      ) {
+        return NextResponse.json(
+          {
+            erro:
+              "Conta de destino inválida ou inativa.",
+          },
+          {
+            status: 400,
+          }
+        )
+      }
+
+      const identificador =
+        `${PREFIXO_TRANSFERENCIA}${randomUUID()}`
+
+      const descricao =
+        CATEGORIA_TRANSFERENCIA
+
+      const [
+        saida,
+        entrada,
+      ] =
+        await prisma.$transaction([
+          prisma.financeiro.create({
+            data: {
+              escritorioId:
+                sessao.escritorioId,
+
+              data,
+
+              tipo:
+                "Saida",
+
+              categoria:
+                CATEGORIA_TRANSFERENCIA,
+
+              descricao,
+
+              /*
+               * Campo técnico usado para manter as
+               * duas pontas da transferência ligadas.
+               *
+               * O frontend não exibirá este valor
+               * para o usuário.
+               */
+              origem:
+                identificador,
+
+              origemExterna:
+                false,
+
+              valor,
+
+              status:
+                "Realizado",
+
+              vencimento:
+                null,
+
+              contaBancariaId:
+                contaOrigem.id,
+            },
+          }),
+
+          prisma.financeiro.create({
+            data: {
+              escritorioId:
+                sessao.escritorioId,
+
+              data,
+
+              tipo:
+                "Entrada",
+
+              categoria:
+                CATEGORIA_TRANSFERENCIA,
+
+              descricao,
+
+              origem:
+                identificador,
+
+              origemExterna:
+                false,
+
+              valor,
+
+              status:
+                "Realizado",
+
+              vencimento:
+                null,
+
+              contaBancariaId:
+                contaDestino.id,
+            },
+          }),
+        ])
+
+      return NextResponse.json(
+        {
+          message:
+            "Transferência entre contas registrada com sucesso.",
+
+          transferencia: {
+            valor,
+
+            data,
+
+            origem: {
+              id:
+                contaOrigem.id,
+
+              nome:
+                contaOrigem.nome,
+
+              banco:
+                contaOrigem.banco,
+            },
+
+            destino: {
+              id:
+                contaDestino.id,
+
+              nome:
+                contaDestino.nome,
+
+              banco:
+                contaDestino.banco,
+            },
+
+            movimentos: {
+              saidaId:
+                saida.id,
+
+              entradaId:
+                entrada.id,
+            },
+          },
+        },
+        {
+          status: 201,
+        }
+      )
+    }
 
     if (
       !tipoPermitido(
@@ -578,7 +1148,9 @@ export async function POST(
         body.descricao
       )
 
-    if (!descricao) {
+    if (
+      !descricao
+    ) {
       return NextResponse.json(
         {
           erro:
@@ -603,7 +1175,8 @@ export async function POST(
       tipo ===
       "SaldoInicial"
     ) {
-      status = "Realizado"
+      status =
+        "Realizado"
     } else {
       if (
         !statusPermitido(
@@ -638,8 +1211,11 @@ export async function POST(
       )
 
     const origemExterna =
-      body.origemExterna ===
-      true
+      tipo ===
+      "SaldoInicial"
+        ? false
+        : body.origemExterna ===
+          true
 
     const contaBancariaId =
       textoOpcional(
@@ -653,62 +1229,44 @@ export async function POST(
 
     if (
       tipo ===
-      "SaldoInicial"
+        "SaldoInicial" &&
+      !contaBancariaId
     ) {
-      const saldoInicialExistente =
-        await prisma.financeiro.findFirst(
-          {
-            where: {
-              escritorioId:
-                sessao.escritorioId,
-              tipo:
-                "SaldoInicial",
-              status: {
-                not:
-                  "Cancelado",
-              },
-            },
-            select: {
-              id: true,
-            },
-          }
-        )
-
-      if (
-        saldoInicialExistente
-      ) {
-        return NextResponse.json(
-          {
-            erro:
-              "Já existe um saldo inicial ativo para este escritório. Corrija ou exclua o lançamento existente antes de cadastrar outro.",
-          },
-          {
-            status: 409,
-          }
-        )
-      }
+      return NextResponse.json(
+        {
+          erro:
+            "Selecione a conta bancária para informar o saldo inicial.",
+        },
+        {
+          status: 400,
+        }
+      )
     }
 
     if (
       contaBancariaId
     ) {
       const conta =
-        await prisma.contaBancaria.findFirst(
-          {
-            where: {
-              id:
-                contaBancariaId,
-              escritorioId:
-                sessao.escritorioId,
-              ativa: true,
-            },
-            select: {
-              id: true,
-            },
-          }
-        )
+        await prisma.contaBancaria.findFirst({
+          where: {
+            id:
+              contaBancariaId,
 
-      if (!conta) {
+            escritorioId:
+              sessao.escritorioId,
+
+            ativa: true,
+          },
+
+          select: {
+            id: true,
+            nome: true,
+          },
+        })
+
+      if (
+        !conta
+      ) {
         return NextResponse.json(
           {
             erro:
@@ -722,24 +1280,68 @@ export async function POST(
     }
 
     if (
+      tipo ===
+        "SaldoInicial" &&
+      contaBancariaId
+    ) {
+      const saldoInicialExistente =
+        await prisma.financeiro.findFirst({
+          where: {
+            escritorioId:
+              sessao.escritorioId,
+
+            contaBancariaId,
+
+            tipo:
+              "SaldoInicial",
+
+            status: {
+              not:
+                "Cancelado",
+            },
+          },
+
+          select: {
+            id: true,
+          },
+        })
+
+      if (
+        saldoInicialExistente
+      ) {
+        return NextResponse.json(
+          {
+            erro:
+              "Já existe um saldo inicial ativo para esta conta. Corrija, cancele ou exclua o lançamento existente antes de cadastrar outro.",
+          },
+          {
+            status: 409,
+          }
+        )
+      }
+    }
+
+    if (
       empresaEscritorioId
     ) {
       const empresa =
-        await prisma.empresaEscritorio.findFirst(
-          {
-            where: {
-              id:
-                empresaEscritorioId,
-              escritorioId:
-                sessao.escritorioId,
-            },
-            select: {
-              id: true,
-            },
-          }
-        )
+        await prisma.empresaEscritorio.findFirst({
+          where: {
+            id:
+              empresaEscritorioId,
 
-      if (!empresa) {
+            escritorioId:
+              sessao.escritorioId,
+          },
+
+          select: {
+            id: true,
+          },
+        })
+
+      if (
+        !empresa
+      ) {
         return NextResponse.json(
           {
             erro:
@@ -797,7 +1399,8 @@ export async function POST(
 
     if (
       parcelas > 1 &&
-      status !== "Pendente"
+      status !==
+        "Pendente"
     ) {
       return NextResponse.json(
         {
@@ -811,7 +1414,8 @@ export async function POST(
     }
 
     let vencimento:
-      Date | null = null
+      Date | null =
+      null
 
     if (
       status ===
@@ -822,7 +1426,9 @@ export async function POST(
           body.vencimento
         )
 
-      if (!vencimento) {
+      if (
+        !vencimento
+      ) {
         return NextResponse.json(
           {
             erro:
@@ -840,26 +1446,37 @@ export async function POST(
       "SaldoInicial"
     ) {
       const criado =
-        await prisma.financeiro.create(
-          {
-            data: {
-              escritorioId:
-                sessao.escritorioId,
-              empresaEscritorioId,
-              data,
-              tipo,
-              categoria,
-              descricao,
-              origem,
-              origemExterna,
-              valor,
-              status:
-                "Realizado",
-              vencimento: null,
-              contaBancariaId,
-            },
-          }
-        )
+        await prisma.financeiro.create({
+          data: {
+            escritorioId:
+              sessao.escritorioId,
+
+            empresaEscritorioId,
+
+            data,
+
+            tipo,
+
+            categoria,
+
+            descricao,
+
+            origem,
+
+            origemExterna:
+              false,
+
+            valor,
+
+            status:
+              "Realizado",
+
+            vencimento:
+              null,
+
+            contaBancariaId,
+          },
+        })
 
       return NextResponse.json(
         {
@@ -901,28 +1518,37 @@ export async function POST(
                 )
               : null
 
-          return prisma.financeiro.create(
-            {
-              data: {
-                escritorioId:
-                  sessao.escritorioId,
-                empresaEscritorioId,
-                data,
-                tipo,
-                categoria,
-                descricao:
-                  descricaoParcela,
-                origem,
-                origemExterna,
-                valor:
-                  valorParcela,
-                status,
-                vencimento:
-                  vencimentoParcela,
-                contaBancariaId,
-              },
-            }
-          )
+          return prisma.financeiro.create({
+            data: {
+              escritorioId:
+                sessao.escritorioId,
+
+              empresaEscritorioId,
+
+              data,
+
+              tipo,
+
+              categoria,
+
+              descricao:
+                descricaoParcela,
+
+              origem,
+
+              origemExterna,
+
+              valor:
+                valorParcela,
+
+              status,
+
+              vencimento:
+                vencimentoParcela,
+
+              contaBancariaId,
+            },
+          })
         }
       )
 
@@ -933,7 +1559,8 @@ export async function POST(
 
     return NextResponse.json(
       {
-        movimentos: criados,
+        movimentos:
+          criados,
       },
       {
         status: 201,
@@ -977,7 +1604,9 @@ export async function PATCH(
         body.acao
       )
 
-    if (!id) {
+    if (
+      !id
+    ) {
       return NextResponse.json(
         {
           erro:
@@ -1007,17 +1636,18 @@ export async function PATCH(
     }
 
     const movimento =
-      await prisma.financeiro.findFirst(
-        {
-          where: {
-            id,
-            escritorioId:
-              sessao.escritorioId,
-          },
-        }
-      )
+      await prisma.financeiro.findFirst({
+        where: {
+          id,
 
-    if (!movimento) {
+          escritorioId:
+            sessao.escritorioId,
+        },
+      })
+
+    if (
+      !movimento
+    ) {
       return NextResponse.json(
         {
           erro:
@@ -1027,6 +1657,44 @@ export async function PATCH(
           status: 404,
         }
       )
+    }
+
+    /*
+     * Transferência é uma operação única.
+     *
+     * Ao cancelar uma das pontas, as duas
+     * precisam ser canceladas juntas para
+     * preservar os saldos das contas.
+     */
+    if (
+      acao ===
+        "cancelar" &&
+      ehTransferenciaInterna(
+        movimento
+      )
+    ) {
+      await prisma.financeiro.updateMany({
+        where: {
+          escritorioId:
+            sessao.escritorioId,
+
+          categoria:
+            CATEGORIA_TRANSFERENCIA,
+
+          origem:
+            movimento.origem,
+        },
+
+        data: {
+          status:
+            "Cancelado",
+        },
+      })
+
+      return NextResponse.json({
+        message:
+          "Transferência entre contas cancelada com sucesso.",
+      })
     }
 
     if (
@@ -1085,20 +1753,20 @@ export async function PATCH(
         hojeUtcMeioDia()
 
       const atualizado =
-        await prisma.financeiro.update(
-          {
-            where: {
-              id:
-                movimento.id,
-            },
-            data: {
-              status:
-                "Realizado",
-              data:
-                dataRealizacao,
-            },
-          }
-        )
+        await prisma.financeiro.update({
+          where: {
+            id:
+              movimento.id,
+          },
+
+          data: {
+            status:
+              "Realizado",
+
+            data:
+              dataRealizacao,
+          },
+        })
 
       return NextResponse.json({
         movimento:
@@ -1122,18 +1790,17 @@ export async function PATCH(
     }
 
     const atualizado =
-      await prisma.financeiro.update(
-        {
-          where: {
-            id:
-              movimento.id,
-          },
-          data: {
-            status:
-              "Cancelado",
-          },
-        }
-      )
+      await prisma.financeiro.update({
+        where: {
+          id:
+            movimento.id,
+        },
+
+        data: {
+          status:
+            "Cancelado",
+        },
+      })
 
     return NextResponse.json({
       movimento:
@@ -1172,7 +1839,9 @@ export async function DELETE(
         body.id
       )
 
-    if (!id) {
+    if (
+      !id
+    ) {
       return NextResponse.json(
         {
           erro:
@@ -1185,24 +1854,39 @@ export async function DELETE(
     }
 
     const movimento =
-      await prisma.financeiro.findFirst(
-        {
-          where: {
-            id,
-            escritorioId:
-              sessao.escritorioId,
-          },
-          select: {
-            id: true,
-            tipo: true,
-            descricao: true,
-            valor: true,
-            status: true,
-          },
-        }
-      )
+      await prisma.financeiro.findFirst({
+        where: {
+          id,
 
-    if (!movimento) {
+          escritorioId:
+            sessao.escritorioId,
+        },
+
+        select: {
+          id: true,
+
+          tipo: true,
+
+          categoria:
+            true,
+
+          descricao:
+            true,
+
+          origem: true,
+
+          valor: true,
+
+          status: true,
+
+          contaBancariaId:
+            true,
+        },
+      })
+
+    if (
+      !movimento
+    ) {
       return NextResponse.json(
         {
           erro:
@@ -1214,20 +1898,53 @@ export async function DELETE(
       )
     }
 
-    await prisma.financeiro.delete(
-      {
+    /*
+     * Exclusão definitiva de transferência
+     * também remove as duas pontas juntas.
+     */
+    if (
+      ehTransferenciaInterna(
+        movimento
+      )
+    ) {
+      await prisma.financeiro.deleteMany({
         where: {
-          id:
-            movimento.id,
+          escritorioId:
+            sessao.escritorioId,
+
+          categoria:
+            CATEGORIA_TRANSFERENCIA,
+
+          origem:
+            movimento.origem,
         },
-      }
-    )
+      })
+
+      return NextResponse.json({
+        sucesso:
+          true,
+
+        mensagem:
+          "Transferência entre contas excluída definitivamente. Os saldos das duas contas foram recalculados.",
+      })
+    }
+
+    await prisma.financeiro.delete({
+      where: {
+        id:
+          movimento.id,
+      },
+    })
 
     return NextResponse.json({
-      sucesso: true,
+      sucesso:
+        true,
+
       mensagem:
         "Lançamento financeiro excluído definitivamente. Os saldos serão recalculados.",
-      movimentoExcluido: movimento,
+
+      movimentoExcluido:
+        movimento,
     })
   } catch (error) {
     return respostaErro(

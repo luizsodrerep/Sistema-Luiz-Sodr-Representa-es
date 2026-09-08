@@ -28,6 +28,7 @@ import {
   FileBarChart,
   FileText,
   Home,
+  Instagram,
   Landmark,
   LayoutDashboard,
   LogOut,
@@ -92,32 +93,44 @@ const ASSISTENTE_PESSOAL: ItemMenu = {
 
 const GRUPO_COMERCIAL: GrupoMenu = {
   titulo: "Comercial",
+
   itens: [
     {
       label: "Página Inicial",
       href: "/",
       icon: Home,
     },
+
     {
       label: "Clientes",
       href: "/clientes",
       icon: Users,
     },
+
     {
       label: "Interações",
       href: "/interacoes",
       icon: MessageSquareText,
     },
+
+    {
+      label: "Interações — Análise",
+      href: "/interacoes-ai",
+      icon: BarChart3,
+    },
+
     {
       label: "Orçamentos",
       href: "/orcamentos",
       icon: FileText,
     },
+
     {
       label: "Vendas",
       href: "/vendas",
       icon: ReceiptText,
     },
+
     {
       label: "Faturamentos",
       href: "/faturamentos",
@@ -128,44 +141,59 @@ const GRUPO_COMERCIAL: GrupoMenu = {
 
 const GRUPOS_MENU: GrupoMenu[] = [
   GRUPO_COMERCIAL,
+
   {
     titulo: "Gestão",
+
     itens: [
       {
         label: "Dashboard",
         href: "/dashboard",
         icon: LayoutDashboard,
       },
+
       {
         label: "Representadas",
         href: "/representadas",
         icon: Building2,
       },
+
       {
         label: "Agenda",
         href: "/agenda",
         icon: CalendarDays,
       },
+
       {
         label: "Financeiro",
         href: "/financeiro",
         icon: CircleDollarSign,
       },
+
       {
         label: "Títulos e Vencimentos",
         href: "/titulos",
         icon: CalendarClock,
       },
+
       {
         label: "Comissões",
         href: "/comissoes",
         icon: BadgeDollarSign,
       },
+
       {
         label: "Relatórios",
         href: "/relatorios",
         icon: FileBarChart,
       },
+
+      {
+        label: "Redes Sociais",
+        href: "/redes-sociais",
+        icon: Instagram,
+      },
+
       {
         label: "Mapa",
         href: "/mapa",
@@ -173,14 +201,17 @@ const GRUPOS_MENU: GrupoMenu[] = [
       },
     ],
   },
+
   {
     titulo: "Administração",
+
     itens: [
       {
         label: "Contabilidade",
         href: "/contabilidade",
         icon: Landmark,
       },
+
       {
         label: "Configurações",
         href: "/configuracoes",
@@ -194,8 +225,12 @@ function rotaEstaAtiva(
   pathname: string,
   href: string
 ) {
-  if (href === "/") {
-    return pathname === "/"
+  if (
+    href === "/"
+  ) {
+    return (
+      pathname === "/"
+    )
   }
 
   return (
@@ -215,7 +250,9 @@ function obterTituloRota(
       ASSISTENTE_PESSOAL.href
     )
   ) {
-    return ASSISTENTE_PESSOAL.label
+    return (
+      ASSISTENTE_PESSOAL.label
+    )
   }
 
   for (
@@ -224,19 +261,27 @@ function obterTituloRota(
   ) {
     const item =
       grupo.itens.find(
-        (itemMenu) =>
+        (
+          itemMenu
+        ) =>
           rotaEstaAtiva(
             pathname,
             itemMenu.href
           )
       )
 
-    if (item) {
-      return item.label
+    if (
+      item
+    ) {
+      return (
+        item.label
+      )
     }
   }
 
-  return "Luiz Sodré Representações"
+  return (
+    "Luiz Sodré Representações"
+  )
 }
 
 export function UserSessionMenu({
@@ -260,124 +305,135 @@ export function UserSessionMenu({
     carregando,
     setCarregando,
   ] =
-    useState(true)
+    useState(
+      true
+    )
 
   const [
     saindo,
     setSaindo,
   ] =
-    useState(false)
+    useState(
+      false
+    )
 
   const rotaPublica =
     ROTAS_PUBLICAS.some(
-      (rota) =>
+      (
+        rota
+      ) =>
         pathname === rota ||
         pathname.startsWith(
           `${rota}/`
         )
     )
 
-  useEffect(() => {
-    if (
-      rotaPublica
-    ) {
-      setUsuario(
-        null
-      )
+  useEffect(
+    () => {
+      if (
+        rotaPublica
+      ) {
+        setUsuario(
+          null
+        )
 
-      setCarregando(
-        false
-      )
-
-      return
-    }
-
-    let ativo =
-      true
-
-    async function carregarSessao() {
-      try {
         setCarregando(
-          true
+          false
         )
 
-        const response =
-          await fetch(
-            "/api/auth/me",
-            {
-              method:
-                "GET",
+        return
+      }
 
-              cache:
-                "no-store",
-            }
-          )
+      let ativo =
+        true
 
-        if (
-          !ativo
-        ) {
-          return
-        }
-
-        if (
-          !response.ok
-        ) {
-          setUsuario(
-            null
-          )
-
-          return
-        }
-
-        const dados =
-          await response.json()
-
-        if (
-          dados.autenticado ===
-            true &&
-          dados.usuario
-        ) {
-          setUsuario(
-            dados.usuario
-          )
-        } else {
-          setUsuario(
-            null
-          )
-        }
-      } catch (error) {
-        console.error(
-          "Erro ao carregar sessão:",
-          error
-        )
-
-        if (
-          ativo
-        ) {
-          setUsuario(
-            null
-          )
-        }
-      } finally {
-        if (
-          ativo
-        ) {
+      async function carregarSessao() {
+        try {
           setCarregando(
-            false
+            true
           )
+
+          const response =
+            await fetch(
+              "/api/auth/me",
+              {
+                method:
+                  "GET",
+
+                cache:
+                  "no-store",
+              }
+            )
+
+          if (
+            !ativo
+          ) {
+            return
+          }
+
+          if (
+            !response.ok
+          ) {
+            setUsuario(
+              null
+            )
+
+            return
+          }
+
+          const dados =
+            await response.json()
+
+          if (
+            dados.autenticado ===
+              true &&
+            dados.usuario
+          ) {
+            setUsuario(
+              dados.usuario
+            )
+          } else {
+            setUsuario(
+              null
+            )
+          }
+        } catch (
+          error
+        ) {
+          console.error(
+            "Erro ao carregar sessão:",
+            error
+          )
+
+          if (
+            ativo
+          ) {
+            setUsuario(
+              null
+            )
+          }
+        } finally {
+          if (
+            ativo
+          ) {
+            setCarregando(
+              false
+            )
+          }
         }
       }
-    }
 
-    carregarSessao()
+      carregarSessao()
 
-    return () => {
-      ativo =
-        false
-    }
-  }, [
-    rotaPublica,
-  ])
+      return () => {
+        ativo =
+          false
+      }
+    },
+    [
+      rotaPublica,
+    ]
+  )
 
   async function realizarLogout() {
     if (
@@ -415,7 +471,8 @@ export function UserSessionMenu({
           await response
             .json()
             .catch(
-              () => null
+              () =>
+                null
             )
 
         throw new Error(
@@ -433,7 +490,9 @@ export function UserSessionMenu({
       )
 
       router.refresh()
-    } catch (error) {
+    } catch (
+      error
+    ) {
       const mensagem =
         error instanceof
           Error
