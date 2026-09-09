@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  FormEvent,
   useEffect,
   useMemo,
   useState,
@@ -14,6 +15,7 @@ import {
   Search,
   ShieldCheck,
   User,
+  X,
 } from "lucide-react"
 
 import {
@@ -67,6 +69,41 @@ type FiltroStatus =
   | "todos"
   | "ativos"
   | "inativos"
+
+type PerfilNovoUsuario =
+  | ""
+  | "Diretor"
+  | "Administrativo"
+  | "Preposto"
+
+type FormNovoUsuario = {
+  nome: string
+  email: string
+  login: string
+  senha: string
+  perfil: PerfilNovoUsuario
+  cargo: string
+  departamento: string
+  telefone: string
+  tipoVinculo: string
+  regiaoAtuacao: string
+  observacoes: string
+}
+
+const FORM_NOVO_USUARIO_INICIAL:
+  FormNovoUsuario = {
+    nome: "",
+    email: "",
+    login: "",
+    senha: "",
+    perfil: "",
+    cargo: "",
+    departamento: "",
+    telefone: "",
+    tipoVinculo: "",
+    regiaoAtuacao: "",
+    observacoes: "",
+  }
 
 function textoOuTraco(
   valor: string | null
@@ -155,6 +192,42 @@ export default function UsuariosPage() {
   ] =
     useState<FiltroStatus>(
       "todos"
+    )
+
+  const [
+    mostrarNovoUsuario,
+    setMostrarNovoUsuario,
+  ] =
+    useState(false)
+
+  const [
+    formNovoUsuario,
+    setFormNovoUsuario,
+  ] =
+    useState<FormNovoUsuario>(
+      FORM_NOVO_USUARIO_INICIAL
+    )
+
+  const [
+    salvandoNovoUsuario,
+    setSalvandoNovoUsuario,
+  ] =
+    useState(false)
+
+  const [
+    erroNovoUsuario,
+    setErroNovoUsuario,
+  ] =
+    useState<string | null>(
+      null
+    )
+
+  const [
+    mensagemSucesso,
+    setMensagemSucesso,
+  ] =
+    useState<string | null>(
+      null
     )
 
   async function carregarUsuarios() {
@@ -388,6 +461,147 @@ export default function UsuariosPage() {
     )
   }
 
+  function abrirNovoUsuario() {
+    setErroNovoUsuario(
+      null
+    )
+    setMensagemSucesso(
+      null
+    )
+    setFormNovoUsuario(
+      FORM_NOVO_USUARIO_INICIAL
+    )
+    setMostrarNovoUsuario(
+      true
+    )
+  }
+
+  function fecharNovoUsuario() {
+    if (
+      salvandoNovoUsuario
+    ) {
+      return
+    }
+
+    setMostrarNovoUsuario(
+      false
+    )
+    setErroNovoUsuario(
+      null
+    )
+    setFormNovoUsuario(
+      FORM_NOVO_USUARIO_INICIAL
+    )
+  }
+
+  function atualizarCampoNovoUsuario(
+    campo:
+      keyof FormNovoUsuario,
+    valor: string
+  ) {
+    setFormNovoUsuario(
+      (atual) => ({
+        ...atual,
+        [campo]:
+          valor,
+      })
+    )
+  }
+
+  async function criarNovoUsuario(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault()
+
+    setErroNovoUsuario(
+      null
+    )
+    setMensagemSucesso(
+      null
+    )
+
+    if (
+      !formNovoUsuario.nome.trim() ||
+      !formNovoUsuario.email.trim() ||
+      !formNovoUsuario.login.trim() ||
+      !formNovoUsuario.senha ||
+      !formNovoUsuario.perfil
+    ) {
+      setErroNovoUsuario(
+        "Preencha nome, e-mail, login, senha inicial e perfil."
+      )
+
+      return
+    }
+
+    const confirmado =
+      window.confirm(
+        `Confirma a criação do usuário "${formNovoUsuario.nome.trim()}" com perfil "${formNovoUsuario.perfil}"?`
+      )
+
+    if (!confirmado) {
+      return
+    }
+
+    setSalvandoNovoUsuario(
+      true
+    )
+
+    try {
+      const resposta =
+        await fetch(
+          "/api/usuarios",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify(
+              formNovoUsuario
+            ),
+          }
+        )
+
+      const dados =
+        await resposta.json()
+
+      if (!resposta.ok) {
+        throw new Error(
+          dados?.message ||
+            "Não foi possível criar o usuário."
+        )
+      }
+
+      setMensagemSucesso(
+        "Usuário criado com sucesso."
+      )
+
+      setFormNovoUsuario(
+        FORM_NOVO_USUARIO_INICIAL
+      )
+
+      setMostrarNovoUsuario(
+        false
+      )
+
+      await carregarUsuarios()
+    } catch (error) {
+      const mensagem =
+        error instanceof Error
+          ? error.message
+          : "Erro inesperado ao criar usuário."
+
+      setErroNovoUsuario(
+        mensagem
+      )
+    } finally {
+      setSalvandoNovoUsuario(
+        false
+      )
+    }
+  }
+
   return (
     <div className="flex flex-col">
       <div className="flex-1 space-y-4 p-8 pt-6">
@@ -445,8 +659,12 @@ export default function UsuariosPage() {
             <Button
               size="sm"
               className="h-9 gap-1"
-              disabled
-              title="Cadastro de novos usuários será habilitado na próxima etapa do módulo."
+              onClick={
+                abrirNovoUsuario
+              }
+              disabled={
+                salvandoNovoUsuario
+              }
             >
               <Plus className="h-4 w-4" />
               Novo Usuário
@@ -460,17 +678,443 @@ export default function UsuariosPage() {
 
             <div className="space-y-1">
               <p className="text-sm font-medium text-blue-950">
-                Dados reais do CRM
+                Gestão real de usuários
               </p>
 
               <p className="text-sm text-blue-900/80">
-                Esta tela não utiliza mais usuários demonstrativos.
-                Cadastro, edição e permissões individuais serão habilitados
-                de forma controlada nas próximas etapas.
+                O Diretor pode cadastrar usuários reais do escritório.
+                Edição, ativação, desativação e permissões individuais
+                serão habilitadas nas próximas etapas.
               </p>
             </div>
           </CardContent>
         </Card>
+
+        {mensagemSucesso && (
+          <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+            {
+              mensagemSucesso
+            }
+          </div>
+        )}
+
+        {mostrarNovoUsuario && (
+          <Card>
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+              <div>
+                <CardTitle>
+                  Novo Usuário
+                </CardTitle>
+
+                <CardDescription className="mt-1">
+                  Cadastre um usuário real no escritório atual.
+                </CardDescription>
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={
+                  fecharNovoUsuario
+                }
+                disabled={
+                  salvandoNovoUsuario
+                }
+                title="Fechar cadastro"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+
+            <CardContent>
+              <form
+                className="space-y-6"
+                onSubmit={
+                  criarNovoUsuario
+                }
+              >
+                {erroNovoUsuario && (
+                  <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                    {
+                      erroNovoUsuario
+                    }
+                  </div>
+                )}
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="novo-usuario-nome"
+                      className="text-sm font-medium"
+                    >
+                      Nome *
+                    </label>
+
+                    <Input
+                      id="novo-usuario-nome"
+                      value={
+                        formNovoUsuario.nome
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        atualizarCampoNovoUsuario(
+                          "nome",
+                          event.target.value
+                        )
+                      }
+                      autoComplete="name"
+                      disabled={
+                        salvandoNovoUsuario
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="novo-usuario-perfil"
+                      className="text-sm font-medium"
+                    >
+                      Perfil *
+                    </label>
+
+                    <select
+                      id="novo-usuario-perfil"
+                      value={
+                        formNovoUsuario.perfil
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        atualizarCampoNovoUsuario(
+                          "perfil",
+                          event.target.value
+                        )
+                      }
+                      disabled={
+                        salvandoNovoUsuario
+                      }
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">
+                        Selecione
+                      </option>
+                      <option value="Diretor">
+                        Diretor
+                      </option>
+                      <option value="Administrativo">
+                        Administrativo
+                      </option>
+                      <option value="Preposto">
+                        Preposto
+                      </option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="novo-usuario-email"
+                      className="text-sm font-medium"
+                    >
+                      E-mail *
+                    </label>
+
+                    <Input
+                      id="novo-usuario-email"
+                      type="email"
+                      value={
+                        formNovoUsuario.email
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        atualizarCampoNovoUsuario(
+                          "email",
+                          event.target.value
+                        )
+                      }
+                      autoComplete="email"
+                      disabled={
+                        salvandoNovoUsuario
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="novo-usuario-login"
+                      className="text-sm font-medium"
+                    >
+                      Login *
+                    </label>
+
+                    <Input
+                      id="novo-usuario-login"
+                      value={
+                        formNovoUsuario.login
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        atualizarCampoNovoUsuario(
+                          "login",
+                          event.target.value
+                        )
+                      }
+                      autoComplete="username"
+                      disabled={
+                        salvandoNovoUsuario
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <label
+                      htmlFor="novo-usuario-senha"
+                      className="text-sm font-medium"
+                    >
+                      Senha inicial *
+                    </label>
+
+                    <Input
+                      id="novo-usuario-senha"
+                      type="password"
+                      value={
+                        formNovoUsuario.senha
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        atualizarCampoNovoUsuario(
+                          "senha",
+                          event.target.value
+                        )
+                      }
+                      autoComplete="new-password"
+                      disabled={
+                        salvandoNovoUsuario
+                      }
+                    />
+
+                    <p className="text-xs text-muted-foreground">
+                      Mínimo de 10 caracteres, com letra maiúscula,
+                      letra minúscula e número.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t pt-5">
+                  <p className="mb-4 text-sm font-medium">
+                    Informações profissionais
+                  </p>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="novo-usuario-cargo"
+                        className="text-sm font-medium"
+                      >
+                        Cargo
+                      </label>
+
+                      <Input
+                        id="novo-usuario-cargo"
+                        value={
+                          formNovoUsuario.cargo
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          atualizarCampoNovoUsuario(
+                            "cargo",
+                            event.target.value
+                          )
+                        }
+                        disabled={
+                          salvandoNovoUsuario
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="novo-usuario-departamento"
+                        className="text-sm font-medium"
+                      >
+                        Departamento
+                      </label>
+
+                      <Input
+                        id="novo-usuario-departamento"
+                        value={
+                          formNovoUsuario.departamento
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          atualizarCampoNovoUsuario(
+                            "departamento",
+                            event.target.value
+                          )
+                        }
+                        disabled={
+                          salvandoNovoUsuario
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="novo-usuario-telefone"
+                        className="text-sm font-medium"
+                      >
+                        Telefone
+                      </label>
+
+                      <Input
+                        id="novo-usuario-telefone"
+                        value={
+                          formNovoUsuario.telefone
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          atualizarCampoNovoUsuario(
+                            "telefone",
+                            event.target.value
+                          )
+                        }
+                        autoComplete="tel"
+                        disabled={
+                          salvandoNovoUsuario
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="novo-usuario-vinculo"
+                        className="text-sm font-medium"
+                      >
+                        Tipo de vínculo
+                      </label>
+
+                      <Input
+                        id="novo-usuario-vinculo"
+                        value={
+                          formNovoUsuario.tipoVinculo
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          atualizarCampoNovoUsuario(
+                            "tipoVinculo",
+                            event.target.value
+                          )
+                        }
+                        placeholder="Ex.: Sócio, Funcionário, Preposto"
+                        disabled={
+                          salvandoNovoUsuario
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <label
+                        htmlFor="novo-usuario-regiao"
+                        className="text-sm font-medium"
+                      >
+                        Região de atuação
+                      </label>
+
+                      <Input
+                        id="novo-usuario-regiao"
+                        value={
+                          formNovoUsuario.regiaoAtuacao
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          atualizarCampoNovoUsuario(
+                            "regiaoAtuacao",
+                            event.target.value
+                          )
+                        }
+                        disabled={
+                          salvandoNovoUsuario
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <label
+                        htmlFor="novo-usuario-observacoes"
+                        className="text-sm font-medium"
+                      >
+                        Observações
+                      </label>
+
+                      <textarea
+                        id="novo-usuario-observacoes"
+                        value={
+                          formNovoUsuario.observacoes
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          atualizarCampoNovoUsuario(
+                            "observacoes",
+                            event.target.value
+                          )
+                        }
+                        rows={4}
+                        disabled={
+                          salvandoNovoUsuario
+                        }
+                        className="flex min-h-[96px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={
+                      fecharNovoUsuario
+                    }
+                    disabled={
+                      salvandoNovoUsuario
+                    }
+                  >
+                    Cancelar
+                  </Button>
+
+                  <Button
+                    type="submit"
+                    disabled={
+                      salvandoNovoUsuario
+                    }
+                  >
+                    {salvandoNovoUsuario ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Criando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Criar Usuário
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
