@@ -70,6 +70,7 @@ type ItemMenu = {
   label: string
   href: string
   icon: typeof Home
+  somenteDiretor?: boolean
 }
 
 type GrupoMenu = {
@@ -210,6 +211,13 @@ const GRUPOS_MENU: GrupoMenu[] = [
         label: "Contabilidade",
         href: "/contabilidade",
         icon: Landmark,
+      },
+
+      {
+        label: "Usuários",
+        href: "/usuarios",
+        icon: UserRound,
+        somenteDiretor: true,
       },
 
       {
@@ -512,6 +520,14 @@ export function UserSessionMenu({
   function renderizarItemMenu(
     item: ItemMenu
   ) {
+    if (
+      item.somenteDiretor &&
+      usuario?.perfil !==
+        "Diretor"
+    ) {
+      return null
+    }
+
     const Icone =
       item.icon
 

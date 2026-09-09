@@ -503,6 +503,9 @@ export function recursoDaRota(
     pathname === "/usuarios" ||
     pathname.startsWith(
       "/usuarios/"
+    ) ||
+    pathname.startsWith(
+      "/api/usuarios"
     )
   ) {
     return "usuarios"
