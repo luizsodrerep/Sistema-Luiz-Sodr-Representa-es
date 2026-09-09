@@ -6,19 +6,20 @@ import {
   useState,
 } from "react"
 
-import Link from "next/link"
 import {
   useParams,
 } from "next/navigation"
 
 import {
-  ArrowLeft,
   CheckCircle2,
   Loader2,
   MinusCircle,
+  Pencil,
   RefreshCw,
+  Save,
   ShieldCheck,
   UserRound,
+  X,
   XCircle,
 } from "lucide-react"
 
@@ -37,6 +38,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+
+import {
+  Input,
+} from "@/components/ui/input"
 
 import {
   obterPermissao,
@@ -82,6 +87,20 @@ type UsuarioDetalhe = {
   atualizadoEm: string
 
   permissoes: PermissaoIndividual[]
+}
+
+type FormUsuarioEdicao = {
+  nome: string
+  email: string
+  login: string
+  perfil: PerfilUsuarioLocal
+  ativo: boolean
+  regiaoAtuacao: string
+  cargo: string
+  departamento: string
+  telefone: string
+  tipoVinculo: string
+  observacoes: string
 }
 
 const RECURSOS:
@@ -200,6 +219,50 @@ function textoOuTraco(
   }
 
   return valor
+}
+
+function formularioDoUsuario(
+  usuario: UsuarioDetalhe
+): FormUsuarioEdicao | null {
+  if (!perfilValido(usuario.perfil)) {
+    return null
+  }
+
+  return {
+    nome:
+      usuario.nome,
+    email:
+      usuario.email,
+    login:
+      usuario.login ?? "",
+    perfil:
+      usuario.perfil,
+    ativo:
+      usuario.ativo,
+    regiaoAtuacao:
+      usuario.regiaoAtuacao ?? "",
+    cargo:
+      usuario.cargo ?? "",
+    departamento:
+      usuario.departamento ?? "",
+    telefone:
+      usuario.telefone ?? "",
+    tipoVinculo:
+      usuario.tipoVinculo ?? "",
+    observacoes:
+      usuario.observacoes ?? "",
+  }
+}
+
+function textoNormalizadoOpcional(
+  valor: string
+): string | null {
+  const texto =
+    valor.trim()
+
+  return texto === ""
+    ? null
+    : texto
 }
 
 function formatarDataHora(
@@ -339,6 +402,292 @@ export default function UsuarioDetalhePage() {
       null
     )
 
+  const [
+    usuarioSessaoId,
+    setUsuarioSessaoId,
+  ] =
+    useState<string | null>(
+      null
+    )
+
+  const [
+    editando,
+    setEditando,
+  ] =
+    useState(false)
+
+  const [
+    salvando,
+    setSalvando,
+  ] =
+    useState(false)
+
+  const [
+    formEdicao,
+    setFormEdicao,
+  ] =
+    useState<FormUsuarioEdicao | null>(
+      null
+    )
+
+  const [
+    erroEdicao,
+    setErroEdicao,
+  ] =
+    useState<string | null>(
+      null
+    )
+
+  const [
+    sucessoEdicao,
+    setSucessoEdicao,
+  ] =
+    useState<string | null>(
+      null
+    )
+
+  async function carregarSessaoAtual() {
+    try {
+      const resposta =
+        await fetch(
+          "/api/auth/me",
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        )
+
+      const dados =
+        await resposta.json()
+
+      if (
+        resposta.ok &&
+        dados?.autenticado === true &&
+        typeof dados?.usuario?.id ===
+          "string"
+      ) {
+        setUsuarioSessaoId(
+          dados.usuario.id
+        )
+      }
+    } catch {
+      setUsuarioSessaoId(
+        null
+      )
+    }
+  }
+
+  function abrirEdicao() {
+    if (!usuario) {
+      return
+    }
+
+    const formulario =
+      formularioDoUsuario(
+        usuario
+      )
+
+    if (!formulario) {
+      setErroEdicao(
+        "O perfil atual deste usuário não é reconhecido para edição."
+      )
+      return
+    }
+
+    setFormEdicao(
+      formulario
+    )
+    setErroEdicao(
+      null
+    )
+    setSucessoEdicao(
+      null
+    )
+    setEditando(
+      true
+    )
+  }
+
+  function cancelarEdicao() {
+    if (salvando) {
+      return
+    }
+
+    setEditando(
+      false
+    )
+    setFormEdicao(
+      null
+    )
+    setErroEdicao(
+      null
+    )
+  }
+
+  function possuiAlteracaoEfetiva(
+    atual: UsuarioDetalhe,
+    formulario: FormUsuarioEdicao
+  ): boolean {
+    return (
+      formulario.nome.trim() !==
+        atual.nome ||
+      formulario.email.trim().toLowerCase() !==
+        atual.email.toLowerCase() ||
+      formulario.login.trim() !==
+        (atual.login ?? "") ||
+      formulario.perfil !==
+        atual.perfil ||
+      formulario.ativo !==
+        atual.ativo ||
+      textoNormalizadoOpcional(
+        formulario.regiaoAtuacao
+      ) !== atual.regiaoAtuacao ||
+      textoNormalizadoOpcional(
+        formulario.cargo
+      ) !== atual.cargo ||
+      textoNormalizadoOpcional(
+        formulario.departamento
+      ) !== atual.departamento ||
+      textoNormalizadoOpcional(
+        formulario.telefone
+      ) !== atual.telefone ||
+      textoNormalizadoOpcional(
+        formulario.tipoVinculo
+      ) !== atual.tipoVinculo ||
+      textoNormalizadoOpcional(
+        formulario.observacoes
+      ) !== atual.observacoes
+    )
+  }
+
+  async function salvarEdicao() {
+    if (
+      !usuario ||
+      !formEdicao
+    ) {
+      return
+    }
+
+    setErroEdicao(
+      null
+    )
+    setSucessoEdicao(
+      null
+    )
+
+    if (
+      !formEdicao.nome.trim() ||
+      !formEdicao.email.trim() ||
+      !formEdicao.login.trim()
+    ) {
+      setErroEdicao(
+        "Nome, e-mail e login são obrigatórios."
+      )
+      return
+    }
+
+    if (
+      !possuiAlteracaoEfetiva(
+        usuario,
+        formEdicao
+      )
+    ) {
+      setErroEdicao(
+        "Nenhuma alteração foi realizada."
+      )
+      return
+    }
+
+    const confirmado =
+      window.confirm(
+        `Confirma as alterações do usuário "${usuario.nome}"?`
+      )
+
+    if (!confirmado) {
+      return
+    }
+
+    setSalvando(
+      true
+    )
+
+    try {
+      const resposta =
+        await fetch(
+          `/api/usuarios/${encodeURIComponent(
+            usuario.id
+          )}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              nome:
+                formEdicao.nome,
+              email:
+                formEdicao.email,
+              login:
+                formEdicao.login,
+              perfil:
+                formEdicao.perfil,
+              ativo:
+                formEdicao.ativo,
+              regiaoAtuacao:
+                formEdicao.regiaoAtuacao,
+              cargo:
+                formEdicao.cargo,
+              departamento:
+                formEdicao.departamento,
+              telefone:
+                formEdicao.telefone,
+              tipoVinculo:
+                formEdicao.tipoVinculo,
+              observacoes:
+                formEdicao.observacoes,
+            }),
+          }
+        )
+
+      const dados =
+        await resposta.json()
+
+      if (!resposta.ok) {
+        throw new Error(
+          dados?.message ||
+            "Não foi possível atualizar o usuário."
+        )
+      }
+
+      setUsuario(
+        dados.usuario as UsuarioDetalhe
+      )
+      setEditando(
+        false
+      )
+      setFormEdicao(
+        null
+      )
+      setSucessoEdicao(
+        "Usuário atualizado com sucesso."
+      )
+    } catch (error) {
+      const mensagem =
+        error instanceof Error
+          ? error.message
+          : "Erro inesperado ao atualizar usuário."
+
+      setErroEdicao(
+        mensagem
+      )
+    } finally {
+      setSalvando(
+        false
+      )
+    }
+  }
+
   async function carregarUsuario() {
     if (!id) {
       setUsuario(null)
@@ -394,6 +743,10 @@ export default function UsuarioDetalhePage() {
     void carregarUsuario()
   }, [id])
 
+  useEffect(() => {
+    void carregarSessaoAtual()
+  }, [])
+
   const permissoesIndividuaisPorRecurso =
     useMemo(() => {
       const mapa =
@@ -415,51 +768,82 @@ export default function UsuarioDetalhePage() {
       return mapa
     }, [usuario])
 
+  const editandoProprioUsuario =
+    Boolean(
+      usuario &&
+      usuarioSessaoId &&
+      usuario.id ===
+        usuarioSessaoId
+    )
+
   return (
     <div className="flex flex-col">
       <div className="flex-1 space-y-4 p-8 pt-6">
-        <NavigationButtons />
+        <NavigationButtons
+          backLabel="Usuários"
+          backHref="/usuarios"
+        />
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <div className="mb-2">
-              <Link
-                href="/usuarios"
-                className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Voltar para Usuários
-              </Link>
-            </div>
-
             <h2 className="text-3xl font-bold tracking-tight">
               Detalhes do Usuário
             </h2>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Consulta somente leitura dos dados reais do usuário.
+              Consulte e edite os dados reais do usuário com auditoria.
             </p>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-2"
-            onClick={() =>
-              void carregarUsuario()
-            }
-            disabled={
-              carregando
-            }
-          >
-            {carregando ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-2"
+              onClick={() =>
+                void carregarUsuario()
+              }
+              disabled={
+                carregando ||
+                salvando
+              }
+            >
+              {sucessoEdicao && (
+          <Card className="border-green-200 bg-green-50/50">
+            <CardContent className="p-5">
+              <p className="text-sm font-medium text-green-800">
+                {sucessoEdicao}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
-            Atualizar
-          </Button>
+        {carregando ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+
+              Atualizar
+            </Button>
+
+            <Button
+              size="sm"
+              className="h-9 gap-2"
+              onClick={
+                abrirEdicao
+              }
+              disabled={
+                carregando ||
+                !usuario ||
+                editando ||
+                salvando
+              }
+            >
+              <Pencil className="h-4 w-4" />
+              Editar Usuário
+            </Button>
+          </div>
         </div>
 
         {erro && (
@@ -667,6 +1051,467 @@ export default function UsuarioDetalhePage() {
                 </div>
               </CardContent>
             </Card>
+
+            {editando && formEdicao && (
+              <Card className="border-amber-200">
+                <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                  <div>
+                    <CardTitle>
+                      Editar Usuário
+                    </CardTitle>
+
+                    <CardDescription className="mt-1">
+                      As alterações são persistidas no banco e registradas em Auditoria.
+                    </CardDescription>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={
+                      cancelarEdicao
+                    }
+                    disabled={
+                      salvando
+                    }
+                    title="Fechar edição"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </CardHeader>
+
+                <CardContent className="space-y-6">
+                  {erroEdicao && (
+                    <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                      {erroEdicao}
+                    </div>
+                  )}
+
+                  {editandoProprioUsuario && (
+                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                      Você está editando o próprio usuário. Por segurança, o perfil e o status ativo não podem ser alterados nesta operação.
+                    </div>
+                  )}
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="editar-usuario-nome"
+                        className="text-sm font-medium"
+                      >
+                        Nome *
+                      </label>
+
+                      <Input
+                        id="editar-usuario-nome"
+                        value={
+                          formEdicao.nome
+                        }
+                        onChange={(event) =>
+                          setFormEdicao(
+                            (atual) =>
+                              atual
+                                ? {
+                                    ...atual,
+                                    nome:
+                                      event.target.value,
+                                  }
+                                : atual
+                          )
+                        }
+                        disabled={
+                          salvando
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="editar-usuario-email"
+                        className="text-sm font-medium"
+                      >
+                        E-mail *
+                      </label>
+
+                      <Input
+                        id="editar-usuario-email"
+                        type="email"
+                        value={
+                          formEdicao.email
+                        }
+                        onChange={(event) =>
+                          setFormEdicao(
+                            (atual) =>
+                              atual
+                                ? {
+                                    ...atual,
+                                    email:
+                                      event.target.value,
+                                  }
+                                : atual
+                          )
+                        }
+                        disabled={
+                          salvando
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="editar-usuario-login"
+                        className="text-sm font-medium"
+                      >
+                        Login *
+                      </label>
+
+                      <Input
+                        id="editar-usuario-login"
+                        value={
+                          formEdicao.login
+                        }
+                        onChange={(event) =>
+                          setFormEdicao(
+                            (atual) =>
+                              atual
+                                ? {
+                                    ...atual,
+                                    login:
+                                      event.target.value,
+                                  }
+                                : atual
+                          )
+                        }
+                        disabled={
+                          salvando
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="editar-usuario-perfil"
+                        className="text-sm font-medium"
+                      >
+                        Perfil *
+                      </label>
+
+                      <select
+                        id="editar-usuario-perfil"
+                        value={
+                          formEdicao.perfil
+                        }
+                        onChange={(event) => {
+                          const valor =
+                            event.target.value
+
+                          if (
+                            perfilValido(
+                              valor
+                            )
+                          ) {
+                            setFormEdicao(
+                              (atual) =>
+                                atual
+                                  ? {
+                                      ...atual,
+                                      perfil:
+                                        valor,
+                                    }
+                                  : atual
+                            )
+                          }
+                        }}
+                        disabled={
+                          salvando ||
+                          editandoProprioUsuario
+                        }
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <option value="Diretor">
+                          Diretor
+                        </option>
+                        <option value="Administrativo">
+                          Administrativo
+                        </option>
+                        <option value="Preposto">
+                          Preposto
+                        </option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="editar-usuario-status"
+                        className="text-sm font-medium"
+                      >
+                        Status *
+                      </label>
+
+                      <select
+                        id="editar-usuario-status"
+                        value={
+                          formEdicao.ativo
+                            ? "ativo"
+                            : "inativo"
+                        }
+                        onChange={(event) =>
+                          setFormEdicao(
+                            (atual) =>
+                              atual
+                                ? {
+                                    ...atual,
+                                    ativo:
+                                      event.target.value ===
+                                      "ativo",
+                                  }
+                                : atual
+                          )
+                        }
+                        disabled={
+                          salvando ||
+                          editandoProprioUsuario
+                        }
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <option value="ativo">
+                          Ativo
+                        </option>
+                        <option value="inativo">
+                          Inativo
+                        </option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="editar-usuario-cargo"
+                        className="text-sm font-medium"
+                      >
+                        Cargo
+                      </label>
+
+                      <Input
+                        id="editar-usuario-cargo"
+                        value={
+                          formEdicao.cargo
+                        }
+                        onChange={(event) =>
+                          setFormEdicao(
+                            (atual) =>
+                              atual
+                                ? {
+                                    ...atual,
+                                    cargo:
+                                      event.target.value,
+                                  }
+                                : atual
+                          )
+                        }
+                        disabled={
+                          salvando
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="editar-usuario-departamento"
+                        className="text-sm font-medium"
+                      >
+                        Departamento
+                      </label>
+
+                      <Input
+                        id="editar-usuario-departamento"
+                        value={
+                          formEdicao.departamento
+                        }
+                        onChange={(event) =>
+                          setFormEdicao(
+                            (atual) =>
+                              atual
+                                ? {
+                                    ...atual,
+                                    departamento:
+                                      event.target.value,
+                                  }
+                                : atual
+                          )
+                        }
+                        disabled={
+                          salvando
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="editar-usuario-telefone"
+                        className="text-sm font-medium"
+                      >
+                        Telefone
+                      </label>
+
+                      <Input
+                        id="editar-usuario-telefone"
+                        value={
+                          formEdicao.telefone
+                        }
+                        onChange={(event) =>
+                          setFormEdicao(
+                            (atual) =>
+                              atual
+                                ? {
+                                    ...atual,
+                                    telefone:
+                                      event.target.value,
+                                  }
+                                : atual
+                          )
+                        }
+                        disabled={
+                          salvando
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="editar-usuario-vinculo"
+                        className="text-sm font-medium"
+                      >
+                        Tipo de vínculo
+                      </label>
+
+                      <Input
+                        id="editar-usuario-vinculo"
+                        value={
+                          formEdicao.tipoVinculo
+                        }
+                        onChange={(event) =>
+                          setFormEdicao(
+                            (atual) =>
+                              atual
+                                ? {
+                                    ...atual,
+                                    tipoVinculo:
+                                      event.target.value,
+                                  }
+                                : atual
+                          )
+                        }
+                        disabled={
+                          salvando
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <label
+                        htmlFor="editar-usuario-regiao"
+                        className="text-sm font-medium"
+                      >
+                        Região de atuação
+                      </label>
+
+                      <Input
+                        id="editar-usuario-regiao"
+                        value={
+                          formEdicao.regiaoAtuacao
+                        }
+                        onChange={(event) =>
+                          setFormEdicao(
+                            (atual) =>
+                              atual
+                                ? {
+                                    ...atual,
+                                    regiaoAtuacao:
+                                      event.target.value,
+                                  }
+                                : atual
+                          )
+                        }
+                        disabled={
+                          salvando
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <label
+                        htmlFor="editar-usuario-observacoes"
+                        className="text-sm font-medium"
+                      >
+                        Observações
+                      </label>
+
+                      <textarea
+                        id="editar-usuario-observacoes"
+                        value={
+                          formEdicao.observacoes
+                        }
+                        onChange={(event) =>
+                          setFormEdicao(
+                            (atual) =>
+                              atual
+                                ? {
+                                    ...atual,
+                                    observacoes:
+                                      event.target.value,
+                                  }
+                                : atual
+                          )
+                        }
+                        rows={4}
+                        disabled={
+                          salvando
+                        }
+                        className="flex min-h-[96px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={
+                        cancelarEdicao
+                      }
+                      disabled={
+                        salvando
+                      }
+                    >
+                      Cancelar
+                    </Button>
+
+                    <Button
+                      type="button"
+                      onClick={() =>
+                        void salvarEdicao()
+                      }
+                      disabled={
+                        salvando
+                      }
+                    >
+                      {salvando ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Salvar Alterações
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="border-blue-200 bg-blue-50/50">
               <CardContent className="flex gap-3 p-5">
