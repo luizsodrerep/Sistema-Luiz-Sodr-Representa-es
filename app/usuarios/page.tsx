@@ -7,8 +7,11 @@ import {
   useState,
 } from "react"
 
+import Link from "next/link"
+
 import {
   Download,
+  Eye,
   Loader2,
   Plus,
   RefreshCw,
@@ -1297,6 +1300,10 @@ export default function UsuariosPage() {
                       <TableHead>
                         Status
                       </TableHead>
+
+                      <TableHead className="text-right">
+                        Ações
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
 
@@ -1381,6 +1388,22 @@ export default function UsuariosPage() {
                                 ? "Ativo"
                                 : "Inativo"}
                             </span>
+                          </TableCell>
+
+                          <TableCell className="text-right">
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5"
+                            >
+                              <Link
+                                href={`/usuarios/${usuario.id}`}
+                              >
+                                <Eye className="h-4 w-4" />
+                                Detalhes
+                              </Link>
+                            </Button>
                           </TableCell>
                         </TableRow>
                       )
