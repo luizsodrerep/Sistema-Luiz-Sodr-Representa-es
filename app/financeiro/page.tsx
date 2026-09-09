@@ -955,6 +955,201 @@ export default function FinanceiroPage() {
       ]
     )
 
+  const contasOrdenadasPorSaldo =
+    useMemo(
+      () =>
+        [
+          ...contas,
+        ].sort(
+          (
+            contaA,
+            contaB
+          ) => {
+            const saldoA =
+              contaA.resumo
+                .saldoRealizado
+
+            const saldoB =
+              contaB.resumo
+                .saldoRealizado
+
+            const negativaA =
+              saldoA < 0
+
+            const negativaB =
+              saldoB < 0
+
+            if (
+              negativaA !==
+              negativaB
+            ) {
+              return negativaA
+                ? -1
+                : 1
+            }
+
+            if (
+              negativaA &&
+              negativaB
+            ) {
+              return (
+                saldoA -
+                saldoB
+              )
+            }
+
+            return (
+              saldoB -
+              saldoA
+            )
+          }
+        ),
+      [
+        contas,
+      ]
+    )
+
+  const contasPessoaJuridica =
+    useMemo(
+      () =>
+        contasOrdenadasPorSaldo.filter(
+          (
+            conta
+          ) =>
+            conta.tipoTitular
+              .trim()
+              .toUpperCase() ===
+            "PJ"
+        ),
+      [
+        contasOrdenadasPorSaldo,
+      ]
+    )
+
+  const contasPessoaFisica =
+    useMemo(
+      () =>
+        contasOrdenadasPorSaldo.filter(
+          (
+            conta
+          ) =>
+            conta.tipoTitular
+              .trim()
+              .toUpperCase() ===
+            "PF"
+        ),
+      [
+        contasOrdenadasPorSaldo,
+      ]
+    )
+
+  const contasSemClassificacao =
+    useMemo(
+      () =>
+        contasOrdenadasPorSaldo.filter(
+          (
+            conta
+          ) => {
+            const tipo =
+              conta.tipoTitular
+                .trim()
+                .toUpperCase()
+
+            return (
+              tipo !==
+                "PJ" &&
+              tipo !==
+                "PF"
+            )
+          }
+        ),
+      [
+        contasOrdenadasPorSaldo,
+      ]
+    )
+
+  const contasNegativas =
+    useMemo(
+      () =>
+        contasOrdenadasPorSaldo.filter(
+          (
+            conta
+          ) =>
+            conta.resumo
+              .saldoRealizado <
+            0
+        ),
+      [
+        contasOrdenadasPorSaldo,
+      ]
+    )
+
+  const saldoPessoaJuridica =
+    useMemo(
+      () =>
+        contas.reduce(
+          (
+            total,
+            conta
+          ) =>
+            conta.tipoTitular
+              .trim()
+              .toUpperCase() ===
+            "PJ"
+              ? total +
+                conta.resumo
+                  .saldoRealizado
+              : total,
+          0
+        ),
+      [
+        contas,
+      ]
+    )
+
+  const saldoPessoaFisica =
+    useMemo(
+      () =>
+        contas.reduce(
+          (
+            total,
+            conta
+          ) =>
+            conta.tipoTitular
+              .trim()
+              .toUpperCase() ===
+            "PF"
+              ? total +
+                conta.resumo
+                  .saldoRealizado
+              : total,
+          0
+        ),
+      [
+        contas,
+      ]
+    )
+
+  const necessidadeCobertura =
+    useMemo(
+      () =>
+        contasNegativas.reduce(
+          (
+            total,
+            conta
+          ) =>
+            total +
+            Math.abs(
+              conta.resumo
+                .saldoRealizado
+            ),
+          0
+        ),
+      [
+        contasNegativas,
+      ]
+    )
+
   const carregarSessao =
     useCallback(
       async () => {
@@ -3689,18 +3884,6 @@ export default function FinanceiroPage() {
       )}
 
       <div className="space-y-6">
-        <div className="rounded-lg border bg-muted/20 p-4">
-          <h2 className="text-lg font-semibold">
-            Controle financeiro completo
-          </h2>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            Acompanhe o saldo atual, valores a pagar, valores a receber,
-            contas vencidas, dívidas, cartões, acordos, transferências
-            entre contas e projeção financeira consolidada.
-          </p>
-        </div>
-
         {erro && (
           <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {erro}
@@ -3713,168 +3896,610 @@ export default function FinanceiroPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Saldo realizado
-              </CardTitle>
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <CardTitle>
+                  Posição de caixa hoje
+                </CardTitle>
 
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-
-            <CardContent>
-              <div
-                className={`text-2xl font-bold ${
-                  resumo.saldoRealizado <
-                  0
-                    ? "text-red-600"
-                    : "text-green-600"
-                }`}
-              >
-                {moeda(
-                  resumo.saldoRealizado
-                )}
+                <CardDescription className="mt-1">
+                  Veja o consolidado e a distribuição entre Pessoa
+                  Jurídica e Pessoa Física sem precisar descer até as
+                  contas. Um consolidado positivo pode coexistir com
+                  uma conta individual negativa.
+                </CardDescription>
               </div>
 
-              <p className="mt-1 text-xs text-muted-foreground">
-                Posição atual consolidada
-              </p>
-            </CardContent>
-          </Card>
+              <Wallet className="h-5 w-5 shrink-0 text-muted-foreground" />
+            </div>
+          </CardHeader>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+              <div className="rounded-lg border bg-muted/20 p-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Consolidado
+                </div>
+
+                <div
+                  className={`mt-1 text-xl font-bold ${
+                    resumo.saldoRealizado <
+                    0
+                      ? "text-red-600"
+                      : "text-green-600"
+                  }`}
+                >
+                  {moeda(
+                    resumo.saldoRealizado
+                  )}
+                </div>
+
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Todas as contas e movimentos
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-blue-700">
+                  Pessoa Jurídica
+                </div>
+
+                <div
+                  className={`mt-1 text-xl font-bold ${
+                    saldoPessoaJuridica <
+                    0
+                      ? "text-red-600"
+                      : "text-green-600"
+                  }`}
+                >
+                  {moeda(
+                    saldoPessoaJuridica
+                  )}
+                </div>
+
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Contas cadastradas como PJ
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-amber-700">
+                  Pessoa Física
+                </div>
+
+                <div
+                  className={`mt-1 text-xl font-bold ${
+                    saldoPessoaFisica <
+                    0
+                      ? "text-red-600"
+                      : "text-green-600"
+                  }`}
+                >
+                  {moeda(
+                    saldoPessoaFisica
+                  )}
+                </div>
+
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Contas cadastradas como PF
+                </div>
+              </div>
+
+              <div
+                className={`rounded-lg border p-3 ${
+                  necessidadeCobertura >
+                  0
+                    ? "border-red-200 bg-red-50"
+                    : "bg-muted/20"
+                }`}
+              >
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Cobertura necessária
+                </div>
+
+                <div
+                  className={`mt-1 text-xl font-bold ${
+                    necessidadeCobertura >
+                    0
+                      ? "text-red-600"
+                      : "text-green-600"
+                  }`}
+                >
+                  {moeda(
+                    necessidadeCobertura
+                  )}
+                </div>
+
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Soma das contas com saldo negativo
+                </div>
+              </div>
+            </div>
+
+            {contasNegativas.length >
+              0 && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 font-semibold text-red-800">
+                      <AlertTriangle className="h-4 w-4" />
+
+                      Conta(s) que exigem atenção
+                    </div>
+
+                    <p className="mt-1 text-xs text-red-700">
+                      O consolidado não elimina a necessidade de cobrir
+                      uma conta negativa antes de juros, encargos ou
+                      vencimentos.
+                    </p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={
+                      abrirTransferencia
+                    }
+                  >
+                    <ArrowLeftRight className="mr-2 h-4 w-4" />
+
+                    Registrar transferência
+                  </Button>
+                </div>
+
+                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {contasNegativas.map(
+                    (
+                      conta
+                    ) => (
+                      <div
+                        key={
+                          conta.id
+                        }
+                        className="flex items-center justify-between gap-3 rounded-md border border-red-200 bg-background px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">
+                            {
+                              conta.nome
+                            }
+                          </div>
+
+                          <div className="text-xs text-muted-foreground">
+                            {
+                              conta.tipoTitular
+                            }
+                            {!conta.ativa
+                              ? " • Inativa"
+                              : ""}
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-sm font-bold text-red-600">
+                          {moeda(
+                            conta.resumo
+                              .saldoRealizado
+                          )}
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold">
+                    Saldos por conta
+                  </h3>
+
+                  <p className="text-xs text-muted-foreground">
+                    Pessoa Jurídica acima e Pessoa Física abaixo. Dentro de cada grupo, contas negativas aparecem primeiro.
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={
+                    carregando
+                  }
+                  onClick={() =>
+                    void carregarFinanceiro()
+                  }
+                >
+                  <RefreshCw
+                    className={`mr-2 h-4 w-4 ${
+                      carregando
+                        ? "animate-spin"
+                        : ""
+                    }`}
+                  />
+
+                  Atualizar
+                </Button>
+              </div>
+
+              {contasOrdenadasPorSaldo.length ===
+              0 ? (
+                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                  Nenhuma conta financeira cadastrada.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {contasPessoaJuridica.length >
+                    0 && (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-3">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                            Pessoa Jurídica
+                          </div>
+
+                          <div className="text-xs text-blue-700/80">
+                            Contas da empresa
+                          </div>
+                        </div>
+
+                        <div
+                          className={`text-sm font-bold ${
+                            saldoPessoaJuridica <
+                            0
+                              ? "text-red-600"
+                              : "text-green-700"
+                          }`}
+                        >
+                          Total PJ:{" "}
+                          {moeda(
+                            saldoPessoaJuridica
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                        {contasPessoaJuridica.map(
+                          (
+                            conta
+                          ) => (
+                            <div
+                              key={
+                                conta.id
+                              }
+                              className={`flex min-w-0 items-center justify-between gap-3 rounded-md border px-3 py-2 ${
+                                conta.resumo
+                                  .saldoRealizado <
+                                0
+                                  ? "border-red-300 bg-red-50"
+                                  : "border-blue-200 bg-white/90"
+                              } ${
+                                !conta.ativa
+                                  ? "opacity-60"
+                                  : ""
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-medium">
+                                  {
+                                    conta.nome
+                                  }
+                                </div>
+
+                                <div className="truncate text-xs text-blue-700/70">
+                                  {
+                                    conta.banco
+                                  }{" "}
+                                  • PJ
+                                </div>
+                              </div>
+
+                              <div
+                                className={`shrink-0 text-sm font-bold ${
+                                  conta.resumo
+                                    .saldoRealizado <
+                                  0
+                                    ? "text-red-600"
+                                    : "text-green-600"
+                                }`}
+                              >
+                                {moeda(
+                                  conta.resumo
+                                    .saldoRealizado
+                                )}
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {contasPessoaFisica.length >
+                    0 && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                            Pessoa Física
+                          </div>
+
+                          <div className="text-xs text-amber-700/80">
+                            Contas pessoais
+                          </div>
+                        </div>
+
+                        <div
+                          className={`text-sm font-bold ${
+                            saldoPessoaFisica <
+                            0
+                              ? "text-red-600"
+                              : "text-green-700"
+                          }`}
+                        >
+                          Total PF:{" "}
+                          {moeda(
+                            saldoPessoaFisica
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                        {contasPessoaFisica.map(
+                          (
+                            conta
+                          ) => (
+                            <div
+                              key={
+                                conta.id
+                              }
+                              className={`flex min-w-0 items-center justify-between gap-3 rounded-md border px-3 py-2 ${
+                                conta.resumo
+                                  .saldoRealizado <
+                                0
+                                  ? "border-red-300 bg-red-50"
+                                  : "border-amber-200 bg-white/90"
+                              } ${
+                                !conta.ativa
+                                  ? "opacity-60"
+                                  : ""
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-medium">
+                                  {
+                                    conta.nome
+                                  }
+                                </div>
+
+                                <div className="truncate text-xs text-amber-700/70">
+                                  {
+                                    conta.banco
+                                  }{" "}
+                                  • PF
+                                </div>
+                              </div>
+
+                              <div
+                                className={`shrink-0 text-sm font-bold ${
+                                  conta.resumo
+                                    .saldoRealizado <
+                                  0
+                                    ? "text-red-600"
+                                    : "text-green-600"
+                                }`}
+                              >
+                                {moeda(
+                                  conta.resumo
+                                    .saldoRealizado
+                                )}
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {contasSemClassificacao.length >
+                    0 && (
+                    <div className="rounded-lg border bg-muted/20 p-3">
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Outras contas
+                      </div>
+
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                        {contasSemClassificacao.map(
+                          (
+                            conta
+                          ) => (
+                            <div
+                              key={
+                                conta.id
+                              }
+                              className={`flex min-w-0 items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 ${
+                                !conta.ativa
+                                  ? "opacity-60"
+                                  : ""
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-medium">
+                                  {
+                                    conta.nome
+                                  }
+                                </div>
+
+                                <div className="truncate text-xs text-muted-foreground">
+                                  {
+                                    conta.banco
+                                  }{" "}
+                                  •{" "}
+                                  {
+                                    conta.tipoTitular ||
+                                    "Sem classificação"
+                                  }
+                                </div>
+                              </div>
+
+                              <div
+                                className={`shrink-0 text-sm font-bold ${
+                                  conta.resumo
+                                    .saldoRealizado <
+                                  0
+                                    ? "text-red-600"
+                                    : "text-green-600"
+                                }`}
+                              >
+                                {moeda(
+                                  conta.resumo
+                                    .saldoRealizado
+                                )}
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {semConta.quantidade >
+              0 && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                Existem{" "}
+                <strong>
+                  {
+                    semConta.quantidade
+                  }
+                </strong>{" "}
+                lançamento(s) sem conta vinculada. Saldo realizado
+                desses lançamentos:{" "}
+                <strong>
+                  {moeda(
+                    semConta.resumo
+                      .saldoRealizado
+                  )}
+                </strong>
+                .
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+          <div className="rounded-lg border bg-background p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">
                 A pagar
-              </CardTitle>
+              </span>
 
               <ArrowUpCircle className="h-4 w-4 text-red-500" />
-            </CardHeader>
+            </div>
 
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {moeda(
-                  resumo.saidasPendentes
-                )}
-              </div>
+            <div className="mt-1 text-lg font-bold text-red-600">
+              {moeda(
+                resumo.saidasPendentes
+              )}
+            </div>
+          </div>
 
-              <p className="mt-1 text-xs text-muted-foreground">
-                Saídas futuras cadastradas
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <div className="rounded-lg border bg-background p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">
                 A receber
-              </CardTitle>
+              </span>
 
               <ArrowDownCircle className="h-4 w-4 text-green-500" />
-            </CardHeader>
+            </div>
 
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {moeda(
-                  resumo.entradasPendentes
-                )}
-              </div>
+            <div className="mt-1 text-lg font-bold text-green-600">
+              {moeda(
+                resumo.entradasPendentes
+              )}
+            </div>
+          </div>
 
-              <p className="mt-1 text-xs text-muted-foreground">
-                Entradas futuras cadastradas
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Saldo projetado
-              </CardTitle>
+          <div className="rounded-lg border bg-background p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">
+                Projetado
+              </span>
 
               <Clock3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
+            </div>
 
-            <CardContent>
-              <div
-                className={`text-2xl font-bold ${
-                  resumo.saldoProjetado <
-                  0
-                    ? "text-red-600"
-                    : "text-blue-600"
-                }`}
-              >
-                {moeda(
-                  resumo.saldoProjetado
-                )}
-              </div>
+            <div
+              className={`mt-1 text-lg font-bold ${
+                resumo.saldoProjetado <
+                0
+                  ? "text-red-600"
+                  : "text-blue-600"
+              }`}
+            >
+              {moeda(
+                resumo.saldoProjetado
+              )}
+            </div>
+          </div>
 
-              <p className="mt-1 text-xs text-muted-foreground">
-                Atual + entradas - saídas futuras
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+          <div className="rounded-lg border bg-background p-3">
+            <div className="text-xs font-medium text-muted-foreground">
+              Vencidas
+            </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">
-                Vencidas
-              </CardTitle>
-            </CardHeader>
+            <div className="mt-1 text-lg font-bold text-red-600">
+              {
+                vencidas.length
+              }
+            </div>
 
-            <CardContent>
-              <div className="text-xl font-bold text-red-600">
-                {vencidas.length}
-              </div>
+            <div className="text-xs text-muted-foreground">
+              {moeda(
+                resumo.valorVencido
+              )}
+            </div>
+          </div>
 
-              <p className="mt-1 text-xs text-muted-foreground">
-                Valor vencido:{" "}
-                {moeda(
-                  resumo.valorVencido
-                )}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border bg-background p-3">
+            <div className="text-xs font-medium text-muted-foreground">
+              Vencem hoje
+            </div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">
-                Vencem hoje
-              </CardTitle>
-            </CardHeader>
+            <div className="mt-1 text-lg font-bold text-amber-700">
+              {
+                hoje.length
+              }
+            </div>
 
-            <CardContent>
-              <div className="text-xl font-bold text-amber-700">
-                {hoje.length}
-              </div>
+            <div className="text-xs text-muted-foreground">
+              {
+                dataHojeBrasileira()
+              }
+            </div>
+          </div>
 
-              <p className="mt-1 text-xs text-muted-foreground">
-                Compromissos com vencimento em{" "}
-                {dataHojeBrasileira()}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border bg-background p-3">
+            <div className="text-xs font-medium text-muted-foreground">
+              Futuros
+            </div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">
-                Compromissos futuros
-              </CardTitle>
-            </CardHeader>
+            <div className="mt-1 text-lg font-bold">
+              {
+                futuras.length
+              }
+            </div>
 
-            <CardContent>
-              <div className="text-xl font-bold">
-                {futuras.length}
-              </div>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                Entradas e saídas após hoje
-              </p>
-            </CardContent>
-          </Card>
+            <div className="text-xs text-muted-foreground">
+              Após hoje
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 rounded-lg border bg-background p-4 lg:flex-row lg:items-center lg:justify-between">
