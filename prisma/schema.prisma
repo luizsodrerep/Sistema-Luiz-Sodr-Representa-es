@@ -38,6 +38,7 @@ model Escritorio {
   financeiros     Financeiro[]
   obrigacoes      ObrigacaoOperacional[]
   auditorias      Auditoria[]
+  tarefas         Tarefa[]
 
   @@index([status])
 }
@@ -116,6 +117,11 @@ model Usuario {
 
   regiaoAtuacao String?
 
+  cargo        String?
+  departamento String?
+  telefone     String?
+  tipoVinculo  String?
+
   ultimoAcessoEm DateTime?
 
   observacoes String?
@@ -141,6 +147,11 @@ model Usuario {
 
   contasBancariasTitular ContaBancaria[] @relation("ContaTitularUsuario")
 
+  tarefasCriadas     Tarefa[] @relation("TarefaCriadaPor")
+  tarefasResponsavel Tarefa[] @relation("TarefaResponsavel")
+
+  permissoes UsuarioPermissao[]
+
   auditorias Auditoria[]
 
   @@index([escritorioId])
@@ -155,7 +166,7 @@ model Usuario {
 model Cliente {
   id String @id @default(cuid())
 
-  escritorioId String?
+  escritorioId String
 
   codigo String? @unique
 
@@ -197,7 +208,7 @@ model Cliente {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  escritorio Escritorio? @relation(fields: [escritorioId], references: [id], onDelete: SetNull)
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
 
   originadoPor Usuario? @relation("ClienteOriginadoPor", fields: [originadoPorId], references: [id], onDelete: SetNull)
 
@@ -210,6 +221,7 @@ model Cliente {
   vendas           Venda[]
   regrasComerciais RegraComercialRepresentada[]
   financeiros      Financeiro[]
+  tarefas          Tarefa[]
 
   @@index([escritorioId])
   @@index([originadoPorId])
@@ -256,7 +268,7 @@ model ClienteParticipacao {
 model Representada {
   id String @id @default(cuid())
 
-  escritorioId String?
+  escritorioId String
 
   codigo String?
 
@@ -309,7 +321,7 @@ model Representada {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  escritorio Escritorio? @relation(fields: [escritorioId], references: [id], onDelete: SetNull)
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
 
   contratos         ContratoRepresentada[]
   regrasComerciais  RegraComercialRepresentada[]
@@ -319,6 +331,8 @@ model Representada {
   notasComissao     NFComissao[]
   contasRecebimento RepresentadaContaRecebimento[]
   financeiros       Financeiro[]
+  contatos          RepresentadaContato[]
+  tarefas           Tarefa[]
 
   @@index([escritorioId])
   @@index([codigo])
@@ -443,7 +457,7 @@ model Venda {
   // VEN-000001, VEN-000002 etc.
   numeroSequencial Int @unique @default(autoincrement())
 
-  escritorioId        String?
+  escritorioId        String
   empresaEscritorioId String?
 
   data DateTime
@@ -506,7 +520,7 @@ model Venda {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  escritorio Escritorio? @relation(fields: [escritorioId], references: [id], onDelete: SetNull)
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
 
   empresaEscritorio EmpresaEscritorio? @relation(fields: [empresaEscritorioId], references: [id], onDelete: SetNull)
 
@@ -972,7 +986,7 @@ model Interacao {
 
   numeroSequencial Int @unique @default(autoincrement())
 
-  escritorioId String?
+  escritorioId String
 
   data DateTime
 
@@ -1005,7 +1019,7 @@ model Interacao {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  escritorio Escritorio? @relation(fields: [escritorioId], references: [id], onDelete: SetNull)
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
 
   cliente Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
 
@@ -1018,6 +1032,7 @@ model Interacao {
   responsavel Usuario? @relation("InteracaoResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
 
   orcamentos Orcamento[]
+  tarefas    Tarefa[]
 
   @@index([escritorioId])
   @@index([clienteId])
@@ -1125,7 +1140,7 @@ model Orcamento {
 model Financeiro {
   id String @id @default(cuid())
 
-  escritorioId        String?
+  escritorioId        String
   empresaEscritorioId String?
 
   data DateTime
@@ -1137,6 +1152,10 @@ model Financeiro {
 
   // Origem livre do recurso ou despesa.
   origem String?
+
+  // Identificador estrutural compartilhado pelas duas
+  // pontas de uma transferencia interna.
+  transferenciaGrupoId String?
 
   // Permite distinguir recurso que nao nasceu
   // da operacao comercial/comissoes do escritorio.
@@ -1158,7 +1177,7 @@ model Financeiro {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  escritorio Escritorio? @relation(fields: [escritorioId], references: [id], onDelete: SetNull)
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
 
   empresaEscritorio EmpresaEscritorio? @relation(fields: [empresaEscritorioId], references: [id], onDelete: SetNull)
 
@@ -1186,6 +1205,7 @@ model Financeiro {
   @@index([vencimento])
   @@index([status])
   @@index([origem])
+  @@index([transferenciaGrupoId])
   @@index([origemExterna])
 }
 
@@ -1197,7 +1217,7 @@ model Financeiro {
 model ObrigacaoOperacional {
   id String @id @default(cuid())
 
-  escritorioId        String?
+  escritorioId        String
   empresaEscritorioId String?
 
   nome String
@@ -1227,7 +1247,7 @@ model ObrigacaoOperacional {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  escritorio Escritorio? @relation(fields: [escritorioId], references: [id], onDelete: SetNull)
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
 
   empresaEscritorio EmpresaEscritorio? @relation(fields: [empresaEscritorioId], references: [id], onDelete: SetNull)
 
@@ -1238,6 +1258,128 @@ model ObrigacaoOperacional {
   @@index([categoria])
   @@index([vencimento])
   @@index([status])
+}
+
+// ======================================================
+// TAREFAS / COMPROMISSOS DA AGENDA
+// Uma unica entidade persistente.
+// O campo tipo diferencia Tarefa de Compromisso.
+// ======================================================
+
+model Tarefa {
+  id String @id @default(cuid())
+
+  escritorioId String
+
+  criadoPorId   String?
+  responsavelId String?
+
+  clienteId      String?
+  representadaId String?
+  interacaoId    String?
+
+  titulo    String
+  descricao String?
+
+  tipo       String @default("Tarefa")
+  prioridade String @default("Normal")
+  status     String @default("Pendente")
+
+  inicioEm     DateTime?
+  fimEm        DateTime?
+  vencimentoEm DateTime?
+
+  concluidoEm DateTime?
+  canceladoEm DateTime?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+
+  criadoPor Usuario? @relation("TarefaCriadaPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  responsavel Usuario? @relation("TarefaResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
+
+  cliente Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+
+  representada Representada? @relation(fields: [representadaId], references: [id], onDelete: SetNull)
+
+  interacao Interacao? @relation(fields: [interacaoId], references: [id], onDelete: SetNull)
+
+  @@index([escritorioId])
+  @@index([criadoPorId])
+  @@index([responsavelId])
+  @@index([clienteId])
+  @@index([representadaId])
+  @@index([interacaoId])
+  @@index([status])
+  @@index([inicioEm])
+  @@index([vencimentoEm])
+}
+
+// ======================================================
+// PERMISSOES INDIVIDUAIS POR USUARIO
+// Campo nulo = herda a regra do perfil base.
+// ======================================================
+
+model UsuarioPermissao {
+  id String @id @default(cuid())
+
+  usuarioId String
+  recurso   String
+
+  ver         Boolean?
+  criar       Boolean?
+  editar      Boolean?
+  excluir     Boolean?
+  administrar Boolean?
+
+  escopo String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, recurso])
+  @@index([usuarioId])
+  @@index([recurso])
+}
+
+// ======================================================
+// CONTATOS MULTIPLOS DAS REPRESENTADAS
+// Campos principais antigos permanecem por compatibilidade.
+// ======================================================
+
+model RepresentadaContato {
+  id String @id @default(cuid())
+
+  representadaId String
+
+  nome  String
+  cargo String?
+  area  String?
+
+  email    String?
+  telefone String?
+  whatsapp String?
+
+  principal Boolean @default(false)
+  ativo     Boolean @default(true)
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  representada Representada @relation(fields: [representadaId], references: [id], onDelete: Cascade)
+
+  @@index([representadaId])
+  @@index([area])
+  @@index([ativo])
 }
 
 // ======================================================
