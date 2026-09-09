@@ -23,6 +23,7 @@ import {
   Info,
   Loader2,
   Pencil,
+  Search,
 } from "lucide-react"
 
 import {
@@ -52,14 +53,6 @@ import {
 import {
   Textarea,
 } from "@/components/ui/textarea"
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 type Cliente = {
   id: string
@@ -243,6 +236,152 @@ function regraVigente(
   return true
 }
 
+function normalizarBusca(
+  valor: string
+) {
+  return valor
+    .normalize("NFD")
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .toLocaleLowerCase(
+      "pt-BR"
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim()
+}
+
+function somenteDigitos(
+  valor: string | null
+) {
+  return (
+    valor || ""
+  ).replace(
+    /\D/g,
+    ""
+  )
+}
+
+function clienteCorrespondeBusca(
+  cliente: Cliente,
+  busca: string
+) {
+  const termo =
+    normalizarBusca(
+      busca
+    )
+
+  if (!termo) {
+    return true
+  }
+
+  const texto =
+    normalizarBusca(
+      [
+        cliente.razaoSocial,
+        cliente.nomeFantasia,
+        cliente.codigo,
+        cliente.cnpj,
+      ]
+        .filter(
+          Boolean
+        )
+        .join(" ")
+    )
+
+  if (
+    texto.includes(
+      termo
+    )
+  ) {
+    return true
+  }
+
+  const digitosBusca =
+    somenteDigitos(
+      busca
+    )
+
+  return (
+    digitosBusca.length >=
+      2 &&
+    somenteDigitos(
+      cliente.cnpj
+    ).includes(
+      digitosBusca
+    )
+  )
+}
+
+function representadaCorrespondeBusca(
+  representada: Representada,
+  busca: string
+) {
+  const termo =
+    normalizarBusca(
+      busca
+    )
+
+  if (!termo) {
+    return true
+  }
+
+  const texto =
+    normalizarBusca(
+      [
+        representada.nome,
+        representada.codigo,
+        representada.cnpj,
+      ]
+        .filter(
+          Boolean
+        )
+        .join(" ")
+    )
+
+  if (
+    texto.includes(
+      termo
+    )
+  ) {
+    return true
+  }
+
+  const digitosBusca =
+    somenteDigitos(
+      busca
+    )
+
+  return (
+    digitosBusca.length >=
+      2 &&
+    somenteDigitos(
+      representada.cnpj
+    ).includes(
+      digitosBusca
+    )
+  )
+}
+
+function rotuloCliente(
+  cliente: Cliente
+) {
+  return (
+    cliente.nomeFantasia ||
+    cliente.razaoSocial
+  )
+}
+
+function rotuloRepresentada(
+  representada: Representada
+) {
+  return representada.nome
+}
+
 export default function NovoOrcamentoPage() {
   const router =
     useRouter()
@@ -294,10 +433,34 @@ export default function NovoOrcamentoPage() {
     useState("")
 
   const [
+    buscaCliente,
+    setBuscaCliente,
+  ] =
+    useState("")
+
+  const [
+    listaClientesAberta,
+    setListaClientesAberta,
+  ] =
+    useState(false)
+
+  const [
     representadaId,
     setRepresentadaId,
   ] =
     useState("")
+
+  const [
+    buscaRepresentada,
+    setBuscaRepresentada,
+  ] =
+    useState("")
+
+  const [
+    listaRepresentadasAberta,
+    setListaRepresentadasAberta,
+  ] =
+    useState(false)
 
   const [
     valorTotal,
@@ -541,6 +704,15 @@ export default function NovoOrcamentoPage() {
           setRepresentadaId(
             data.representada.id
           )
+
+          if (
+            typeof data.representada.nome ===
+            "string"
+          ) {
+            setBuscaRepresentada(
+              data.representada.nome
+            )
+          }
         } else if (
           data?.representadaId
         ) {
@@ -648,6 +820,52 @@ export default function NovoOrcamentoPage() {
       [representadas]
     )
 
+  const clientesFiltrados =
+    useMemo(
+      () =>
+        clientesDisponiveis
+          .filter(
+            (
+              cliente
+            ) =>
+              clienteCorrespondeBusca(
+                cliente,
+                buscaCliente
+              )
+          )
+          .slice(
+            0,
+            12
+          ),
+      [
+        clientesDisponiveis,
+        buscaCliente,
+      ]
+    )
+
+  const representadasFiltradas =
+    useMemo(
+      () =>
+        representadasDisponiveis
+          .filter(
+            (
+              representada
+            ) =>
+              representadaCorrespondeBusca(
+                representada,
+                buscaRepresentada
+              )
+          )
+          .slice(
+            0,
+            12
+          ),
+      [
+        representadasDisponiveis,
+        buscaRepresentada,
+      ]
+    )
+
   const clienteSelecionado =
     useMemo(
       () =>
@@ -714,6 +932,40 @@ export default function NovoOrcamentoPage() {
       clienteId,
     ])
 
+  useEffect(() => {
+    if (
+      interacaoOrigemId ||
+      !clienteSelecionado
+    ) {
+      return
+    }
+
+    setBuscaCliente(
+      rotuloCliente(
+        clienteSelecionado
+      )
+    )
+  }, [
+    interacaoOrigemId,
+    clienteSelecionado,
+  ])
+
+  useEffect(() => {
+    if (
+      !representadaSelecionada
+    ) {
+      return
+    }
+
+    setBuscaRepresentada(
+      rotuloRepresentada(
+        representadaSelecionada
+      )
+    )
+  }, [
+    representadaSelecionada,
+  ])
+
   const formularioPodeSalvar =
     Boolean(
       clienteId &&
@@ -723,6 +975,50 @@ export default function NovoOrcamentoPage() {
           "" &&
         !salvando
     )
+
+  function selecionarCliente(
+    cliente: Cliente
+  ) {
+    setClienteId(
+      cliente.id
+    )
+
+    setBuscaCliente(
+      rotuloCliente(
+        cliente
+      )
+    )
+
+    setListaClientesAberta(
+      false
+    )
+
+    setErro(
+      null
+    )
+  }
+
+  function selecionarRepresentada(
+    representada: Representada
+  ) {
+    setRepresentadaId(
+      representada.id
+    )
+
+    setBuscaRepresentada(
+      rotuloRepresentada(
+        representada
+      )
+    )
+
+    setListaRepresentadasAberta(
+      false
+    )
+
+    setErro(
+      null
+    )
+  }
 
   async function salvar(
     event: React.FormEvent
@@ -1066,41 +1362,126 @@ export default function NovoOrcamentoPage() {
                       </div>
                     )
                   ) : (
-                    <Select
-                      value={
-                        clienteId
-                      }
-                      onValueChange={
-                        setClienteId
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o cliente..." />
-                      </SelectTrigger>
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 
-                      <SelectContent>
-                        {clientesDisponiveis.map(
-                          (
-                            cliente
-                          ) => (
-                            <SelectItem
-                              key={
-                                cliente.id
-                              }
-                              value={
-                                cliente.id
-                              }
-                            >
-                              {cliente.nomeFantasia ||
-                                cliente.razaoSocial}
-                              {cliente.codigo
-                                ? ` — ${cliente.codigo}`
-                                : ""}
-                            </SelectItem>
+                      <Input
+                        value={
+                          buscaCliente
+                        }
+                        onFocus={() =>
+                          setListaClientesAberta(
+                            true
                           )
-                        )}
-                      </SelectContent>
-                    </Select>
+                        }
+                        onBlur={() => {
+                          window.setTimeout(
+                            () =>
+                              setListaClientesAberta(
+                                false
+                              ),
+                            150
+                          )
+                        }}
+                        onChange={(
+                          event
+                        ) => {
+                          setBuscaCliente(
+                            event.target.value
+                          )
+
+                          setClienteId(
+                            ""
+                          )
+
+                          setListaClientesAberta(
+                            true
+                          )
+                        }}
+                        placeholder="Digite nome, fantasia, código ou CNPJ..."
+                        className="pl-9"
+                        autoComplete="off"
+                      />
+
+                      {listaClientesAberta && (
+                        <div className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-md border bg-background shadow-lg">
+                          {clientesFiltrados.length >
+                          0 ? (
+                            clientesFiltrados.map(
+                              (
+                                cliente
+                              ) => (
+                                <button
+                                  key={
+                                    cliente.id
+                                  }
+                                  type="button"
+                                  className="block w-full border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/60 focus:bg-muted/60 focus:outline-none"
+                                  onMouseDown={(
+                                    event
+                                  ) => {
+                                    event.preventDefault()
+
+                                    selecionarCliente(
+                                      cliente
+                                    )
+                                  }}
+                                >
+                                  <div className="text-sm font-medium">
+                                    {rotuloCliente(
+                                      cliente
+                                    )}
+                                  </div>
+
+                                  <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                    {cliente.codigo && (
+                                      <span>
+                                        {
+                                          cliente.codigo
+                                        }
+                                      </span>
+                                    )}
+
+                                    {cliente.nomeFantasia &&
+                                      cliente.nomeFantasia !==
+                                        cliente.razaoSocial && (
+                                        <span>
+                                          Razão social:{" "}
+                                          {
+                                            cliente.razaoSocial
+                                          }
+                                        </span>
+                                      )}
+
+                                    {cliente.cnpj && (
+                                      <span>
+                                        CNPJ:{" "}
+                                        {
+                                          cliente.cnpj
+                                        }
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              )
+                            )
+                          ) : (
+                            <div className="px-3 py-4 text-sm text-muted-foreground">
+                              Nenhum cliente ativo encontrado para esta busca.
+                            </div>
+                          )}
+
+                          {clientesDisponiveis.length >
+                            clientesFiltrados.length &&
+                            clientesFiltrados.length ===
+                              12 && (
+                              <div className="border-t bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                                Há mais resultados. Continue digitando para refinar a busca.
+                              </div>
+                            )}
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {!interacaoOrigemId &&
@@ -1134,42 +1515,115 @@ export default function NovoOrcamentoPage() {
                     Representada *
                   </Label>
 
-                  <Select
-                    value={
-                      representadaId
-                    }
-                    onValueChange={
-                      setRepresentadaId
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a representada..." />
-                    </SelectTrigger>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 
-                    <SelectContent>
-                      {representadasDisponiveis.map(
-                        (
-                          representada
-                        ) => (
-                          <SelectItem
-                            key={
-                              representada.id
-                            }
-                            value={
-                              representada.id
-                            }
-                          >
-                            {
-                              representada.nome
-                            }
-                            {representada.codigo
-                              ? ` — ${representada.codigo}`
-                              : ""}
-                          </SelectItem>
+                    <Input
+                      value={
+                        buscaRepresentada
+                      }
+                      onFocus={() =>
+                        setListaRepresentadasAberta(
+                          true
                         )
-                      )}
-                    </SelectContent>
-                  </Select>
+                      }
+                      onBlur={() => {
+                        window.setTimeout(
+                          () =>
+                            setListaRepresentadasAberta(
+                              false
+                            ),
+                          150
+                        )
+                      }}
+                      onChange={(
+                        event
+                      ) => {
+                        setBuscaRepresentada(
+                          event.target.value
+                        )
+
+                        setRepresentadaId(
+                          ""
+                        )
+
+                        setListaRepresentadasAberta(
+                          true
+                        )
+                      }}
+                      placeholder="Digite nome, código ou CNPJ..."
+                      className="pl-9"
+                      autoComplete="off"
+                    />
+
+                    {listaRepresentadasAberta && (
+                      <div className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-md border bg-background shadow-lg">
+                        {representadasFiltradas.length >
+                        0 ? (
+                          representadasFiltradas.map(
+                            (
+                              representada
+                            ) => (
+                              <button
+                                key={
+                                  representada.id
+                                }
+                                type="button"
+                                className="block w-full border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/60 focus:bg-muted/60 focus:outline-none"
+                                onMouseDown={(
+                                  event
+                                ) => {
+                                  event.preventDefault()
+
+                                  selecionarRepresentada(
+                                    representada
+                                  )
+                                }}
+                              >
+                                <div className="text-sm font-medium">
+                                  {rotuloRepresentada(
+                                    representada
+                                  )}
+                                </div>
+
+                                <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                  {representada.codigo && (
+                                    <span>
+                                      {
+                                        representada.codigo
+                                      }
+                                    </span>
+                                  )}
+
+                                  {representada.cnpj && (
+                                    <span>
+                                      CNPJ:{" "}
+                                      {
+                                        representada.cnpj
+                                      }
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            )
+                          )
+                        ) : (
+                          <div className="px-3 py-4 text-sm text-muted-foreground">
+                            Nenhuma representada ativa encontrada para esta busca.
+                          </div>
+                        )}
+
+                        {representadasDisponiveis.length >
+                          representadasFiltradas.length &&
+                          representadasFiltradas.length ===
+                            12 && (
+                            <div className="border-t bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                              Há mais resultados. Continue digitando para refinar a busca.
+                            </div>
+                          )}
+                      </div>
+                    )}
+                  </div>
 
                   {representadaSelecionada && (
                     <div className="rounded-md border bg-slate-50 p-3 text-xs">

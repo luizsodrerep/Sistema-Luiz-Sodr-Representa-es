@@ -196,6 +196,114 @@ function classeStatus(
   return "bg-amber-100 text-amber-800"
 }
 
+function normalizarPesquisa(
+  valor:
+    | string
+    | null
+    | undefined
+) {
+  return (
+    valor ?? ""
+  )
+    .normalize("NFD")
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .toLocaleLowerCase(
+      "pt-BR"
+    )
+    .trim()
+}
+
+function somenteLetrasNumeros(
+  valor:
+    | string
+    | null
+    | undefined
+) {
+  return normalizarPesquisa(
+    valor
+  ).replace(
+    /[^a-z0-9]/g,
+    ""
+  )
+}
+
+function orcamentoAtendeBusca(
+  item: Orcamento,
+  termo: string
+) {
+  const busca =
+    normalizarPesquisa(
+      termo
+    )
+
+  if (!busca) {
+    return true
+  }
+
+  const buscaCompacta =
+    somenteLetrasNumeros(
+      termo
+    )
+
+  const codigoOrcamento =
+    formatarCodigoOrcamento(
+      item.numeroSequencial
+    )
+
+  const campos = [
+    codigoOrcamento,
+    String(
+      item.numeroSequencial
+    ),
+    item.status,
+    item.descricao,
+    item.condicaoPagamento,
+    item.cliente.codigo,
+    item.cliente.razaoSocial,
+    item.cliente.nomeFantasia,
+    item.cliente.cnpj,
+    item.representada.codigo,
+    item.representada.nome,
+    item.representada.cnpj,
+    item.responsavel?.nome,
+    item.criadoPor?.nome,
+  ]
+
+  return campos.some(
+    (
+      campo
+    ) => {
+      const normalizado =
+        normalizarPesquisa(
+          campo
+        )
+
+      if (
+        normalizado.includes(
+          busca
+        )
+      ) {
+        return true
+      }
+
+      if (
+        !buscaCompacta
+      ) {
+        return false
+      }
+
+      return somenteLetrasNumeros(
+        campo
+      ).includes(
+        buscaCompacta
+      )
+    }
+  )
+}
+
 export default function OrcamentosPage() {
   const [
     orcamentos,
@@ -236,39 +344,9 @@ export default function OrcamentosPage() {
       setLoading(true)
       setErro(null)
 
-      const parametros =
-        new URLSearchParams()
-
-      if (
-        busca.trim() !==
-        ""
-      ) {
-        parametros.set(
-          "busca",
-          busca.trim()
-        )
-      }
-
-      if (
-        status !==
-        "Todos"
-      ) {
-        parametros.set(
-          "status",
-          status
-        )
-      }
-
-      const query =
-        parametros.toString()
-
       const response =
         await fetch(
-          `/api/orcamentos${
-            query
-              ? `?${query}`
-              : ""
-          }`,
+          "/api/orcamentos",
           {
             cache:
               "no-store",
@@ -312,14 +390,45 @@ export default function OrcamentosPage() {
   }
 
   useEffect(() => {
-    carregar()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status])
+    void carregar()
+  }, [])
+
+  const orcamentosFiltrados =
+    useMemo(
+      () =>
+        orcamentos.filter(
+          (
+            item
+          ) => {
+            const atendeStatus =
+              status ===
+                "Todos" ||
+              item.status ===
+                status
+
+            if (
+              !atendeStatus
+            ) {
+              return false
+            }
+
+            return orcamentoAtendeBusca(
+              item,
+              busca
+            )
+          }
+        ),
+      [
+        orcamentos,
+        busca,
+        status,
+      ]
+    )
 
   const resumo =
     useMemo(() => {
       const pendentes =
-        orcamentos.filter(
+        orcamentosFiltrados.filter(
           (
             item
           ) =>
@@ -346,7 +455,7 @@ export default function OrcamentosPage() {
 
       return {
         total:
-          orcamentos.length,
+          orcamentosFiltrados.length,
 
         pendentes:
           pendentes.length,
@@ -355,7 +464,7 @@ export default function OrcamentosPage() {
           vencendo.length,
 
         aprovados:
-          orcamentos.filter(
+          orcamentosFiltrados.filter(
             (
               item
             ) =>
@@ -364,7 +473,7 @@ export default function OrcamentosPage() {
           ).length,
 
         vencidos:
-          orcamentos.filter(
+          orcamentosFiltrados.filter(
             (
               item
             ) =>
@@ -372,7 +481,9 @@ export default function OrcamentosPage() {
               "Vencido"
           ).length,
       }
-    }, [orcamentos])
+    }, [
+      orcamentosFiltrados,
+    ])
 
   return (
     <PageLayout title="Orçamentos">
@@ -479,13 +590,14 @@ export default function OrcamentosPage() {
           </CardTitle>
 
           <CardDescription>
-            Consulte propostas por cliente, representada, status ou código.
+            Localize instantaneamente por orçamento, cliente,
+            representada, código ou CNPJ.
           </CardDescription>
         </CardHeader>
 
         <CardContent>
-          <div className="mb-4 flex flex-col gap-3 lg:flex-row">
-            <div className="flex flex-1 gap-2">
+          <div className="mb-4 space-y-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 
@@ -500,30 +612,36 @@ export default function OrcamentosPage() {
                       event.target.value
                     )
                   }
-                  onKeyDown={(
-                    event
-                  ) => {
-                    if (
-                      event.key ===
-                      "Enter"
-                    ) {
-                      carregar()
-                    }
-                  }}
-                  placeholder="Cliente, representada, descrição..."
-                  className="pl-9"
+                  placeholder="Digite cliente, representada, ORC, código ou CNPJ..."
+                  className="pl-9 pr-24"
+                  autoComplete="off"
                 />
+
+                {busca && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setBusca(
+                        ""
+                      )
+                    }
+                    className="absolute right-3 top-2.5 text-xs font-medium text-blue-700 hover:underline"
+                  >
+                    Limpar
+                  </button>
+                )}
               </div>
 
-              <Button
-                variant="outline"
-                onClick={
-                  carregar
-                }
-              >
-                Buscar
-              </Button>
+              <div className="text-sm text-muted-foreground">
+                {orcamentosFiltrados.length} de{" "}
+                {orcamentos.length} orçamento(s)
+              </div>
             </div>
+
+            <p className="text-xs text-muted-foreground">
+              A lista é filtrada enquanto você digita. Não é necessário
+              clicar em Buscar.
+            </p>
 
             <div className="flex flex-wrap gap-2">
               {STATUS.map(
@@ -534,6 +652,7 @@ export default function OrcamentosPage() {
                     key={
                       item
                     }
+                    type="button"
                     size="sm"
                     variant={
                       status ===
@@ -568,14 +687,14 @@ export default function OrcamentosPage() {
 
               Carregando orçamentos...
             </div>
-          ) : orcamentos.length ===
+          ) : orcamentosFiltrados.length ===
             0 ? (
             <div className="rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
-              Nenhum orçamento encontrado.
+              Nenhum orçamento encontrado para os filtros informados.
             </div>
           ) : (
             <div className="space-y-3">
-              {orcamentos.map(
+              {orcamentosFiltrados.map(
                 (
                   item
                 ) => {
@@ -652,6 +771,14 @@ export default function OrcamentosPage() {
                                   nomeCliente
                                 }
                               </Link>
+
+                              <div className="mt-0.5 text-xs text-muted-foreground">
+                                {item.cliente.codigo ||
+                                  "Sem código"}
+                                {item.cliente.cnpj
+                                  ? ` • ${item.cliente.cnpj}`
+                                  : ""}
+                              </div>
                             </div>
 
                             <div>
@@ -667,6 +794,14 @@ export default function OrcamentosPage() {
                                   item.representada.nome
                                 }
                               </Link>
+
+                              <div className="mt-0.5 text-xs text-muted-foreground">
+                                {item.representada.codigo ||
+                                  "Sem código"}
+                                {item.representada.cnpj
+                                  ? ` • ${item.representada.cnpj}`
+                                  : ""}
+                              </div>
                             </div>
                           </div>
 
