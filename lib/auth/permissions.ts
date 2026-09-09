@@ -448,6 +448,9 @@ export function recursoDaRota(
     pathname === "/agenda" ||
     pathname.startsWith(
       "/agenda/"
+    ) ||
+    pathname.startsWith(
+      "/api/tarefas"
     )
   ) {
     return "agenda"
