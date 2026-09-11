@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react"
 
@@ -208,6 +209,36 @@ type PartesData = {
   ano: number
   mes: number
   dia: number
+}
+
+type TomConfirmacao =
+  | "info"
+  | "atencao"
+  | "perigo"
+
+type DetalheConfirmacao = {
+  rotulo: string
+  valor: string
+  destaque?:
+    | "positivo"
+    | "negativo"
+    | "neutro"
+}
+
+type ConfirmacaoInterna = {
+  titulo: string
+  descricao: string
+  tom: TomConfirmacao
+  detalhes: DetalheConfirmacao[]
+  impactoTitulo?: string
+  impactoTexto?: string
+  textoBotaoConfirmar: string
+  textoBotaoCancelar: string
+}
+
+type MovimentoExtratoComSaldo = {
+  movimento: MovimentoFinanceiro
+  saldoApos: number | null
 }
 
 const CATEGORIA_TRANSFERENCIA =
@@ -549,16 +580,9 @@ function origemVisivel(
   )
 }
 
-function valorAssinado(
+function valorOriginalAssinado(
   movimento: MovimentoFinanceiro
 ) {
-  if (
-    movimento.status ===
-    "Cancelado"
-  ) {
-    return 0
-  }
-
   if (
     movimento.tipo ===
     "Entrada"
@@ -574,6 +598,47 @@ function valorAssinado(
   }
 
   return movimento.valor
+}
+
+function classesTomConfirmacao(
+  tom: TomConfirmacao
+) {
+  if (
+    tom ===
+    "perigo"
+  ) {
+    return {
+      cabecalho:
+        "border-red-200 bg-red-50",
+      titulo:
+        "text-red-900",
+      destaque:
+        "border-red-200 bg-red-50 text-red-900",
+    }
+  }
+
+  if (
+    tom ===
+    "atencao"
+  ) {
+    return {
+      cabecalho:
+        "border-amber-200 bg-amber-50",
+      titulo:
+        "text-amber-900",
+      destaque:
+        "border-amber-200 bg-amber-50 text-amber-900",
+    }
+  }
+
+  return {
+    cabecalho:
+      "border-blue-200 bg-blue-50",
+    titulo:
+      "text-blue-900",
+    destaque:
+      "border-blue-200 bg-blue-50 text-blue-900",
+  }
 }
 
 function movimentoVencido(
@@ -829,6 +894,25 @@ export default function FinanceiroPage() {
   ] =
     useState(
       false
+    )
+
+  const [
+    confirmacaoInterna,
+    setConfirmacaoInterna,
+  ] =
+    useState<
+      ConfirmacaoInterna | null
+    >(
+      null
+    )
+
+  const resolverConfirmacaoRef =
+    useRef<
+      ((
+        confirmado: boolean
+      ) => void) | null
+    >(
+      null
     )
 
   const [
@@ -1291,6 +1375,41 @@ export default function FinanceiroPage() {
       carregarFinanceiro,
     ]
   )
+
+  function solicitarConfirmacao(
+    dados: ConfirmacaoInterna
+  ) {
+    return new Promise<boolean>(
+      (
+        resolver
+      ) => {
+        resolverConfirmacaoRef.current =
+          resolver
+
+        setConfirmacaoInterna(
+          dados
+        )
+      }
+    )
+  }
+
+  function responderConfirmacao(
+    confirmado: boolean
+  ) {
+    const resolver =
+      resolverConfirmacaoRef.current
+
+    resolverConfirmacaoRef.current =
+      null
+
+    setConfirmacaoInterna(
+      null
+    )
+
+    resolver?.(
+      confirmado
+    )
+  }
 
   function alterarFormulario<
     K extends keyof FormularioFinanceiro
@@ -1939,28 +2058,116 @@ export default function FinanceiroPage() {
       }
 
       const confirmacao =
-        window.confirm(
-          [
-            "CONFIRMAR TRANSFERÊNCIA ENTRE CONTAS",
-            "",
-            `Origem: ${contaOrigem.nome} - ${contaOrigem.banco}`,
-            `Destino: ${contaDestino.nome} - ${contaDestino.banco}`,
-            `Valor: ${moeda(
-              valor
-            )}`,
-            `Data: ${dataBrasileira(
-              formularioTransferencia.data
-            )}`,
-            "",
-            "Esta operação reduzirá o saldo da conta de origem e aumentará o saldo da conta de destino.",
-            "",
-            "O saldo consolidado NÃO será alterado.",
-            "",
-            "Deseja registrar a transferência?",
-          ].join(
-            "\n"
-          )
-        )
+        await solicitarConfirmacao({
+          titulo:
+            "Confirmar transferência",
+          descricao:
+            "Confira as duas contas e o valor antes de registrar a movimentação.",
+          tom:
+            "info",
+          detalhes: [
+            {
+              rotulo:
+                "Conta de origem",
+              valor:
+                `${contaOrigem.nome} — ${contaOrigem.banco}`,
+            },
+            {
+              rotulo:
+                "Saldo atual da origem",
+              valor:
+                moeda(
+                  contaOrigem.resumo
+                    .saldoRealizado
+                ),
+              destaque:
+                contaOrigem.resumo
+                  .saldoRealizado <
+                0
+                  ? "negativo"
+                  : "neutro",
+            },
+            {
+              rotulo:
+                "Saldo após a transferência",
+              valor:
+                moeda(
+                  contaOrigem.resumo
+                    .saldoRealizado -
+                    valor
+                ),
+              destaque:
+                contaOrigem.resumo
+                  .saldoRealizado -
+                    valor <
+                0
+                  ? "negativo"
+                  : "neutro",
+            },
+            {
+              rotulo:
+                "Conta de destino",
+              valor:
+                `${contaDestino.nome} — ${contaDestino.banco}`,
+            },
+            {
+              rotulo:
+                "Saldo atual do destino",
+              valor:
+                moeda(
+                  contaDestino.resumo
+                    .saldoRealizado
+                ),
+              destaque:
+                contaDestino.resumo
+                  .saldoRealizado <
+                0
+                  ? "negativo"
+                  : "neutro",
+            },
+            {
+              rotulo:
+                "Saldo após o recebimento",
+              valor:
+                moeda(
+                  contaDestino.resumo
+                    .saldoRealizado +
+                    valor
+                ),
+              destaque:
+                contaDestino.resumo
+                  .saldoRealizado +
+                    valor <
+                0
+                  ? "negativo"
+                  : "positivo",
+            },
+            {
+              rotulo:
+                "Valor",
+              valor:
+                moeda(
+                  valor
+                ),
+            },
+            {
+              rotulo:
+                "Data",
+              valor:
+                dataBrasileira(
+                  formularioTransferencia.data
+                ),
+            },
+          ],
+          impactoTitulo:
+            "Impacto da transferência",
+          impactoTexto:
+            "A conta de origem será reduzida, a conta de destino será aumentada e o saldo consolidado do escritório não será alterado. O CRM apenas registra a movimentação; ele não executa PIX ou transferência bancária.",
+          textoBotaoConfirmar:
+            "Registrar transferência",
+          textoBotaoCancelar:
+            "Voltar e corrigir",
+        })
 
       if (
         !confirmacao
@@ -2165,53 +2372,194 @@ export default function FinanceiroPage() {
             formulario.contaBancariaId
         )
 
-      const confirmacao =
-        window.confirm(
-          [
-            "CONFIRMAR LANÇAMENTO FINANCEIRO",
-            "",
-            `Tipo: ${tipoVisivel(
-              formulario.tipo
-            )}`,
-            `Valor: ${moeda(
-              valor
-            )}`,
-            `Data: ${dataBrasileira(
-              formulario.data
-            )}`,
-            `Situação: ${
-              formulario.tipo ===
-              "SaldoInicial"
-                ? "Realizado"
-                : formulario.status
-            }`,
-            `Descrição: ${formulario.descricao.trim()}`,
-            `Conta: ${
+      const situacaoLancamento =
+        formulario.tipo ===
+        "SaldoInicial"
+          ? "Realizado"
+          : formulario.status
+
+      const detalhesConfirmacao:
+        DetalheConfirmacao[] = [
+          {
+            rotulo:
+              "Tipo",
+            valor:
+              tipoVisivel(
+                formulario.tipo
+              ),
+          },
+          {
+            rotulo:
+              "Descrição",
+            valor:
+              formulario.descricao.trim(),
+          },
+          {
+            rotulo:
+              "Categoria",
+            valor:
+              formulario.categoria.trim() ||
+              "Não informada",
+          },
+          {
+            rotulo:
+              "Conta",
+            valor:
               contaSelecionada
-                ? `${contaSelecionada.nome} - ${contaSelecionada.banco}`
-                : "Sem conta definida"
-            }`,
-            formulario.status ===
-              "Pendente"
-              ? `Vencimento: ${dataBrasileira(
-                  formulario.vencimento
-                )}`
-              : "",
-            parcelas > 1
-              ? `Parcelas: ${parcelas}`
-              : "",
-            "",
-            "Este lançamento afetará o saldo realizado ou projetado do Financeiro.",
-            "",
-            "Deseja salvar?",
-          ]
-            .filter(
-              Boolean
-            )
-            .join(
-              "\n"
-            )
+                ? `${contaSelecionada.nome} — ${contaSelecionada.banco}`
+                : "Sem conta definida",
+          },
+          {
+            rotulo:
+              "Valor",
+            valor:
+              moeda(
+                valor
+              ),
+            destaque:
+              formulario.tipo ===
+              "Entrada"
+                ? "positivo"
+                : formulario.tipo ===
+                  "Saida"
+                  ? "negativo"
+                  : "neutro",
+          },
+          {
+            rotulo:
+              "Data",
+            valor:
+              dataBrasileira(
+                formulario.data
+              ),
+          },
+          {
+            rotulo:
+              "Situação",
+            valor:
+              situacaoLancamento,
+          },
+        ]
+
+      if (
+        formulario.status ===
+          "Pendente" &&
+        formulario.tipo !==
+          "SaldoInicial"
+      ) {
+        detalhesConfirmacao.push({
+          rotulo:
+            "Vencimento",
+          valor:
+            dataBrasileira(
+              formulario.vencimento
+            ),
+        })
+      }
+
+      if (
+        parcelas >
+        1
+      ) {
+        detalhesConfirmacao.push({
+          rotulo:
+            "Parcelas",
+          valor:
+            String(
+              parcelas
+            ),
+        })
+      }
+
+      if (
+        contaSelecionada &&
+        situacaoLancamento ===
+          "Realizado"
+      ) {
+        const impacto =
+          formulario.tipo ===
+          "Entrada"
+            ? valor
+            : formulario.tipo ===
+              "Saida"
+              ? -valor
+              : valor
+
+        const saldoDepois =
+          contaSelecionada.resumo
+            .saldoRealizado +
+          impacto
+
+        detalhesConfirmacao.push(
+          {
+            rotulo:
+              "Saldo atual da conta",
+            valor:
+              moeda(
+                contaSelecionada.resumo
+                  .saldoRealizado
+              ),
+            destaque:
+              contaSelecionada.resumo
+                .saldoRealizado <
+              0
+                ? "negativo"
+                : "neutro",
+          },
+          {
+            rotulo:
+              "Saldo após o lançamento",
+            valor:
+              moeda(
+                saldoDepois
+              ),
+            destaque:
+              saldoDepois <
+              0
+                ? "negativo"
+                : "positivo",
+          }
         )
+      }
+
+      const confirmacao =
+        await solicitarConfirmacao({
+          titulo:
+            "Confirmar lançamento financeiro",
+          descricao:
+            "Confira os dados antes de gravar o lançamento no Financeiro.",
+          tom:
+            formulario.tipo ===
+            "Saida"
+              ? "atencao"
+              : "info",
+          detalhes:
+            detalhesConfirmacao,
+          impactoTitulo:
+            situacaoLancamento ===
+            "Realizado"
+              ? "Impacto no saldo atual"
+              : "Impacto no saldo projetado",
+          impactoTexto:
+            situacaoLancamento ===
+            "Realizado"
+              ? formulario.tipo ===
+                "Entrada"
+                ? `Esta entrada aumentará o saldo realizado em ${moeda(
+                    valor
+                  )}.`
+                : formulario.tipo ===
+                  "Saida"
+                  ? `Esta saída reduzirá o saldo realizado em ${moeda(
+                      valor
+                    )}.`
+                  : "O saldo inicial passará a compor o saldo realizado da conta selecionada."
+              : `Este lançamento permanecerá pendente e afetará somente a projeção financeira até ser realizado.`,
+          textoBotaoConfirmar:
+            "Confirmar lançamento",
+          textoBotaoCancelar:
+            "Voltar e corrigir",
+        })
 
       if (
         !confirmacao
@@ -2360,20 +2708,82 @@ export default function FinanceiroPage() {
         acao ===
         "cancelar"
       ) {
-        const confirmado =
-          window.confirm(
-            [
-              "Cancelar este lançamento?",
-              "",
-              "O registro continuará no histórico, mas deixará de afetar os saldos.",
-              "",
-              "Se for uma transferência entre contas, as duas pontas serão canceladas juntas.",
-              "",
-              "Deseja continuar?",
-            ].join(
-              "\n"
-            )
+        const movimento =
+          movimentos.find(
+            (
+              item
+            ) =>
+              item.id ===
+              id
           )
+
+        const confirmado =
+          await solicitarConfirmacao({
+            titulo:
+              "Cancelar lançamento?",
+            descricao:
+              "O registro continuará no histórico, mas deixará de afetar os saldos.",
+            tom:
+              "atencao",
+            detalhes:
+              movimento
+                ? [
+                    {
+                      rotulo:
+                        "Descrição",
+                      valor:
+                        descricaoVisivel(
+                          movimento
+                        ),
+                    },
+                    {
+                      rotulo:
+                        "Tipo",
+                      valor:
+                        tipoVisivel(
+                          movimento.tipo
+                        ),
+                    },
+                    {
+                      rotulo:
+                        "Valor",
+                      valor:
+                        moeda(
+                          movimento.valor
+                        ),
+                      destaque:
+                        movimento.tipo ===
+                        "Entrada"
+                          ? "positivo"
+                          : movimento.tipo ===
+                            "Saida"
+                            ? "negativo"
+                            : "neutro",
+                    },
+                    {
+                      rotulo:
+                        "Conta",
+                      valor:
+                        movimento.contaBancaria
+                          ? `${movimento.contaBancaria.nome} — ${movimento.contaBancaria.banco || ""}`
+                          : "Sem conta definida",
+                    },
+                  ]
+                : [],
+            impactoTitulo:
+              "O que acontecerá",
+            impactoTexto:
+              movimento &&
+              ehTransferencia(
+                movimento
+              )
+                ? "As duas pontas da transferência serão canceladas juntas e permanecerão no histórico."
+                : "O lançamento permanecerá no histórico e deixará de compor os saldos financeiros.",
+            textoBotaoConfirmar:
+              "Cancelar lançamento",
+            textoBotaoCancelar:
+              "Manter lançamento",
+          })
 
         if (
           !confirmado
@@ -2469,32 +2879,72 @@ export default function FinanceiroPage() {
         )
 
       const primeiraConfirmacao =
-        window.confirm(
-          [
-            "ATENÇÃO — EXCLUSÃO DEFINITIVA",
-            "",
-            `Descrição: ${descricaoVisivel(
-              movimento
-            )}`,
-            `Tipo: ${tipoVisivel(
-              movimento.tipo
-            )}`,
-            `Valor: ${moeda(
-              movimento.valor
-            )}`,
-            `Status: ${movimento.status}`,
-            "",
+        await solicitarConfirmacao({
+          titulo:
+            "Excluir lançamento definitivamente?",
+          descricao:
+            "Esta é uma operação destrutiva. Para correções operacionais comuns, prefira Cancelar lançamento.",
+          tom:
+            "perigo",
+          detalhes: [
+            {
+              rotulo:
+                "Descrição",
+              valor:
+                descricaoVisivel(
+                  movimento
+                ),
+            },
+            {
+              rotulo:
+                "Tipo",
+              valor:
+                tipoVisivel(
+                  movimento.tipo
+                ),
+            },
+            {
+              rotulo:
+                "Valor",
+              valor:
+                moeda(
+                  movimento.valor
+                ),
+              destaque:
+                movimento.tipo ===
+                "Entrada"
+                  ? "positivo"
+                  : movimento.tipo ===
+                    "Saida"
+                    ? "negativo"
+                    : "neutro",
+            },
+            {
+              rotulo:
+                "Status",
+              valor:
+                movimento.status,
+            },
+            {
+              rotulo:
+                "Conta",
+              valor:
+                movimento.contaBancaria
+                  ? `${movimento.contaBancaria.nome} — ${movimento.contaBancaria.banco || ""}`
+                  : "Sem conta definida",
+            },
+          ],
+          impactoTitulo:
+            "Atenção",
+          impactoTexto:
             transferencia
-              ? "Esta é uma transferência entre contas. As duas pontas serão excluídas juntas."
-              : "A exclusão remove este registro definitivamente e recalcula os saldos.",
-            "",
-            "Para erros operacionais comuns, prefira CANCELAR.",
-            "",
-            "Deseja continuar?",
-          ].join(
-            "\n"
-          )
-        )
+              ? "Esta é uma transferência entre contas. As duas pontas vinculadas serão excluídas definitivamente e os saldos serão recalculados."
+              : "O registro será removido definitivamente do Financeiro e os saldos serão recalculados.",
+          textoBotaoConfirmar:
+            "Continuar para última confirmação",
+          textoBotaoCancelar:
+            "Não excluir",
+        })
 
       if (
         !primeiraConfirmacao
@@ -2503,19 +2953,44 @@ export default function FinanceiroPage() {
       }
 
       const segundaConfirmacao =
-        window.confirm(
-          [
-            "ÚLTIMA CONFIRMAÇÃO",
-            "",
+        await solicitarConfirmacao({
+          titulo:
+            "Última confirmação",
+          descricao:
+            "Depois desta confirmação, a exclusão será executada.",
+          tom:
+            "perigo",
+          detalhes: [
+            {
+              rotulo:
+                "Registro",
+              valor:
+                descricaoVisivel(
+                  movimento
+                ),
+            },
+            {
+              rotulo:
+                "Valor",
+              valor:
+                moeda(
+                  movimento.valor
+                ),
+              destaque:
+                "negativo",
+            },
+          ],
+          impactoTitulo:
+            "Exclusão definitiva",
+          impactoTexto:
             transferencia
               ? "A transferência completa será apagada definitivamente."
               : "Este lançamento será apagado definitivamente.",
-            "",
-            "Confirmar exclusão definitiva?",
-          ].join(
-            "\n"
-          )
-        )
+          textoBotaoConfirmar:
+            "Excluir definitivamente",
+          textoBotaoCancelar:
+            "Voltar sem excluir",
+        })
 
       if (
         !segundaConfirmacao
@@ -2795,6 +3270,86 @@ export default function FinanceiroPage() {
       ]
     )
 
+  const movimentosExtratoComSaldo =
+    useMemo<
+      MovimentoExtratoComSaldo[]
+    >(
+      () => {
+        const ordenados =
+          [
+            ...movimentosExtrato,
+          ].sort(
+            (
+              movimentoA,
+              movimentoB
+            ) => {
+              const dataA =
+                new Date(
+                  movimentoA.data
+                ).getTime()
+
+              const dataB =
+                new Date(
+                  movimentoB.data
+                ).getTime()
+
+              if (
+                dataA !==
+                dataB
+              ) {
+                return (
+                  dataA -
+                  dataB
+                )
+              }
+
+              return (
+                new Date(
+                  movimentoA.criadoEm
+                ).getTime() -
+                new Date(
+                  movimentoB.criadoEm
+                ).getTime()
+              )
+            }
+          )
+
+        let saldo =
+          0
+
+        const calculados =
+          ordenados.map(
+            (
+              movimento
+            ) => {
+              if (
+                movimento.status ===
+                "Realizado"
+              ) {
+                saldo +=
+                  valorOriginalAssinado(
+                    movimento
+                  )
+              }
+
+              return {
+                movimento,
+                saldoApos:
+                  movimento.status ===
+                  "Realizado"
+                    ? saldo
+                    : null,
+              }
+            }
+          )
+
+        return calculados.reverse()
+      },
+      [
+        movimentosExtrato,
+      ]
+    )
+
   function tabelaMovimentos(
     lista:
       MovimentoFinanceiro[]
@@ -2823,44 +3378,32 @@ export default function FinanceiroPage() {
     }
 
     return (
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
+      <div className="max-h-[65vh] overflow-auto rounded-md border">
+        <Table className="min-w-[820px] table-fixed">
+          <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>
-              <TableHead>
-                Status
+              <TableHead className="w-[175px]">
+                Situação / Ações
               </TableHead>
 
-              <TableHead>
-                Tipo
-              </TableHead>
-
-              <TableHead>
+              <TableHead className="w-[225px]">
                 Descrição
               </TableHead>
 
-              <TableHead>
+              <TableHead className="w-[105px]">
                 Categoria
               </TableHead>
 
-              <TableHead>
+              <TableHead className="w-[135px]">
                 Conta
               </TableHead>
 
-              <TableHead>
-                Data
+              <TableHead className="w-[115px]">
+                Datas
               </TableHead>
 
-              <TableHead>
-                Vencimento
-              </TableHead>
-
-              <TableHead className="text-right">
+              <TableHead className="w-[100px] text-right">
                 Valor
-              </TableHead>
-
-              <TableHead className="text-right">
-                Ações
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -2902,16 +3445,24 @@ export default function FinanceiroPage() {
                           : undefined
                     }
                   >
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        {statusBadge(
-                          movimento.status
-                        )}
+                    <TableCell className="align-top">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {statusBadge(
+                            movimento.status
+                          )}
+
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {tipoVisivel(
+                              movimento.tipo
+                            )}
+                          </span>
+                        </div>
 
                         {transferencia && (
                           <Badge
                             variant="outline"
-                            className="w-fit"
+                            className="w-fit text-[11px]"
                           >
                             Transferência
                           </Badge>
@@ -2928,19 +3479,100 @@ export default function FinanceiroPage() {
                             Vence hoje
                           </span>
                         )}
+
+                        <div className="mt-1 grid gap-1 border-t pt-2">
+                          {movimento.status ===
+                            "Pendente" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 w-full justify-center px-2 text-xs"
+                                onClick={() =>
+                                  void executarAcao(
+                                    movimento.id,
+                                    "realizar"
+                                  )
+                                }
+                              >
+                                <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+
+                                {movimento.tipo ===
+                                "Entrada"
+                                  ? "Receber"
+                                  : "Pagar"}
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-full justify-center px-2 text-xs"
+                                onClick={() =>
+                                  void executarAcao(
+                                    movimento.id,
+                                    "cancelar"
+                                  )
+                                }
+                              >
+                                <XCircle className="mr-1 h-3.5 w-3.5" />
+
+                                Cancelar
+                              </Button>
+                            </>
+                          )}
+
+                          {movimento.status ===
+                            "Realizado" &&
+                            movimento.tipo !==
+                              "SaldoInicial" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-full justify-center px-2 text-xs"
+                                onClick={() =>
+                                  void executarAcao(
+                                    movimento.id,
+                                    "cancelar"
+                                  )
+                                }
+                              >
+                                <XCircle className="mr-1 h-3.5 w-3.5" />
+
+                                {transferencia
+                                  ? "Cancelar transf."
+                                  : "Cancelar"}
+                              </Button>
+                            )}
+
+                          {podeExcluirDefinitivamente && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="h-8 w-full justify-center px-2 text-xs"
+                              disabled={
+                                excluindo
+                              }
+                              onClick={() =>
+                                void excluirDefinitivamente(
+                                  movimento
+                                )
+                              }
+                            >
+                              {excluindo ? (
+                                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="mr-1 h-3.5 w-3.5" />
+                              )}
+
+                              Excluir
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
 
-                    <TableCell>
-                      <span className="font-medium">
-                        {tipoVisivel(
-                          movimento.tipo
-                        )}
-                      </span>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="min-w-[220px]">
+                    <TableCell className="align-top">
+                      <div className="break-words">
                         <div className="font-medium">
                           {descricaoVisivel(
                             movimento
@@ -2957,14 +3589,14 @@ export default function FinanceiroPage() {
                       </div>
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="align-top break-words">
                       {movimento.categoria ||
                         "-"}
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="align-top">
                       {movimento.contaBancaria ? (
-                        <div className="min-w-[140px]">
+                        <div className="break-words">
                           <div className="font-medium">
                             {
                               movimento
@@ -2988,29 +3620,43 @@ export default function FinanceiroPage() {
                       )}
                     </TableCell>
 
-                    <TableCell>
-                      {dataBrasileira(
-                        movimento.data
-                      )}
-                    </TableCell>
+                    <TableCell className="align-top">
+                      <div className="space-y-1 text-sm">
+                        <div>
+                          <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
+                            Data
+                          </span>
 
-                    <TableCell>
-                      <span
-                        className={
-                          vencido
-                            ? "font-semibold text-red-600"
-                            : venceHoje
-                              ? "font-semibold text-amber-700"
-                              : undefined
-                        }
-                      >
-                        {dataBrasileira(
-                          movimento.vencimento
+                          {dataBrasileira(
+                            movimento.data
+                          )}
+                        </div>
+
+                        {movimento.vencimento && (
+                          <div>
+                            <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
+                              Venc.
+                            </span>
+
+                            <span
+                              className={
+                                vencido
+                                  ? "font-semibold text-red-600"
+                                  : venceHoje
+                                    ? "font-semibold text-amber-700"
+                                    : undefined
+                              }
+                            >
+                              {dataBrasileira(
+                                movimento.vencimento
+                              )}
+                            </span>
+                          </div>
                         )}
-                      </span>
+                      </div>
                     </TableCell>
 
-                    <TableCell className="text-right">
+                    <TableCell className="align-top text-right">
                       <span
                         className={
                           movimento.status ===
@@ -3033,93 +3679,6 @@ export default function FinanceiroPage() {
                         )}
                       </span>
                     </TableCell>
-
-                    <TableCell className="text-right">
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {movimento.status ===
-                          "Pendente" && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                void executarAcao(
-                                  movimento.id,
-                                  "realizar"
-                                )
-                              }
-                            >
-                              <CheckCircle2 className="mr-1 h-4 w-4" />
-
-                              {movimento.tipo ===
-                              "Entrada"
-                                ? "Receber"
-                                : "Pagar"}
-                            </Button>
-
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() =>
-                                void executarAcao(
-                                  movimento.id,
-                                  "cancelar"
-                                )
-                              }
-                            >
-                              <XCircle className="mr-1 h-4 w-4" />
-
-                              Cancelar
-                            </Button>
-                          </>
-                        )}
-
-                        {movimento.status ===
-                          "Realizado" &&
-                          movimento.tipo !==
-                            "SaldoInicial" && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() =>
-                                void executarAcao(
-                                  movimento.id,
-                                  "cancelar"
-                                )
-                              }
-                            >
-                              <XCircle className="mr-1 h-4 w-4" />
-
-                              {transferencia
-                                ? "Cancelar transferência"
-                                : "Cancelar"}
-                            </Button>
-                          )}
-
-                        {podeExcluirDefinitivamente && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            disabled={
-                              excluindo
-                            }
-                            onClick={() =>
-                              void excluirDefinitivamente(
-                                movimento
-                              )
-                            }
-                          >
-                            {excluindo ? (
-                              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="mr-1 h-4 w-4" />
-                            )}
-
-                            Excluir
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
                   </TableRow>
                 )
               }
@@ -3137,10 +3696,159 @@ export default function FinanceiroPage() {
         backHref="/dashboard"
       />
 
+      {confirmacaoInterna && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 p-3 sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-background shadow-2xl">
+            <div
+              className={`shrink-0 border-b px-5 py-4 sm:px-6 ${
+                classesTomConfirmacao(
+                  confirmacaoInterna.tom
+                ).cabecalho
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2
+                    className={`text-lg font-semibold sm:text-xl ${
+                      classesTomConfirmacao(
+                        confirmacaoInterna.tom
+                      ).titulo
+                    }`}
+                  >
+                    {
+                      confirmacaoInterna.titulo
+                    }
+                  </h2>
+
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {
+                      confirmacaoInterna.descricao
+                    }
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() =>
+                    responderConfirmacao(
+                      false
+                    )
+                  }
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+              {confirmacaoInterna.detalhes.length >
+                0 && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {confirmacaoInterna.detalhes.map(
+                    (
+                      detalhe,
+                      indice
+                    ) => (
+                      <div
+                        key={`${detalhe.rotulo}-${indice}`}
+                        className="rounded-lg border bg-background p-3"
+                      >
+                        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          {
+                            detalhe.rotulo
+                          }
+                        </div>
+
+                        <div
+                          className={`mt-1 break-words text-sm font-semibold ${
+                            detalhe.destaque ===
+                            "positivo"
+                              ? "text-green-700"
+                              : detalhe.destaque ===
+                                  "negativo"
+                                ? "text-red-700"
+                                : ""
+                          }`}
+                        >
+                          {
+                            detalhe.valor
+                          }
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+
+              {confirmacaoInterna.impactoTexto && (
+                <div
+                  className={`mt-4 rounded-lg border p-4 ${
+                    classesTomConfirmacao(
+                      confirmacaoInterna.tom
+                    ).destaque
+                  }`}
+                >
+                  {confirmacaoInterna.impactoTitulo && (
+                    <div className="font-semibold">
+                      {
+                        confirmacaoInterna.impactoTitulo
+                      }
+                    </div>
+                  )}
+
+                  <p className="mt-1 text-sm leading-relaxed">
+                    {
+                      confirmacaoInterna.impactoTexto
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-background px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  responderConfirmacao(
+                    false
+                  )
+                }
+              >
+                {
+                  confirmacaoInterna.textoBotaoCancelar
+                }
+              </Button>
+
+              <Button
+                type="button"
+                variant={
+                  confirmacaoInterna.tom ===
+                  "perigo"
+                    ? "destructive"
+                    : "default"
+                }
+                onClick={() =>
+                  responderConfirmacao(
+                    true
+                  )
+                }
+              >
+                {
+                  confirmacaoInterna.textoBotaoConfirmar
+                }
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalContaAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-background shadow-2xl">
-            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b bg-background px-6 py-5">
+            <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-4 border-b bg-background px-6 py-5">
               <div>
                 <h2 className="text-xl font-semibold">
                   Cadastrar nova conta
@@ -3405,8 +4113,8 @@ export default function FinanceiroPage() {
 
       {modalTransferenciaAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-xl bg-background shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b px-6 py-5">
+          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-background shadow-2xl">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b px-6 py-5">
               <div>
                 <h2 className="text-xl font-semibold">
                   Transferência entre contas
@@ -3434,7 +4142,7 @@ export default function FinanceiroPage() {
               </Button>
             </div>
 
-            <div className="space-y-5 p-6">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>
@@ -3478,6 +4186,13 @@ export default function FinanceiroPage() {
                             value={
                               conta.id
                             }
+                            className={
+                              conta.resumo
+                                .saldoRealizado <
+                              0
+                                ? "font-semibold text-red-700 focus:text-red-700"
+                                : undefined
+                            }
                           >
                             {conta.nome} —{" "}
                             {conta.banco} —{" "}
@@ -3485,6 +4200,11 @@ export default function FinanceiroPage() {
                               conta.resumo
                                 .saldoRealizado
                             )}
+                            {conta.resumo
+                              .saldoRealizado <
+                            0
+                              ? " — NEGATIVO"
+                              : ""}
                           </SelectItem>
                         )
                       )}
@@ -3534,6 +4254,13 @@ export default function FinanceiroPage() {
                             value={
                               conta.id
                             }
+                            className={
+                              conta.resumo
+                                .saldoRealizado <
+                              0
+                                ? "font-semibold text-red-700 focus:text-red-700"
+                                : undefined
+                            }
                           >
                             {conta.nome} —{" "}
                             {conta.banco} —{" "}
@@ -3541,6 +4268,11 @@ export default function FinanceiroPage() {
                               conta.resumo
                                 .saldoRealizado
                             )}
+                            {conta.resumo
+                              .saldoRealizado <
+                            0
+                              ? " — NEGATIVO"
+                              : ""}
                           </SelectItem>
                         )
                       )}
@@ -3647,8 +4379,8 @@ export default function FinanceiroPage() {
 
       {contaExtrato && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-background shadow-2xl">
-            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b bg-background px-6 py-5">
+          <div className="flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-xl bg-background shadow-2xl">
+            <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-4 border-b bg-background px-6 py-5">
               <div>
                 <h2 className="text-xl font-semibold">
                   Extrato —{" "}
@@ -3676,7 +4408,7 @@ export default function FinanceiroPage() {
               </Button>
             </div>
 
-            <div className="space-y-5 p-6">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                 <div className="rounded-lg border p-3">
                   <div className="text-xs text-muted-foreground">
@@ -3747,128 +4479,208 @@ export default function FinanceiroPage() {
                 </div>
               </div>
 
-              {movimentosExtrato.length ===
+              {movimentosExtratoComSaldo.length ===
               0 ? (
                 <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
                   Nenhum movimento registrado nesta conta.
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-md border">
-                  <Table>
-                    <TableHeader>
+                <div className="max-h-[58vh] overflow-auto rounded-md border">
+                  <Table className="min-w-[1120px]">
+                    <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                       <TableRow>
-                        <TableHead>
+                        <TableHead className="min-w-[110px]">
                           Data
                         </TableHead>
 
-                        <TableHead>
-                          Movimento
+                        <TableHead className="min-w-[260px]">
+                          Descrição / origem
                         </TableHead>
 
-                        <TableHead>
-                          Descrição
+                        <TableHead className="min-w-[170px]">
+                          Categoria
                         </TableHead>
 
-                        <TableHead>
+                        <TableHead className="min-w-[130px] text-right">
+                          Débito
+                        </TableHead>
+
+                        <TableHead className="min-w-[130px] text-right">
+                          Crédito
+                        </TableHead>
+
+                        <TableHead className="min-w-[160px] text-right">
+                          Saldo após movimento
+                        </TableHead>
+
+                        <TableHead className="min-w-[130px]">
                           Status
-                        </TableHead>
-
-                        <TableHead className="text-right">
-                          Valor
                         </TableHead>
                       </TableRow>
                     </TableHeader>
 
                     <TableBody>
-                      {movimentosExtrato.map(
+                      {movimentosExtratoComSaldo.map(
                         (
-                          movimento
+                          item
                         ) => {
-                          const valor =
-                            valorAssinado(
+                          const movimento =
+                            item.movimento
+
+                          const valorOriginal =
+                            valorOriginalAssinado(
                               movimento
                             )
+
+                          const debito =
+                            valorOriginal <
+                            0
+                              ? Math.abs(
+                                  valorOriginal
+                                )
+                              : null
+
+                          const credito =
+                            valorOriginal >
+                            0
+                              ? valorOriginal
+                              : null
 
                           return (
                             <TableRow
                               key={
                                 movimento.id
                               }
+                              className={
+                                movimento.status ===
+                                "Cancelado"
+                                  ? "opacity-60"
+                                  : undefined
+                              }
                             >
-                              <TableCell>
+                              <TableCell className="whitespace-nowrap">
                                 {dataBrasileira(
                                   movimento.data
                                 )}
                               </TableCell>
 
                               <TableCell>
-                                <div className="flex items-center gap-2">
-                                  {ehTransferencia(
-                                    movimento
-                                  ) ? (
-                                    <ArrowLeftRight className="h-4 w-4" />
-                                  ) : movimento.tipo ===
-                                    "Entrada" ? (
-                                    <ArrowDownCircle className="h-4 w-4 text-green-600" />
-                                  ) : movimento.tipo ===
-                                    "Saida" ? (
-                                    <ArrowUpCircle className="h-4 w-4 text-red-600" />
-                                  ) : (
-                                    <Wallet className="h-4 w-4" />
-                                  )}
+                                <div className="min-w-[240px]">
+                                  <div className="flex items-center gap-2 font-medium">
+                                    {ehTransferencia(
+                                      movimento
+                                    ) ? (
+                                      <ArrowLeftRight className="h-4 w-4 shrink-0 text-blue-600" />
+                                    ) : movimento.tipo ===
+                                      "Entrada" ? (
+                                      <ArrowDownCircle className="h-4 w-4 shrink-0 text-green-600" />
+                                    ) : movimento.tipo ===
+                                      "Saida" ? (
+                                      <ArrowUpCircle className="h-4 w-4 shrink-0 text-red-600" />
+                                    ) : (
+                                      <Wallet className="h-4 w-4 shrink-0 text-slate-600" />
+                                    )}
 
-                                  <span>
+                                    <span>
+                                      {descricaoVisivel(
+                                        movimento
+                                      )}
+                                    </span>
+                                  </div>
+
+                                  <div className="mt-1 text-xs text-muted-foreground">
+                                    {ehTransferencia(
+                                      movimento
+                                    )
+                                      ? "Movimentação entre contas próprias"
+                                      : `Origem: ${origemVisivel(
+                                          movimento
+                                        )}`}
+                                  </div>
+
+                                  <div className="mt-1 text-xs text-muted-foreground">
                                     {tipoVisivel(
                                       movimento.tipo
                                     )}
-                                  </span>
+                                  </div>
                                 </div>
                               </TableCell>
 
                               <TableCell>
-                                <div>
-                                  <div className="font-medium">
-                                    {descricaoVisivel(
-                                      movimento
-                                    )}
-                                  </div>
+                                {movimento.categoria ||
+                                  "-"}
+                              </TableCell>
 
-                                  {ehTransferencia(
-                                    movimento
-                                  ) && (
-                                    <div className="text-xs text-muted-foreground">
-                                      Transferência entre contas próprias
-                                    </div>
-                                  )}
-                                </div>
+                              <TableCell className="text-right">
+                                {debito !==
+                                null ? (
+                                  <span
+                                    className={
+                                      movimento.status ===
+                                      "Cancelado"
+                                        ? "text-muted-foreground line-through"
+                                        : "font-semibold text-red-600"
+                                    }
+                                  >
+                                    {moeda(
+                                      debito
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">
+                                    —
+                                  </span>
+                                )}
+                              </TableCell>
+
+                              <TableCell className="text-right">
+                                {credito !==
+                                null ? (
+                                  <span
+                                    className={
+                                      movimento.status ===
+                                      "Cancelado"
+                                        ? "text-muted-foreground line-through"
+                                        : "font-semibold text-green-600"
+                                    }
+                                  >
+                                    {moeda(
+                                      credito
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">
+                                    —
+                                  </span>
+                                )}
+                              </TableCell>
+
+                              <TableCell className="text-right">
+                                {item.saldoApos !==
+                                null ? (
+                                  <span
+                                    className={`font-bold ${
+                                      item.saldoApos <
+                                      0
+                                        ? "text-red-600"
+                                        : "text-blue-700"
+                                    }`}
+                                  >
+                                    {moeda(
+                                      item.saldoApos
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    Não afeta saldo atual
+                                  </span>
+                                )}
                               </TableCell>
 
                               <TableCell>
                                 {statusBadge(
                                   movimento.status
                                 )}
-                              </TableCell>
-
-                              <TableCell className="text-right">
-                                <span
-                                  className={
-                                    movimento.status ===
-                                    "Cancelado"
-                                      ? "text-muted-foreground line-through"
-                                      : valor <
-                                          0
-                                        ? "font-semibold text-red-600"
-                                        : "font-semibold text-green-600"
-                                  }
-                                >
-                                  {valor >
-                                  0
-                                    ? "+"
-                                    : ""}
-                                  {moeda(
-                                    valor
-                                  )}
-                                </span>
                               </TableCell>
                             </TableRow>
                           )
@@ -4963,9 +5775,25 @@ export default function FinanceiroPage() {
                           value={
                             conta.id
                           }
+                          className={
+                            conta.resumo
+                              .saldoRealizado <
+                            0
+                              ? "font-semibold text-red-700 focus:text-red-700"
+                              : undefined
+                          }
                         >
                           {conta.nome} —{" "}
-                          {conta.banco}
+                          {conta.banco} —{" "}
+                          {moeda(
+                            conta.resumo
+                              .saldoRealizado
+                          )}
+                          {conta.resumo
+                            .saldoRealizado <
+                          0
+                            ? " — NEGATIVO"
+                            : ""}
                         </SelectItem>
                       )
                     )}
