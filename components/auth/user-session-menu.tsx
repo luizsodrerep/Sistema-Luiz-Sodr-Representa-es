@@ -33,6 +33,7 @@ import {
   LayoutDashboard,
   LogOut,
   Map,
+  Menu,
   MessageSquareText,
   ReceiptText,
   Settings,
@@ -41,6 +42,7 @@ import {
   UserRound,
   Users,
   WalletCards,
+  X,
 } from "lucide-react"
 
 import {
@@ -325,6 +327,14 @@ export function UserSessionMenu({
       false
     )
 
+  const [
+    menuMobileAberto,
+    setMenuMobileAberto,
+  ] =
+    useState(
+      false
+    )
+
   const rotaPublica =
     ROTAS_PUBLICAS.some(
       (
@@ -440,6 +450,41 @@ export function UserSessionMenu({
     },
     [
       rotaPublica,
+    ]
+  )
+
+  useEffect(
+    () => {
+      setMenuMobileAberto(
+        false
+      )
+    },
+    [
+      pathname,
+    ]
+  )
+
+  useEffect(
+    () => {
+      if (
+        !menuMobileAberto
+      ) {
+        return
+      }
+
+      const overflowAnterior =
+        document.body.style.overflow
+
+      document.body.style.overflow =
+        "hidden"
+
+      return () => {
+        document.body.style.overflow =
+          overflowAnterior
+      }
+    },
+    [
+      menuMobileAberto,
     ]
   )
 
@@ -728,6 +773,223 @@ export function UserSessionMenu({
   return (
     <div className="min-h-screen bg-slate-50">
 
+      {menuMobileAberto && (
+        <div
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu de navegação"
+        >
+
+          <button
+            type="button"
+            aria-label="Fechar menu"
+            className="absolute inset-0 bg-slate-950/55 backdrop-blur-[1px]"
+            onClick={() =>
+              setMenuMobileAberto(
+                false
+              )
+            }
+          />
+
+          <aside
+            id="menu-mobile-crm"
+            className="relative z-10 flex h-full w-[min(88vw,340px)] flex-col border-r border-slate-800 bg-[#071a2f] shadow-2xl"
+          >
+
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4">
+
+              <Link
+                href="/"
+                className="flex min-w-0 items-center gap-3 rounded-xl p-1 transition-colors hover:bg-white/[0.04]"
+              >
+
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#101a24] shadow-sm ring-1 ring-white/10">
+                  <Image
+                    src="/branding/logo-lsr.png"
+                    alt="Luiz Sodré Representações"
+                    width={48}
+                    height={48}
+                    priority
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold tracking-wide text-white">
+                    LUIZ SODRÉ
+                  </p>
+                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-400">
+                    Representações
+                  </p>
+                </div>
+
+              </Link>
+
+              <button
+                type="button"
+                aria-label="Fechar menu"
+                onClick={() =>
+                  setMenuMobileAberto(
+                    false
+                  )
+                }
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white transition-colors hover:bg-white/10"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+            </div>
+
+            <nav className="flex-1 overflow-y-auto px-4 py-4">
+
+              <div>
+                <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                  Comercial
+                </p>
+
+                <div className="space-y-1">
+                  {renderizarItemMenu(
+                    paginaInicial
+                  )}
+                </div>
+
+                <div className="my-3">
+                  <Link
+                    href={
+                      ASSISTENTE_PESSOAL.href
+                    }
+                    className={[
+                      "group relative flex min-h-[74px] items-center gap-3 overflow-hidden rounded-xl border px-4 py-3 transition-all",
+                      assistenteAtivo
+                        ? "border-blue-400 bg-blue-600 text-white shadow-lg"
+                        : "border-blue-400/30 bg-gradient-to-r from-blue-600/25 to-slate-900/40 text-white hover:border-blue-400/60 hover:from-blue-600/35 hover:to-slate-900/50",
+                    ].join(
+                      " "
+                    )}
+                  >
+                    <div
+                      className={[
+                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                        assistenteAtivo
+                          ? "bg-white/20"
+                          : "bg-blue-500/20 ring-1 ring-blue-400/30",
+                      ].join(
+                        " "
+                      )}
+                    >
+                      <IconeAssistente
+                        className={[
+                          "h-6 w-6",
+                          assistenteAtivo
+                            ? "text-white"
+                            : "text-blue-300 group-hover:text-white",
+                        ].join(
+                          " "
+                        )}
+                      />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold leading-tight">
+                        Meu Assistente
+                      </p>
+                      <p className="text-sm font-bold leading-tight">
+                        Pessoal
+                      </p>
+                      <p className="mt-1 truncate text-[10px] text-slate-400">
+                        Pendências e compromissos
+                      </p>
+                    </div>
+
+                    <ChevronRight className="h-5 w-5 shrink-0 text-blue-300" />
+                  </Link>
+                </div>
+
+                <div className="space-y-1">
+                  {demaisItensComerciais.map(
+                    renderizarItemMenu
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-6">
+                {gruposRestantes.map(
+                  (
+                    grupo
+                  ) => (
+                    <div
+                      key={
+                        grupo.titulo
+                      }
+                    >
+                      <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                        {
+                          grupo.titulo
+                        }
+                      </p>
+
+                      <div className="space-y-1">
+                        {grupo.itens.map(
+                          renderizarItemMenu
+                        )}
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+
+            </nav>
+
+            <div className="border-t border-white/10 p-4">
+              <div className="rounded-xl bg-white/[0.06] p-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                    {usuario.perfil ===
+                    "Diretor" ? (
+                      <ShieldCheck className="h-5 w-5 text-orange-400" />
+                    ) : (
+                      <UserRound className="h-5 w-5 text-slate-300" />
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-white">
+                      {
+                        usuario.nome
+                      }
+                    </p>
+                    <p className="truncate text-xs text-slate-400">
+                      {
+                        usuario.perfil
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    realizarLogout
+                  }
+                  disabled={
+                    saindo
+                  }
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-orange-400/40 px-3 py-2.5 text-sm font-semibold text-orange-300 transition-colors hover:border-orange-400/70 hover:bg-orange-500/10 hover:text-orange-200 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {saindo
+                    ? "Saindo..."
+                    : "Sair do sistema"}
+                </button>
+              </div>
+            </div>
+
+          </aside>
+
+        </div>
+      )}
+
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] flex-col border-r border-slate-800 bg-[#071a2f] lg:flex">
 
         <div className="border-b border-white/10 px-5 py-5">
@@ -994,34 +1256,55 @@ export function UserSessionMenu({
 
             </div>
 
-            <div className="hidden items-center gap-3 sm:flex">
+            <div className="flex items-center gap-2">
 
-              <div className="text-right leading-tight">
+              <div className="hidden items-center gap-3 sm:flex">
 
-                <p className="max-w-[220px] truncate text-sm font-semibold text-slate-900">
-                  {
-                    usuario.nome
-                  }
-                </p>
+                <div className="text-right leading-tight">
 
-                <p className="text-xs text-slate-500">
-                  {
-                    usuario.perfil
-                  }
-                </p>
+                  <p className="max-w-[220px] truncate text-sm font-semibold text-slate-900">
+                    {
+                      usuario.nome
+                    }
+                  </p>
+
+                  <p className="text-xs text-slate-500">
+                    {
+                      usuario.perfil
+                    }
+                  </p>
+
+                </div>
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#071a2f] text-white">
+
+                  {usuario.perfil ===
+                  "Diretor" ? (
+                    <ShieldCheck className="h-5 w-5" />
+                  ) : (
+                    <UserRound className="h-5 w-5" />
+                  )}
+
+                </div>
 
               </div>
 
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#071a2f] text-white">
-
-                {usuario.perfil ===
-                "Diretor" ? (
-                  <ShieldCheck className="h-5 w-5" />
-                ) : (
-                  <UserRound className="h-5 w-5" />
-                )}
-
-              </div>
+              <button
+                type="button"
+                aria-label="Abrir menu"
+                aria-controls="menu-mobile-crm"
+                aria-expanded={
+                  menuMobileAberto
+                }
+                onClick={() =>
+                  setMenuMobileAberto(
+                    true
+                  )
+                }
+                className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#071a2f] shadow-sm transition-colors hover:bg-slate-50 lg:hidden"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
 
             </div>
 
