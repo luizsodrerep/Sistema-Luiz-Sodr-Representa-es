@@ -4384,3 +4384,785 @@ Para mudanças manuais de arquivo, continue priorizando substituição
 integral e validação segura."
 
 ------------------------------------------------------------------------
+
+## 65. ATUALIZAÇÃO DE CONTINUIDADE — 11/09/2026
+
+Este capítulo atualiza e SUPERA, quando houver conflito, o estado operacional
+descrito nos capítulos anteriores.
+
+Os capítulos anteriores devem permanecer preservados como histórico técnico
+e funcional do projeto.
+
+### 65.1 Checkpoint oficial atual
+
+Repositório oficial:
+
+`luizsodrerep/Sistema-Luiz-Sodr-Representa-es`
+
+Branch oficial:
+
+`main`
+
+Checkpoint oficial mais recente:
+
+`cf6a506`
+
+SHA completo:
+
+`cf6a506c1e046bc96f72fe4bc3e2d79549df26a7`
+
+Mensagem:
+
+`fix: corrige redirecionamento externo atras do proxy`
+
+Esse checkpoint foi criado e enviado ao GitHub em 11/09/2026.
+
+Checkpoint imediatamente anterior de navegação mobile:
+
+`e4f72b5`
+
+Mensagem:
+
+`feat: adiciona navegacao responsiva para celular`
+
+Checkpoint de estabilização de dependências:
+
+`63670cf`
+
+Mensagem:
+
+`chore: atualiza Next e estabiliza dependencias`
+
+Checkpoint relevante do Financeiro anterior:
+
+`c5e0e12`
+
+Mensagem:
+
+`feat: melhora operacao e leitura do financeiro`
+
+O checkpoint funcional protegido histórico:
+
+`208be23`
+
+continua sendo referência importante de recuperação anterior, porém NÃO é
+mais o HEAD atual.
+
+### 65.2 Estado atual do Git
+
+Após o checkpoint `cf6a506`, o estado local esperado é possuir somente o
+arquivo protegido não versionado:
+
+`?? "public/foto sistema minha area paula.jpeg"`
+
+Esse arquivo continua propositalmente fora do Git.
+
+Regra:
+
+NÃO executar:
+
+`git add .`
+
+Adicionar sempre de forma explícita somente os arquivos aprovados.
+
+### 65.3 Stack técnica atual
+
+Estado validado em 11/09/2026:
+
+- Next.js `15.5.24`;
+- React `18.3.1`;
+- React DOM `18.3.1`;
+- Prisma `5.22.0`;
+- PostgreSQL 16;
+- TypeScript;
+- Tailwind CSS;
+- bcryptjs;
+- jose;
+- Windows.
+
+Prisma permanece FIXADO em `5.22.0`.
+
+Não atualizar Prisma sem necessidade técnica comprovada, diagnóstico e
+aprovação explícita.
+
+Para validações locais, preferir os binários já instalados:
+
+`.\node_modules\.bin\prisma.cmd`
+
+`.\node_modules\.bin\tsc.cmd --noEmit`
+
+### 65.4 Atualização de dependências validada
+
+O Next.js foi atualizado para:
+
+`15.5.24`
+
+React e React DOM permaneceram fixados em:
+
+`18.3.1`
+
+Validações realizadas:
+
+- `npm ls` confirmou as versões esperadas;
+- `tsc --noEmit` retornou sucesso;
+- `git diff --check` retornou sucesso;
+- `npm run build` foi concluído com sucesso em janela sem usuários ativos.
+
+O build do Next ainda informa:
+
+- `Skipping validation of types`;
+- `Skipping linting`.
+
+A tipagem foi validada separadamente com TypeScript.
+
+Auditoria npm registrada:
+
+- 7 vulnerabilidades;
+- 3 moderate;
+- 4 high.
+
+NÃO foi executado:
+
+`npm audit fix`
+
+nem:
+
+`npm audit fix --force`
+
+As vulnerabilidades devem ser tratadas em auditoria técnica controlada.
+
+### 65.5 Regra atual sobre build e servidor
+
+Build de produção pode ser executado SOMENTE quando:
+
+- Luiz estiver fora do CRM;
+- Paula estiver fora do CRM;
+- o servidor `npm start` estiver parado.
+
+Não misturar build com usuário utilizando o CRM.
+
+Não apagar `.next` por rotina.
+
+Servidor de produção local utilizado na contingência:
+
+`npm start -- -H 127.0.0.1 -p 3000`
+
+Enquanto a solução local/Tailscale estiver em uso, esse processo precisa
+permanecer rodando.
+
+### 65.6 Agenda real
+
+A Agenda deixou de ser apenas demonstrativa.
+
+Foram consolidados checkpoints relevantes para:
+
+- estrutura segura de Agenda;
+- permissões;
+- contatos de Representadas;
+- transferências;
+- tarefas e compromissos reais;
+- proteção da API de tarefas pelo recurso Agenda.
+
+Checkpoints relevantes:
+
+`03406f7` — estrutura segura de agenda, permissões, contatos e transferências;
+
+`a8d3279` — tarefas e compromissos reais na Agenda;
+
+`d22d048` — proteção da API de tarefas pelo recurso Agenda.
+
+Luiz e Paula validaram o uso operacional da Agenda.
+
+### 65.7 Usuários e autenticação
+
+O módulo de Usuários passou a utilizar dados reais.
+
+Checkpoints relevantes:
+
+`0f9e646` — usuários reais e restrição de acesso ao Diretor;
+
+`c2384dc` — cadastro real de usuários;
+
+`fb55e3f` — detalhes reais e permissões de usuários;
+
+`03eb5b9` — validação de sessão ativa e perfil atual no banco;
+
+`5cf9227` — edição segura de usuários.
+
+Estado operacional:
+
+- Luiz possui perfil Diretor;
+- Paula possui perfil Administrativo;
+- ambos estão ativos;
+- ambos possuem senha configurada;
+- login/logout real validado.
+
+A sessão é revalidada contra o usuário ativo no banco.
+
+O perfil atual do banco é a fonte de verdade da sessão.
+
+Permissões individuais granulares permanecem PAUSADAS até lote futuro.
+
+Quando retomadas, a regra conceitual será:
+
+`PERFIL = TETO`
+
+Permissão individual pode restringir, mas não elevar acima do perfil.
+
+### 65.8 Financeiro — estado atual
+
+O Financeiro recebeu melhorias posteriores ao capítulo 64.
+
+Checkpoints relevantes:
+
+`63f0053` — melhora visão operacional do Financeiro;
+
+`c5e0e12` — melhora operação e leitura do Financeiro.
+
+Estado validado:
+
+- saldos por conta;
+- saldo consolidado;
+- saldo negativo destacado;
+- extrato por conta;
+- transferências entre contas próprias;
+- confirmação antes da transferência;
+- visualização dos saldos envolvidos;
+- cancelamento/exclusão conforme regra existente;
+- rolagem e leitura operacional melhoradas;
+- modal interno responsivo em vez de confirmações nativas do navegador.
+
+Regra permanente:
+
+transferência entre contas próprias NÃO altera o saldo consolidado.
+
+O CRM NÃO executa PIX, TED ou movimentação bancária real.
+
+O CRM registra o fato financeiro ocorrido externamente.
+
+Categorias financeiras persistentes e reconciliação bancária formal continuam
+pendências futuras.
+
+### 65.9 Orçamentos e Vendas
+
+Foram adicionadas melhorias operacionais sem alteração estrutural de banco.
+
+Checkpoint:
+
+`24b26db`
+
+Mensagem:
+
+`feat: melhora buscas no modulo de orcamentos`
+
+Checkpoint:
+
+`83131bf`
+
+Mensagem:
+
+`feat: adiciona busca rapida na nova venda`
+
+Clientes e Representadas podem ser localizados com maior rapidez nos fluxos
+operacionais.
+
+Não refazer essas melhorias sem necessidade comprovada.
+
+### 65.10 Navegação responsiva no celular
+
+Checkpoint:
+
+`e4f72b5`
+
+Mensagem:
+
+`feat: adiciona navegacao responsiva para celular`
+
+Arquivo principal:
+
+`components/auth/user-session-menu.tsx`
+
+Foi implementado e validado:
+
+- botão de menu mobile;
+- drawer lateral responsivo;
+- mesmos módulos permitidos no desktop;
+- fechamento ao navegar;
+- identificação do usuário;
+- perfil;
+- botão `Sair do sistema`;
+- preservação do menu desktop.
+
+Validação funcional real em celular Android:
+
+- Página Inicial;
+- Clientes;
+- detalhe de Cliente;
+- Agenda;
+- Vendas;
+- Financeiro;
+- abertura e fechamento do menu;
+- logout;
+- login novamente.
+
+Resultado:
+
+MOBILE VALIDADO PARA USO OPERACIONAL.
+
+### 65.11 Correção de redirecionamento atrás do proxy
+
+Foi identificado que, atrás do proxy HTTPS privado, uma sessão ausente ou
+expirada podia redirecionar incorretamente para:
+
+`https://localhost:3000/login`
+
+Causa:
+
+o middleware construía URLs de redirecionamento a partir de `request.url`,
+que podia representar a origem interna do proxy.
+
+Checkpoint da correção:
+
+`cf6a506`
+
+Mensagem:
+
+`fix: corrige redirecionamento externo atras do proxy`
+
+O middleware passou a respeitar os cabeçalhos encaminhados do proxy para
+construir a origem pública correta.
+
+Validações:
+
+- TypeScript: OK;
+- `git diff --check`: OK;
+- build de produção: OK;
+- teste HTTP externo: redirecionamento 307 correto;
+- teste real em celular: OK;
+- logout pela interface: OK;
+- retorno à tela correta de login: OK;
+- novo login: OK.
+
+Não reverter essa correção ao revisar middleware futuramente.
+
+### 65.12 Contingência privada de acesso externo
+
+Foi implantada uma contingência privada para permitir operação externa antes
+da migração definitiva para nuvem.
+
+Tecnologia:
+
+Tailscale.
+
+Arquitetura:
+
+- computador `gerencia` executa o CRM local;
+- Next.js escuta somente em `127.0.0.1:3000`;
+- Tailscale Serve publica HTTPS somente dentro da tailnet autorizada;
+- Funnel permanece DESABILITADO;
+- não existe exposição pública do CRM por Tailscale;
+- o console web do Tailscale NÃO precisa permanecer aberto.
+
+Por segurança, este Documento Mestre público NÃO deve registrar:
+
+- IPs Tailscale;
+- e-mails das identidades Tailscale;
+- links de convite;
+- hostname privado completo de acesso.
+
+### 65.13 Acesso externo de Luiz
+
+Luiz validou o CRM fora da rede Wi-Fi usando rede móvel do celular.
+
+Foram validados:
+
+- conexão Tailscale;
+- HTTPS privado;
+- login;
+- navegação;
+- Clientes;
+- Agenda;
+- Vendas;
+- Financeiro;
+- logout;
+- login novamente;
+- atalho na tela inicial do Android.
+
+No uso normal, não é necessário abrir a página `Machines` nem entrar no
+Google a cada acesso.
+
+O Tailscale pode permanecer conectado em segundo plano.
+
+### 65.14 Acesso externo de Paula
+
+Paula recebeu acesso separado e individual.
+
+Regra de identidade:
+
+NÃO compartilhar a identidade Google/Tailscale de Luiz com Paula.
+
+Foi utilizado compartilhamento restrito da máquina necessária, evitando
+conceder acesso desnecessário ao restante da tailnet.
+
+Paula utiliza:
+
+- identidade própria no Tailscale;
+- usuário próprio no CRM;
+- senha própria no CRM.
+
+Foram validados com sucesso:
+
+- notebook da Paula;
+- celular da Paula;
+- Tailscale conectado;
+- acesso ao CRM;
+- tela de login exclusiva da Paula;
+- login;
+- navegação;
+- logout;
+- novo login.
+
+A tela personalizada da Paula continua disponível na rota própria de login.
+
+
+### 65.15 Inventário operacional de equipamentos autorizados
+
+Estado informado e validado operacionalmente em 11/09/2026:
+
+- Celular de Luiz Fernando — Tailscale instalado, atualizado e acesso ao CRM validado;
+- Celular de Paula — Tailscale instalado, atualizado e acesso ao CRM validado;
+- Notebook de Luiz Fernando — Tailscale instalado, atualizado e acesso ao CRM validado;
+- Notebook de Paula — Tailscale instalado, atualizado e acesso ao CRM validado;
+- Tablet da empresa — Tailscale instalado e atualizado para uso autorizado.
+
+Regra de identidade:
+
+- equipamentos de Luiz utilizam a identidade Tailscale própria de Luiz;
+- equipamentos de Paula utilizam a identidade Tailscale própria de Paula;
+- o Tablet da empresa utiliza a identidade operacional autorizada da empresa definida para o ambiente da Paula;
+- não compartilhar credenciais pessoais entre Luiz e Paula;
+- cada usuário continua utilizando seu próprio usuário e senha dentro do CRM.
+
+IMPORTANTE:
+
+Os endereços completos das contas Google/Tailscale NÃO devem ser
+versionados neste Documento Mestre porque o repositório GitHub é público.
+
+A documentação versionada deve registrar somente a associação operacional
+por pessoa/equipamento.
+
+Se futuramente for necessário recuperar a conta exata utilizada em cada
+dispositivo, verificar diretamente o aplicativo Tailscale no respectivo
+equipamento ou o painel administrativo autenticado.
+
+Não registrar neste documento público:
+
+- e-mails completos;
+- links de convite;
+- tokens;
+- senhas;
+- códigos de autenticação;
+- IPs privados da tailnet.
+
+### 65.16 Dependências da contingência atual
+
+Enquanto o CRM não estiver hospedado definitivamente em nuvem, o acesso
+externo depende do computador `gerencia`.
+
+Para funcionamento externo, devem permanecer:
+
+1. computador ligado;
+2. Windows sem suspensão;
+3. PostgreSQL ativo;
+4. serviço do Tailscale conectado;
+5. Tailscale Serve configurado;
+6. processo `npm start -- -H 127.0.0.1 -p 3000` rodando.
+
+O site administrativo `console.tailscale.com` NÃO precisa ficar aberto nem
+logado no navegador.
+
+Se o computador desligar, dormir ou o processo `npm start` for encerrado, o
+CRM ficará indisponível externamente até o serviço ser restabelecido.
+
+### 65.17 Situação para uso em campo
+
+Estado em 11/09/2026:
+
+o CRM está operacionalmente apto para uso controlado de Luiz e Paula através
+da rede privada Tailscale.
+
+Esse estado é adequado como CONTINGÊNCIA OPERACIONAL PRIVADA.
+
+Não deve ser confundido com liberação definitiva para Internet pública ou
+SaaS.
+
+Para visitas externas, Luiz já pode utilizar o celular para registrar, entre
+outros:
+
+- Clientes;
+- Interações;
+- acompanhamentos;
+- Agenda;
+- tarefas/compromissos;
+- Orçamentos;
+- Vendas;
+- consultas operacionais disponíveis.
+
+A operação real continuará servindo como validação funcional.
+
+### 65.18 Nuvem e domínio — decisão atual
+
+A migração definitiva para nuvem foi POSTERGADA deliberadamente até existir
+maior segurança geral e confiança operacional.
+
+Não existe, até este checkpoint:
+
+- aplicação definitiva criada em Railway;
+- PostgreSQL migrado para nuvem;
+- banco de produção duplicado na nuvem;
+- DNS `crm` configurado;
+- migração real de dados para cloud.
+
+Não afirmar o contrário em nova conversa.
+
+Arquitetura de domínio planejada:
+
+- domínio principal para site institucional;
+- `www` para site institucional;
+- subdomínio `crm` para o CRM definitivo.
+
+Não alterar nameservers.
+
+Não alterar registros de e-mail existentes.
+
+Não criar DNS do CRM antes de existir ambiente cloud testado e aprovado.
+
+
+### 65.19 Caminho definitivo planejado para nuvem
+
+Este caminho deve ser preservado para evitar decisões improvisadas no futuro.
+
+ESTADO ATUAL:
+
+`CRM LOCAL + POSTGRESQL LOCAL + TAILSCALE PRIVADO`
+
+DESTINO PLANEJADO:
+
+`GITHUB MAIN → HOSPEDAGEM NEXT.JS EM RAILWAY → POSTGRESQL GERENCIADO EM NUVEM → TESTE EM URL TEMPORÁRIA → CRM.LUIZSODRE.COM.BR`
+
+Railway foi definido até aqui como destino técnico preferencial para o
+aplicativo Next.js e para o PostgreSQL gerenciado, mas NENHUM projeto
+definitivo foi criado e nenhuma migração ocorreu.
+
+Não interpretar este plano como ambiente já existente.
+
+Ordem planejada:
+
+1. manter a operação atual pelo Tailscale enquanto o CRM é validado com uso real;
+2. concluir auditoria mínima de segurança para exposição pública;
+3. revisar segredos e variáveis de ambiente;
+4. criar o serviço da aplicação em nuvem usando o repositório oficial e a branch `main`;
+5. criar PostgreSQL gerenciado no mesmo ambiente de nuvem ou arquitetura aprovada;
+6. definir as variáveis de produção sem expor segredos no GitHub;
+7. planejar a transferência ÚNICA e controlada do banco real local para o PostgreSQL de nuvem;
+8. não executar reset, `db push`, seed ou recriação artificial do banco;
+9. validar migrations existentes contra o banco de destino;
+10. subir a aplicação inicialmente em URL temporária do provedor;
+11. testar login, usuários, Clientes, Interações, Agenda, Orçamentos, Vendas, Faturamentos, Títulos, Comissões e Financeiro;
+12. validar Luiz e Paula separadamente;
+13. somente depois criar o DNS `crm` no provedor atual de DNS;
+14. apontar `crm.luizsodre.com.br` para o serviço validado;
+15. manter site institucional e e-mail sem alteração;
+16. desligar a dependência operacional do Tailscale somente depois da validação definitiva.
+
+REGRA CRÍTICA:
+
+Não existe fase recomendada em que a aplicação pública em nuvem fique
+dependendo permanentemente do PostgreSQL doméstico/local através de túnel.
+
+Aplicação e banco de produção devem terminar no ambiente cloud aprovado,
+reduzindo dependência do notebook, da energia local e da conexão residencial.
+
+Também NÃO criar uma segunda linha oficial do CRM.
+
+Continuará existindo:
+
+- um único repositório oficial;
+- uma única branch principal oficial;
+- um único sistema oficial;
+- um banco de produção oficial após a migração definitiva.
+
+A migração do banco será tratada como etapa crítica própria.
+
+Nenhum comando de migração de dados deve ser executado apenas com base neste
+documento; primeiro deverá existir diagnóstico atualizado, plano de migração,
+janela operacional e aprovação explícita do usuário.
+
+### 65.20 Segurança antes da exposição pública
+
+Antes de disponibilizar o CRM diretamente na Internet, executar lote
+específico de prontidão de produção.
+
+Pendências importantes incluem:
+
+- auditoria de segredos considerando que o repositório é público;
+- rate limiting de login;
+- revisão das rotas públicas de autenticação/setup;
+- revisão das lacunas de middleware e autorização;
+- revisão das APIs sensíveis;
+- validação de escopo por escritório/usuário;
+- auditoria das vulnerabilidades npm;
+- revisão do script perigoso `fix-schema.js`;
+- tratamento definitivo de permissões granulares;
+- estratégia de invalidação de sessão quando aplicável;
+- revisão dos quality gates do Next.js;
+- plano seguro de hospedagem e banco.
+
+Não expor publicamente através de Tailscale Funnel.
+
+### 65.21 Regra reforçada de proteção do banco
+
+O PostgreSQL atual contém dados reais.
+
+Não tratar como banco descartável.
+
+Por decisão operacional atual do usuário, NÃO executar procedimentos de
+backup/restore, clonagem ou duplicação de banco como rotina, pois tentativas
+anteriores geraram erros em cascata.
+
+Não executar:
+
+`npx prisma migrate dev`
+
+`npx prisma migrate reset`
+
+`npx prisma db push`
+
+`npx prisma db seed`
+
+`node fix-schema.js`
+
+Não executar `pg_dump` ou procedimentos de backup sem uma decisão futura
+explícita e um plano técnico específico aprovado.
+
+Se Prisma indicar reset ou perda de dados:
+
+PARAR.
+
+### 65.22 Documento Mestre e continuidade
+
+GitHub e este Documento Mestre continuam sendo as duas fontes oficiais
+principais de continuidade.
+
+Nova conversa NÃO deve solicitar novamente dezenas de arquivos já validados.
+
+A ordem de confiança é:
+
+1. GitHub `main`;
+2. `DOCUMENTO_MESTRE_CRM.md`;
+3. arquivos atuais do repositório;
+4. histórico das conversas.
+
+Quando um arquivo específico for realmente necessário, solicitar somente o
+arquivo exato que não puder ser obtido com segurança das fontes oficiais.
+
+### 65.23 Próxima fase recomendada
+
+Não migrar imediatamente para nuvem.
+
+Primeiro utilizar o CRM em campo e registrar problemas reais de operação.
+
+Próxima fase recomendada:
+
+`USO REAL CONTROLADO → ESTABILIZAÇÃO → SEGURANÇA DE PRODUÇÃO → PLANO CLOUD`
+
+Prioridades:
+
+1. usar Clientes, Interações, Agenda, Orçamentos e Vendas em visitas reais;
+2. observar erros ou dificuldades sem criar correções especulativas;
+3. preservar dados reais;
+4. corrigir somente problemas comprovados;
+5. continuar auditoria de segurança não destrutiva;
+6. revisar prontidão para exposição pública;
+7. somente depois planejar hospedagem definitiva;
+8. migrar banco real apenas com procedimento validado;
+9. testar ambiente cloud antes de DNS;
+10. apontar somente o subdomínio do CRM após aprovação.
+
+### 65.24 Regra de início da próxima conversa
+
+Ao abrir nova conversa dentro deste projeto:
+
+- ler este Documento Mestre;
+- priorizar este capítulo 65 quando houver conflito histórico;
+- verificar o HEAD atual no GitHub;
+- não refazer validações já concluídas;
+- não pedir novamente grande quantidade de arquivos;
+- não criar segundo projeto, clone paralelo ou branch de backup;
+- não alterar Prisma ou banco sem necessidade funcional comprovada;
+- preservar o arquivo local não versionado da Paula;
+- manter o Tailscale como contingência privada até decisão de nuvem.
+
+### 65.25 Mensagem recomendada para abrir a próxima conversa
+
+"Estamos continuando o projeto Sistema CRM Luiz Sodré Representações.
+
+Leia o DOCUMENTO_MESTRE_CRM.md integralmente, priorizando o capítulo 65, e
+consulte o GitHub `main` como fonte oficial do código.
+
+O checkpoint oficial atual deve ser confirmado no GitHub. No fechamento de
+11/09/2026 ele era `cf6a506`, com a correção do redirecionamento externo
+atrás do proxy. O checkpoint anterior `e4f72b5` consolidou a navegação
+responsiva no celular.
+
+Luiz e Paula já validaram acesso externo privado ao CRM em notebook e
+celular através do Tailscale. O Tailscale está sendo usado somente como
+contingência privada; Funnel está desabilitado. Não exponha o CRM
+publicamente por esse mecanismo.
+
+Enquanto não houver cloud definitivo, o computador `gerencia` precisa ficar
+ligado, sem suspensão, com PostgreSQL, Tailscale e
+`npm start -- -H 127.0.0.1 -p 3000` ativos. O console web do Tailscale não
+precisa permanecer aberto.
+
+Não existe ainda migração definitiva para cloud, Railway operacional,
+PostgreSQL em nuvem ou DNS `crm` configurado. Não invente estado de nuvem.
+
+Decidimos manter a contingência privada e usar o CRM em campo antes de
+migrar definitivamente, para ganhar segurança funcional e operacional.
+
+Não quero que você refaça o que já foi validado nem que peça novamente mais
+de uma grande quantidade de arquivos. Use GitHub e este Documento Mestre.
+
+Não execute `migrate dev`, `migrate reset`, `db push`, `db seed`,
+`node fix-schema.js`, `npm audit fix`, `npm audit fix --force` ou backup/
+restore do PostgreSQL sem necessidade específica, diagnóstico e minha
+aprovação.
+
+Prisma permanece em `5.22.0`. Next está em `15.5.24`, React e React DOM em
+`18.3.1`.
+
+O arquivo `public/foto sistema minha area paula.jpeg` deve continuar fora do
+Git.
+
+A próxima fase é uso real controlado, estabilização e auditoria de segurança
+de produção. Somente depois planejaremos a migração definitiva para nuvem e
+o subdomínio `crm`.
+
+O inventário autorizado atual inclui os celulares de Luiz e Paula, os notebooks
+de Luiz e Paula e o Tablet da empresa, todos preparados para Tailscale conforme
+a associação operacional registrada neste capítulo. Não versionar os e-mails
+completos dessas identidades no GitHub público.
+
+O caminho cloud planejado é GitHub `main` → Railway/serviço Next.js → PostgreSQL
+gerenciado → validação por URL temporária → `crm.luizsodre.com.br`. Esse ambiente
+ainda não existe e nenhuma migração de banco foi realizada.
+
+Quando precisar modificar arquivo manualmente, abra primeiro no Bloco de
+Notas e preserve a regra de substituição integral, salvo exceção técnica
+explicitamente justificada.
+
+Comece confirmando apenas o estado oficial do GitHub e o que precisamos
+fazer a seguir, sem repetir diagnósticos já concluídos."
+
+------------------------------------------------------------------------
