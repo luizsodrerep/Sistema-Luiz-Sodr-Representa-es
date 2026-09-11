@@ -77,6 +77,73 @@ function acaoPorMetodo(
   }
 }
 
+function obterPrimeiroCabecalho(
+  valor: string | null
+): string | null {
+  if (!valor) {
+    return null
+  }
+
+  const primeiro =
+    valor
+      .split(",")[0]
+      ?.trim()
+
+  return primeiro || null
+}
+
+function criarUrlPublica(
+  request: NextRequest,
+  pathname: string
+): URL {
+  const hostEncaminhado =
+    obterPrimeiroCabecalho(
+      request.headers.get(
+        "x-forwarded-host"
+      )
+    )
+
+  const protocoloEncaminhado =
+    obterPrimeiroCabecalho(
+      request.headers.get(
+        "x-forwarded-proto"
+      )
+    )?.toLowerCase()
+
+  if (hostEncaminhado) {
+    const protocolo =
+      protocoloEncaminhado ===
+        "http" ||
+      protocoloEncaminhado ===
+        "https"
+        ? protocoloEncaminhado
+        : request.nextUrl.protocol.replace(
+            ":",
+            ""
+          )
+
+    if (
+      protocolo === "http" ||
+      protocolo === "https"
+    ) {
+      try {
+        return new URL(
+          pathname,
+          `${protocolo}://${hostEncaminhado}`
+        )
+      } catch {
+        // Se o proxy enviar um host inválido,
+        // cai com segurança para a URL original.
+      }
+    }
+  }
+
+  return new URL(
+    pathname,
+    request.url
+  )
+}
+
 function limparSessao(
   response: NextResponse
 ) {
@@ -151,9 +218,9 @@ export async function middleware(
     }
 
     const urlLogin =
-      new URL(
-        "/login",
-        request.url
+      criarUrlPublica(
+        request,
+        "/login"
       )
 
     urlLogin.searchParams.set(
@@ -188,9 +255,9 @@ export async function middleware(
     }
 
     const urlLogin =
-      new URL(
-        "/login",
-        request.url
+      criarUrlPublica(
+        request,
+        "/login"
       )
 
     urlLogin.searchParams.set(
@@ -275,9 +342,9 @@ export async function middleware(
    * negado, preservando a rota tentada.
    */
   const urlAcessoNegado =
-    new URL(
-      "/acesso-negado",
-      request.url
+    criarUrlPublica(
+      request,
+      "/acesso-negado"
     )
 
   urlAcessoNegado.searchParams.set(
