@@ -5166,3 +5166,278 @@ Comece confirmando apenas o estado oficial do GitHub e o que precisamos
 fazer a seguir, sem repetir diagnósticos já concluídos."
 
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+## 66. CONTINUIDADE E INCIDENTE DE ALTERAÇÃO ESTRUTURAL — 16/09/2026
+
+Este capítulo registra o estado conhecido ao encerrar a conversa de
+16/09/2026. Para a continuidade da Prospecção e dos Orçamentos, suas
+orientações de segurança prevalecem sobre recomendações anteriores em
+conflito. Preservar integralmente os capítulos anteriores como histórico.
+
+### 66.1 Objetivo funcional ainda não concluído
+
+Concluir o fluxo de novos Clientes:
+
+PROSPECÇÃO → ORÇAMENTO → ENVIO REAL DA PROPOSTA → APROVAÇÃO DO
+COMPRADOR → CADASTRO FORMAL DO CLIENTE → VENDA → ENVIO À
+REPRESENTADA → FATURAMENTO → COMISSÕES.
+
+A Prospecção deve poder receber um orçamento antes de existir cadastro
+completo do Cliente, sem exigir um Cliente fictício ou duplicado.
+
+Uma mesma Prospecção pode originar dois ou mais Orçamentos, inclusive
+para Representadas diferentes. Cada Orçamento deve permanecer separado
+e poderá originar, no máximo, uma Venda.
+
+A aprovação precisa identificar o comprador, a data, o canal e a
+referência à confirmação real. Referência digitada não substitui a
+preservação da mensagem ou documento original.
+
+Não inventar propostas enviadas, aprovações, Interações ou datas
+históricas. Distinguir a data comercial efetiva da data de registro
+e da autoria no CRM.
+
+O caso real que motivou esta etapa envolve uma Prospecção antiga
+relacionada a dois pedidos da Paula, destinados a duas Representadas.
+A implementação ainda não está pronta para lançar esses negócios
+pelo novo fluxo.
+
+### 66.2 Arquivos de código trabalhados nesta conversa
+
+Foram fornecidas substituições de conteúdo para:
+
+- app/orcamentos/[id]/page.tsx
+- app/api/orcamentos/[id]/route.ts
+- app/orcamentos/[id]/editar/page.tsx
+
+As mudanças abordaram registro de envio, dados declarados de
+aprovação, geração de Venda e vínculo entre Orçamento existente e
+Interação de Prospecção.
+
+As verificações TypeScript informadas por Luiz terminaram sem erros
+antes da alteração estrutural do schema.
+
+IMPORTANTE: aprovação no TypeScript NÃO equivale a teste funcional,
+compatibilidade com o banco, validação das regras comerciais ou
+liberação para uso real.
+
+A criação de Orçamento para Prospecção sem Cliente, a aprovação
+sem conversão prematura em Venda e a conversão posterior ainda NÃO
+foram implementadas e validadas como fluxo completo.
+
+Não presumir que essas três alterações de código estejam prontas.
+Na próxima conversa, verificar suas diferenças locais e sua
+compatibilidade com o estado efetivo do sistema antes de prosseguir.
+
+Abrir arquivos no Bloco de Notas não prova, por si só, que outros
+arquivos tenham sido modificados. Não atribuir modificações a
+app/api/vendas/route.ts ou app/vendas/nova/page.tsx sem verificar.
+
+### 66.3 Erro de condução e alteração indevida do schema
+
+O assistente orientou a criação do script local:
+
+preparar-modelo-orcamento.ps1
+
+A primeira versão do script falhou e informou que nenhum arquivo
+havia sido alterado.
+
+A segunda versão foi executada com sucesso. Ela MODIFICOU o arquivo
+local prisma/schema.prisma. Portanto, é incorreto afirmar que
+nenhuma alteração no Prisma aconteceu em 16/09/2026.
+
+No modelo Orcamento, o script:
+
+- tornou clienteId opcional: String passou a String?;
+- tornou opcional a relação cliente: Cliente passou a Cliente?;
+- acrescentou aprovacaoCanal;
+- acrescentou aprovadoPor;
+- acrescentou aprovacaoReferencia;
+- acrescentou aprovacaoEm;
+- acrescentou dataVendaComercial;
+- acrescentou descontoAprovado;
+- acrescentou bonificacaoAprovada.
+
+O script criou um backup LOCAL do arquivo schema, na pasta
+temporária do Windows, com prefixo
+crm-schema-antes-prospeccao- e extensão .prisma.bak.
+
+Esse backup NÃO é um backup do banco PostgreSQL.
+
+O script foi sugerido e executado antes de uma revisão integral
+do Documento Mestre e sem um plano estrutural previamente aprovado.
+O assistente reconheceu esse erro. Não repetir a abordagem.
+
+### 66.4 O que foi e o que NÃO foi confirmado
+
+A saída apresentada por Luiz confirmou:
+
+- execução bem-sucedida da segunda versão do script;
+- alteração local de prisma/schema.prisma;
+- execução de prisma validate com resultado de schema válido;
+- existência de um git diff mostrando as alterações do schema.
+
+Nas saídas compartilhadas NÃO aparece execução, nesta etapa, de:
+
+- prisma generate;
+- prisma migrate;
+- prisma db push;
+- recriação ou restauração do PostgreSQL.
+
+A ausência desses comandos nas saídas NÃO é uma inspeção independente
+do banco. Não afirmar que o banco foi integralmente auditado.
+
+A restauração do schema pelo backup chegou a ser sugerida, mas
+NÃO há confirmação de que tenha sido executada. Portanto, até
+nova verificação, considerar que a alteração local do schema
+PODE continuar presente.
+
+Não restaurar, gerar, migrar ou sincronizar nada por suposição.
+
+### 66.5 Preservação obrigatória do trabalho anterior
+
+O git diff de prisma/schema.prisma mostrou que já existiam
+alterações locais anteriores relacionadas ao módulo Catalogos,
+incluindo o modelo Catalogo e relações com Escritorio, Usuario
+e Representada.
+
+Essas alterações NÃO podem ser confundidas com a mudança de
+Orçamentos feita em 16/09/2026.
+
+O diff também mostrou um comentário com acentuação corrompida
+em Interacao. A origem dessa corrupção ainda não foi determinada.
+
+PROIBIDO usar git restore, git checkout, reset, substituição
+integral pelo arquivo do GitHub ou restauração de backup sem
+primeiro identificar e preservar TODAS as alterações preexistentes.
+
+Preservar também os arquivos de código modificados nesta conversa,
+sem fazer commit funcional prematuro.
+
+### 66.6 Regra reforçada: schema.prisma e PostgreSQL
+
+O schema Prisma e o banco PostgreSQL são componentes críticos
+do sistema e contêm dependências de funcionalidades já construídas.
+
+Antes de QUALQUER proposta envolvendo esses componentes:
+
+1. Consultar integralmente este Documento Mestre, especialmente
+   os capítulos 64, 65 e 66.
+2. Consultar o código versionado no GitHub e distinguir seu
+   estado do estado LOCAL, que pode conter alterações não enviadas.
+3. Fazer diagnóstico SOMENTE DE LEITURA do trecho pertinente.
+4. Identificar a necessidade funcional concreta e demonstrar
+   por que a estrutura atual não a atende.
+5. Apresentar alternativas que preservem a estrutura atual.
+6. Explicar impacto em APIs, telas, vendas, faturamento,
+   comissões, auditoria, permissões e dados existentes.
+7. Exigir autorização explícita de Luiz para cada operação
+   estrutural, em janela segura e com procedimento aprovado.
+
+REGRA OPERACIONAL ATUAL DE LUIZ:
+
+NÃO executar prisma generate, migration, db push, reset, seed,
+regeneração do banco ou procedimentos equivalentes como passo
+automático, diagnóstico habitual ou tentativa de correção.
+
+Não sugerir esses comandos novamente sem antes consultar este
+documento, demonstrar necessidade inevitável e obter nova decisão
+explícita de Luiz. A decisão atual é NÃO executá-los.
+
+Não executar scripts como node fix-schema.js.
+
+Não criar outro projeto, clone, banco paralelo ou branch de backup
+como atalho. Não executar backup/restore do PostgreSQL sem um
+plano específico e aprovação expressa.
+
+Uma alteração em schema.prisma, isoladamente, NÃO atualiza o banco,
+NÃO atualiza necessariamente o Prisma Client e NÃO entrega a
+funcionalidade. Não apresentar prisma validate como comprovação
+de compatibilidade ou de segurança operacional.
+
+Se uma solução exigir obrigatoriamente uma mudança estrutural,
+interromper a implementação e explicar claramente a dependência.
+Não disfarçar um pré-orçamento em Interação como se já fosse
+um registro formal de Orcamento.
+
+### 66.7 Regra de atendimento e eficiência
+
+Não pedir repetidamente arquivos já encaminhados e analisados.
+
+Utilizar, nesta ordem e conforme disponibilidade:
+
+- Documento Mestre atualizado;
+- GitHub e arquivos já compartilhados;
+- diferenças locais específicas, somente quando indispensáveis.
+
+Quando for realmente necessário solicitar material adicional,
+pedir UM arquivo ou UMA saída precisa, explicando a dúvida
+concreta. Não reiniciar uma auditoria ampla já realizada.
+
+Para cada alteração manual futura, entregar EM UMA SÓ RESPOSTA:
+
+a) comando exato para abrir o arquivo no Bloco de Notas;
+b) conteúdo completo e final do arquivo, pronto para substituir;
+c) comando exato de validação.
+
+Não exigir confirmações intermediárias de "abriu", "colei" e
+"salvei". Uma exceção à substituição integral, como acrescentar
+este capítulo ao Documento Mestre extenso, deve ser justificada.
+
+Não inventar conteúdo de arquivo local cuja versão atual seja
+desconhecida. Não realizar alterações repetidas sem objetivo
+funcional e critério de conclusão.
+
+### 66.8 Estado operacional e suspensão das mudanças
+
+Por determinação de Luiz, todas as alterações funcionais desta
+conversa ficam SUSPENSAS neste ponto.
+
+Não executar build, reiniciar servidor, gerar Prisma Client,
+executar migrations, restaurar schema ou realizar lançamentos
+reais pelo novo fluxo enquanto seu estado não for esclarecido.
+
+Verificar primeiro qual instalação está atendendo Luiz e Paula.
+Não presumir que editar o Desktop seja inofensivo para o servidor
+em execução.
+
+O sistema anteriormente funcional e o trabalho de Catalogos
+devem ser preservados. Não realizar reversões indiscriminadas.
+
+Este fechamento autoriza somente um checkpoint DOCUMENTAL
+de DOCUMENTO_MESTRE_CRM.md. Não incluir nesse commit alterações
+de schema, APIs, telas, scripts temporários, bancos ou imagens.
+
+O arquivo local
+public/foto sistema minha area paula.jpeg
+continua protegido e NÃO deve entrar no Git.
+
+Após confirmação do checkpoint documental, registrar o hash
+efetivo do commit; não inventar um hash antecipadamente.
+
+### 66.9 Objetivo EXCLUSIVO da próxima conversa
+
+FINALIZAR A PROSPECÇÃO DE FUTUROS CLIENTES E SEU FLUXO
+ATÉ O ORÇAMENTO, APROVAÇÃO, CADASTRO FORMAL E VENDA.
+
+Começar pelo estado real deixado em 16/09/2026, sem repetir
+diagnósticos históricos nem solicitar novamente os mesmos arquivos.
+
+Primeiro identificar, SOMENTE POR LEITURA:
+
+- o estado local atual de schema.prisma e do trabalho Catalogos;
+- as diferenças dos três arquivos de Orçamentos alterados;
+- a instalação efetivamente utilizada por Luiz e Paula;
+- o que o modelo atual permite sem mudança estrutural.
+
+Depois propor UM plano fechado, com impacto e critérios de teste.
+Não iniciar novas alterações estruturais antes da decisão
+expressa de Luiz.
+
+A solução deve preservar o funcionamento já existente e permitir
+que Paula comece os lançamentos reais somente após validação
+integral do novo fluxo.
+
+------------------------------------------------------------------------
