@@ -5441,3 +5441,457 @@ que Paula comece os lançamentos reais somente após validação
 integral do novo fluxo.
 
 ------------------------------------------------------------------------
+---
+
+## 67. AUDITORIA GERAL DE INTEGRIDADE E ESTABILIZAÇÃO DO CRM — 18/09/2026
+
+Este capítulo registra uma mudança de prioridade determinada por Luiz após dificuldades graves na continuidade do desenvolvimento.
+
+A prioridade deixa de ser acrescentar funcionalidades e passa a ser:
+
+**PRESERVAR O SISTEMA → IDENTIFICAR O ESTADO REAL → AUDITAR TODOS OS MÓDULOS → CORRIGIR CAUSAS COMPROVADAS → VALIDAR INTEGRAÇÕES → RETOMAR A EVOLUÇÃO.**
+
+Este capítulo complementa os capítulos 65 e 66 e prevalece sobre suas recomendações de próxima tarefa enquanto a auditoria geral não estiver concluída.
+
+Os capítulos anteriores devem permanecer integralmente preservados como histórico.
+
+### 67.1 Motivo da auditoria
+
+Luiz relatou insatisfação com a quantidade de erros de código, interpretações equivocadas, solicitações repetidas e orientações contraditórias na conversa de desenvolvimento realizada após 16/09/2026.
+
+Foi disponibilizado um trecho dessa conversa, mas não seu histórico integral.
+
+O material recebido mostra dificuldades envolvendo:
+
+* cálculo e propagação de comissões;
+* Vendas com previsão de comissão ausente;
+* diferença entre comissão cadastrada e comissão gravada na Venda;
+* atualização de Vendas já existentes;
+* estados de envio e confirmação de pedidos;
+* alertas do Assistente Pessoal;
+* registros de Faturamento e referências de notas fiscais;
+* orientação ao usuário e entrega de arquivos completos.
+
+Esses pontos justificam uma auditoria.
+
+**NÃO está comprovado que todos os módulos possuam erros.**
+
+Também não está comprovado que os erros relatados tenham uma única causa ou tenham provocado corrupção de dados.
+
+A auditoria deve apurar essas questões com evidências, sem presumir conclusões.
+
+### 67.2 Estado do material disponível
+
+O trecho da conversa anterior é PARCIAL.
+
+Ele contém referências a capturas de tela e arquivos de código, mas não disponibiliza integralmente o conteúdo desses materiais.
+
+Também menciona dois arquivos `.txt` preparados ao final daquela conversa, destinados à atualização do Documento Mestre e à abertura da próxima conversa.
+
+O conteúdo desses dois arquivos não foi incluído no trecho recebido.
+
+Portanto:
+
+* não afirmar que esses documentos foram salvos;
+* não afirmar que foram enviados ao GitHub;
+* não presumir que seus conteúdos estejam corretos;
+* não atribuir alterações específicas a arquivos sem verificar;
+* não considerar concluída qualquer correção apenas porque foi anunciada.
+
+O primeiro trabalho da próxima conversa será estabelecer o estado real do projeto LOCAL, do GitHub e da aplicação em execução.
+
+### 67.3 Informações comerciais relatadas que exigem confirmação
+
+Na conversa anterior, o assistente informou o seguinte resultado de uma auditoria de comissões:
+
+* 37 Vendas analisadas;
+* 17 consideradas compatíveis com o cadastro consultado;
+* 14 sem comissão gravada, mas com cálculo proposto;
+* 6 classificadas como exceções.
+
+Esses números representam o resultado RELATADO naquela conversa.
+
+Não foram reconfirmados nesta atualização.
+
+Não assumir que continuam atuais nem que representam todas as Vendas existentes.
+
+O trecho também cita dificuldades nas Vendas VEN-000017 e VEN-000028.
+
+Esses registros devem ser usados como referências de investigação, sem alterar seu histórico ou seus valores por suposição.
+
+A existência de uma proposta de cálculo em uma auditoria NÃO demonstra que a comissão foi efetivamente gravada.
+
+A presença de comissão gravada NÃO demonstra, isoladamente, que o cálculo esteja correto.
+
+### 67.4 Regra de contenção imediata
+
+Até a conclusão do diagnóstico inicial:
+
+NÃO realizar alterações funcionais ou estruturais.
+
+NÃO executar:
+
+* prisma generate;
+* prisma migrate dev;
+* prisma migrate reset;
+* prisma db push;
+* prisma db seed;
+* node fix-schema.js;
+* scripts de correção massiva;
+* alterações diretas no PostgreSQL;
+* restauração automática de arquivos;
+* git reset;
+* git restore;
+* git checkout para desfazer trabalho;
+* npm audit fix;
+* npm audit fix --force.
+
+Não executar build nem reiniciar o servidor enquanto Luiz ou Paula estiverem utilizando o CRM.
+
+Não criar outro projeto, outra instalação oficial, outro banco ou branch de backup como solução improvisada.
+
+Não executar procedimentos de backup ou restauração do PostgreSQL sem plano técnico específico e autorização explícita de Luiz.
+
+Preservar todos os arquivos locais, inclusive os não versionados.
+
+Não realizar lançamentos de teste fictícios no banco real.
+
+Os lançamentos operacionais reais que já funcionam não devem ser apagados ou modificados para facilitar a auditoria. Se um fluxo apresentar risco de gerar registros incorretos, identificar o fluxo e orientar sua suspensão específica até validação.
+
+### 67.5 Fontes de verdade e distinção entre ambientes
+
+A auditoria deve distinguir quatro estados:
+
+1. Código atualmente versionado no GitHub.
+2. Código LOCAL, incluindo alterações não commitadas e arquivos não versionados.
+3. Aplicação efetivamente em execução para Luiz e Paula.
+4. Estrutura e dados reais do PostgreSQL.
+
+Esses quatro estados podem ser diferentes.
+
+Não presumir que uma alteração salva no Desktop esteja publicada na aplicação utilizada pelos usuários.
+
+Não presumir que o código no GitHub corresponda integralmente ao código local.
+
+Não presumir que um schema Prisma válido corresponda ao banco.
+
+Não presumir que uma tela exibindo um número esteja lendo a origem correta desse número.
+
+Identificar primeiro a instalação e o processo que atendem os usuários, sem interrompê-los.
+
+### 67.6 Primeira etapa: inventário exclusivamente de leitura
+
+Antes de alterar código, obter um retrato verificável do estado atual.
+
+Verificar, em etapas curtas:
+
+* branch e commit locais;
+* commit disponível no GitHub;
+* arquivos modificados;
+* arquivos ainda não versionados;
+* arquivos preparados para commit;
+* alterações em schema.prisma;
+* migrations existentes e seu estado documental;
+* alterações nas rotas de API;
+* alterações nas telas;
+* alterações em bibliotecas compartilhadas;
+* alterações em autenticação e permissões;
+* alterações em configurações de execução;
+* scripts temporários criados durante as conversas;
+* existência de testes automatizados e seus comandos;
+* ambiente responsável pela aplicação em uso.
+
+Começar por comandos Git de leitura.
+
+Não executar comandos que mudem a working tree.
+
+Não executar automaticamente comandos Prisma apenas porque aparecem em procedimentos históricos.
+
+A inspeção do banco, quando necessária, deverá ter plano próprio e consultas estritamente de leitura, aprovadas por Luiz.
+
+IMPORTANTE: não presumir que uma chamada HTTP GET seja inofensiva. Algumas APIs podem executar atualizações internas durante consultas, como sincronização de vencimentos.
+
+Antes de testar qualquer rota com dados reais, verificar se ela realiza gravações.
+
+Não expor em conversas nem no GitHub senhas, tokens, cookies, valores de `.env`, credenciais, dados bancários ou endereços privados da rede Tailscale.
+
+### 67.7 Segunda etapa: diagnóstico técnico sem correções
+
+Concluir um inventário dos arquivos e dos fluxos antes de propor substituições.
+
+Quando tecnicamente seguro, e sem provocar atualização da aplicação em produção, avaliar:
+
+* consistência dos tipos TypeScript;
+* referências a campos Prisma;
+* tratamento de valores nulos;
+* contratos entre frontend e APIs;
+* validação das entradas;
+* autenticação e autorização;
+* isolamento por escritório e usuário;
+* regras de cálculo;
+* datas e fusos horários;
+* tratamento de erros;
+* idempotência;
+* transações;
+* auditoria;
+* alterações de estado;
+* dependências entre módulos.
+
+O comando TypeScript sem emissão poderá ser considerado em etapa apropriada, após verificar seu efeito no ambiente. Ele não substitui testes funcionais.
+
+Não executar `npm run build` como diagnóstico inicial em ambiente utilizado por Luiz ou Paula.
+
+Não confundir ausência de erro TypeScript com funcionamento correto.
+
+### 67.8 Terceira etapa: auditoria módulo por módulo
+
+Realizar uma varredura abrangente, com registro individual do resultado de cada módulo:
+
+**Infraestrutura e acesso**
+
+* autenticação;
+* sessões;
+* middleware;
+* usuários;
+* perfis e permissões;
+* isolamento por escritório;
+* configuração de execução;
+* acesso local e Tailscale;
+* segurança das APIs.
+
+**Cadastros e relacionamento comercial**
+
+* Clientes;
+* Representadas;
+* contratos;
+* regras comerciais;
+* faixas de comissão;
+* contatos;
+* Catálogos;
+* Interações;
+* Prospecções;
+* Agenda e Tarefas.
+
+**Fluxo comercial**
+
+* criação de Orçamento;
+* edição de Orçamento;
+* envio efetivo da proposta;
+* aprovação;
+* vínculo com Cliente;
+* criação de Venda;
+* Venda direta;
+* Venda retroativa;
+* envio à Representada;
+* confirmação da Representada;
+* número oficial de pedido;
+* alterações pós-envio;
+* cancelamento;
+* prevenção de duplicidade.
+
+**Fluxo financeiro e gerencial**
+
+* Faturamentos;
+* referências de notas fiscais;
+* registros sem documento fiscal informado;
+* cortes e saldos;
+* Títulos;
+* vencimentos;
+* prorrogações;
+* baixas;
+* Comissões;
+* Financeiro;
+* contas e transferências;
+* Contabilidade;
+* Dashboard;
+* Relatórios;
+* Assistente Pessoal;
+* alertas e notificações.
+
+A ausência de informações sobre algum módulo não autoriza classificá-lo como correto ou incorreto.
+
+### 67.9 Quarta etapa: validação das integrações entre módulos
+
+Não basta conferir cada tela isoladamente.
+
+Verificar o percurso completo dos mesmos dados entre os módulos.
+
+Casos prioritários:
+
+**Prospecção → Orçamento → Venda**
+
+Conferir identificação da origem, Representada, Cliente, status, datas e vínculo único entre Orçamento e Venda.
+
+**Representada → regra comercial → Venda → Comissão**
+
+Conferir a regra realmente aplicável, seus percentuais ou faixas, vigência quando existente, descontos, bonificações, base de cálculo e resultado gravado.
+
+**Venda → Faturamento → Títulos → Comissão**
+
+Conferir se os valores e estados correspondem aos fatos comerciais e financeiros reais, sem antecipar reconhecimento de comissão.
+
+**Venda → Assistente Pessoal → Dashboard → Relatórios**
+
+Conferir se um mesmo registro produz indicadores e alertas coerentes em todas as telas, sem duplicidade ou informações vencidas indevidas.
+
+Toda divergência deve ser rastreada até sua origem. Não corrigir apenas a aparência de uma tela.
+
+### 67.10 Regra específica para comissões
+
+A regra comercial cadastrada na Representada é a referência do cálculo, respeitando as regras específicas efetivamente configuradas e aplicáveis à negociação.
+
+A auditoria deve identificar:
+
+* qual Representada pertence à Venda;
+* qual regra estava aplicável;
+* se a comissão é fixa ou variada;
+* qual faixa de desconto cadastrada corresponde à operação;
+* qual base comercial deve ser usada;
+* se desconto ou bonificação já foram considerados;
+* qual percentual e valor deveriam resultar;
+* qual percentual e valor foram gravados;
+* quais valores aparecem em Vendas, Comissões, Dashboard e Relatórios.
+
+Não inventar percentuais.
+
+Não substituir uma faixa exata pela mais próxima.
+
+Não usar comissão fixa como alternativa automática quando existe regra variável aplicável.
+
+Não aplicar indiscriminadamente a regra atual a Vendas históricas se não houver comprovação de que ela também era válida na data comercial correspondente.
+
+Não sobrescrever comissões já registradas ou movimentos financeiros sem análise individual e autorização.
+
+**Primeiro demonstrar a divergência; depois propor a correção.**
+
+A correção deverá alcançar tanto novas Vendas quanto registros históricos afetados, mas qualquer atualização retroativa de dados reais exige conferência e autorização específicas.
+
+### 67.11 Regras de envio, confirmação e Faturamento
+
+Separar rigorosamente:
+
+* pedido enviado à Representada;
+* pedido recebido;
+* pedido confirmado;
+* número oficial registrado;
+* pedido faturado;
+* documento fiscal informado;
+* recebimento financeiro;
+* comissão reconhecida;
+* comissão recebida.
+
+Uma etapa não comprova automaticamente as demais.
+
+Investigar os casos em que o Assistente Pessoal apresenta uma Venda como pendente embora existam registros de envio, confirmação ou número oficial.
+
+Investigar separadamente os casos em que uma Venda não pode ser editada ou apresenta bloqueio de envio duplicado.
+
+Não criar um segundo envio fictício para corrigir um status.
+
+Não alterar datas históricas para contornar validações.
+
+Não inventar número de nota fiscal para completar um cadastro.
+
+Quando o documento fiscal estiver ausente, identificar a pendência documental sem presumir automaticamente a situação tributária da operação.
+
+### 67.12 Critério de classificação dos resultados
+
+Cada módulo ou fluxo auditado deve receber um dos seguintes estados de diagnóstico:
+
+* **Não examinado:** ainda não foi analisado.
+* **Sem divergência identificada no escopo testado:** os testes realizados não encontraram problema; não equivale a garantia absoluta.
+* **Divergência comprovada:** existe evidência reproduzível do problema.
+* **Inconclusivo:** faltam informações para afirmar se existe erro.
+* **Correção proposta:** causa e solução foram apresentadas, mas não executadas.
+* **Correção aplicada:** alteração efetivamente realizada.
+* **Validado após correção:** testes técnicos, funcionais e de integração pertinentes foram concluídos.
+
+Registrar o escopo e as limitações de cada validação.
+
+Não usar expressões como “100% validado” sem cobertura demonstrável.
+
+### 67.13 Registro obrigatório de cada problema
+
+Para cada divergência, documentar:
+
+1. módulo e fluxo afetados;
+2. arquivo ou componente de origem;
+3. comportamento esperado;
+4. comportamento observado;
+5. evidência disponível;
+6. causa identificada ou hipótese ainda não comprovada;
+7. impacto em outros módulos;
+8. possibilidade de alteração indevida de dados reais;
+9. proposta de correção;
+10. validações necessárias;
+11. autorização de Luiz;
+12. resultado após a correção.
+
+Não misturar hipótese, diagnóstico e correção concluída.
+
+Se uma alteração anterior tiver sido inadequada, registrar isso explicitamente, sem atribuir culpa ao usuário que executou uma instrução técnica fornecida pelo assistente.
+
+### 67.14 Procedimento obrigatório de correção
+
+A auditoria deve ocorrer ANTES das correções.
+
+Não substituir vários arquivos simultaneamente para tentar resolver um erro não diagnosticado.
+
+Quando houver causa comprovada e autorização:
+
+* trabalhar um arquivo por vez;
+* informar o comando exato para abri-lo no Bloco de Notas;
+* fornecer o conteúdo completo e final do arquivo;
+* apresentar comando de validação adequado;
+* registrar o resultado efetivo;
+* verificar os módulos consumidores;
+* não prometer uma entrega de código que não será apresentada na mesma resposta.
+
+Se a versão local do arquivo for diferente da versão do GitHub, usar como referência a versão local atual, obtida de maneira controlada.
+
+Não pedir novamente arquivos já disponíveis, salvo diferença local indispensável.
+
+Não criar um módulo novo para resolver um problema cuja origem está em uma regra ou rota existente, sem demonstrar a necessidade.
+
+### 67.15 Critérios para retomar a evolução funcional
+
+A auditoria deverá produzir um relatório consolidado contendo:
+
+* inventário dos módulos;
+* divergências comprovadas;
+* pendências inconclusivas;
+* riscos de integridade de dados;
+* diferenças relevantes entre GitHub, código local e aplicação em execução;
+* situação do schema e do banco;
+* fluxos testados;
+* correções propostas;
+* validações concluídas;
+* próximos passos autorizados.
+
+Somente depois desse relatório Luiz decidirá quais correções executar e em qual ordem.
+
+Não liberar uma nova rotina para lançamentos reais apenas porque a tela abriu ou o TypeScript passou.
+
+Não realizar commit funcional antes da revisão do lote correspondente.
+
+Não enviar alterações locais indiscriminadamente ao GitHub.
+
+O Documento Mestre poderá receber atualizações documentais controladas, sem misturar arquivos funcionais no mesmo commit.
+
+### 67.16 Instrução prioritária para a próxima conversa
+
+A próxima conversa deverá começar pela **AUDITORIA GERAL DO SISTEMA**, não pela criação de novas funcionalidades ou pela correção imediata de comissões.
+
+Primeiro consultar o Documento Mestre completo e o GitHub.
+
+Depois obter somente as informações locais mínimas que não estejam disponíveis nessas fontes.
+
+A primeira resposta deverá apresentar o plano de auditoria e solicitar, no máximo, uma saída específica e exclusivamente de leitura, necessária para identificar o estado atual do projeto.
+
+Não solicitar novamente dezenas de arquivos.
+
+Não propor restauração, migration, geração do Prisma Client, build, reinicialização ou gravação no banco.
+
+O objetivo é recuperar a confiança no CRM por meio de resultados verificáveis, e não por afirmações genéricas de que o sistema está correto.
+
+---
