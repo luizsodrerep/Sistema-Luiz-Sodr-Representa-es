@@ -13,6 +13,7 @@ type ModuloAssistente =
   | "interacoes"
   | "orcamentos"
   | "vendas"
+  | "agenda"
   | "titulos"
   | "faturamentos"
   | "comissoes"
@@ -178,6 +179,36 @@ function prioridadePorSituacao(
   return "informativa"
 }
 
+function prioridadeAgenda(
+  prioridade: string,
+  situacao: SituacaoTemporal
+): PrioridadeAssistente {
+  if (
+    situacao ===
+    "atrasado"
+  ) {
+    return "critica"
+  }
+
+  if (
+    prioridade ===
+    "Urgente"
+  ) {
+    return "critica"
+  }
+
+  if (
+    prioridade ===
+    "Alta"
+  ) {
+    return "alta"
+  }
+
+  return prioridadePorSituacao(
+    situacao
+  )
+}
+
 function codigoInteracao(
   numero: number
 ) {
@@ -328,6 +359,18 @@ function ehAlertaCritico(
   }
 
   /*
+   * Item da Agenda vencido.
+   */
+  if (
+    pendencia.modulo ===
+      "agenda" &&
+    pendencia.situacaoTemporal ===
+      "atrasado"
+  ) {
+    return true
+  }
+
+  /*
    * Orçamento vencido.
    */
   if (
@@ -453,6 +496,7 @@ export async function GET() {
       interacoes,
       orcamentos,
       vendas,
+      tarefas,
     ] =
       await Promise.all([
         prisma.interacao.findMany({
@@ -618,6 +662,64 @@ export async function GET() {
 
             numeroPedidoRepresentada:
               true,
+
+            cliente: {
+              select: {
+                razaoSocial:
+                  true,
+
+                nomeFantasia:
+                  true,
+              },
+            },
+
+            representada: {
+              select: {
+                nome: true,
+              },
+            },
+
+            responsavel: {
+              select: {
+                nome: true,
+              },
+            },
+
+            criadoPor: {
+              select: {
+                nome: true,
+              },
+            },
+          },
+        }),
+
+        prisma.tarefa.findMany({
+          where: {
+            escritorioId:
+              sessao.escritorioId,
+
+            status:
+              "Pendente",
+
+            ...filtroResponsabilidade,
+          },
+
+          select: {
+            id: true,
+
+            titulo: true,
+
+            descricao: true,
+
+            tipo: true,
+
+            prioridade: true,
+
+            status: true,
+
+            inicioEm: true,
+
+            vencimentoEm: true,
 
             cliente: {
               select: {
@@ -1112,6 +1214,125 @@ export async function GET() {
 
     /*
      * ==================================================
+     * AGENDA / TAREFAS / COMPROMISSOS
+     * ==================================================
+     *
+     * Diretor:
+     * acompanha os itens pendentes do escritório.
+     *
+     * Administrativo e Preposto:
+     * acompanham itens atribuídos a si ou,
+     * quando não há responsável, criados por si.
+     */
+    for (
+      const tarefa of
+      tarefas
+    ) {
+      const dataReferencia =
+        tarefa.tipo ===
+        "Compromisso"
+          ? (
+              tarefa.inicioEm ||
+              tarefa.vencimentoEm
+            )
+          : (
+              tarefa.vencimentoEm ||
+              tarefa.inicioEm
+            )
+
+      const situacao =
+        classificarData(
+          dataReferencia
+        )
+
+      const cliente =
+        nomeCliente(
+          tarefa.cliente
+        )
+
+      const representada =
+        tarefa.representada
+          ?.nome ||
+        null
+
+      const relacionados =
+        [
+          cliente,
+          representada,
+        ].filter(
+          Boolean
+        )
+
+      const responsavel =
+        nomeResponsavel(
+          tarefa.responsavel,
+          tarefa.criadoPor
+        )
+
+      const descricao =
+        tarefa.descricao?.trim() ||
+        (
+          tarefa.tipo ===
+          "Compromisso"
+            ? "Compromisso pendente na Agenda."
+            : "Tarefa pendente na Agenda."
+        )
+
+      pendencias.push({
+        id:
+          `agenda-${tarefa.id}`,
+
+        modulo:
+          "agenda",
+
+        entidadeId:
+          tarefa.id,
+
+        codigo:
+          null,
+
+        titulo:
+          tarefa.titulo,
+
+        descricao,
+
+        relacionadoA:
+          relacionados.length >
+          0
+            ? relacionados.join(
+                " • "
+              )
+            : null,
+
+        responsavel,
+
+        dataReferencia:
+          dataReferencia
+            ? dataReferencia.toISOString()
+            : null,
+
+        situacaoTemporal:
+          situacao,
+
+        prioridade:
+          prioridadeAgenda(
+            tarefa.prioridade,
+            situacao
+          ),
+
+        status:
+          tarefa.status,
+
+        href:
+          `/agenda#editar-tarefa-${encodeURIComponent(tarefa.id)}`,
+
+        origem:
+          tarefa.tipo,
+      })
+    }
+
+    /*
+     * ==================================================
      * TÍTULOS
      * ==================================================
      *
@@ -1533,6 +1754,19 @@ export async function GET() {
             ) =>
               item.modulo ===
               "vendas"
+          ).length,
+      },
+
+      agenda: {
+        ativo: true,
+
+        quantidade:
+          pendencias.filter(
+            (
+              item
+            ) =>
+              item.modulo ===
+              "agenda"
           ).length,
       },
 

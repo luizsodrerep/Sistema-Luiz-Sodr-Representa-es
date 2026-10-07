@@ -24,6 +24,7 @@ type ModuloAssistente =
   | "interacoes"
   | "orcamentos"
   | "vendas"
+  | "agenda"
   | "titulos"
   | "faturamentos"
   | "comissoes"
@@ -546,11 +547,16 @@ export function AlertaCriticoGlobal({
 
           <button
             type="button"
-            onClick={() =>
-              router.push(
-                alerta.href
-              )
-            }
+            onClick={() => {
+              silenciarAlerta(alerta)
+
+              if (alerta.modulo === "agenda") {
+                window.location.assign(alerta.href)
+                return
+              }
+
+              router.push(alerta.href)
+            }}
             className="
               inline-flex
               shrink-0

@@ -60,6 +60,7 @@ type ModuloAssistente =
   | "interacoes"
   | "orcamentos"
   | "vendas"
+  | "agenda"
   | "titulos"
   | "faturamentos"
   | "comissoes"
@@ -121,6 +122,7 @@ interface ModulosAssistente {
   interacoes: ModuloResumo
   orcamentos: ModuloResumo
   vendas: ModuloResumo
+  agenda: ModuloResumo
   faturamentos: ModuloResumo
   titulos: ModuloResumo
   comissoes: ModuloResumo
@@ -249,6 +251,9 @@ const nomeModulo = (
     case "vendas":
       return "Venda"
 
+    case "agenda":
+      return "Agenda"
+
     case "titulos":
       return "Título"
 
@@ -280,6 +285,9 @@ const classeModulo = (
 
     case "vendas":
       return "bg-green-100 text-green-800"
+
+    case "agenda":
+      return "bg-indigo-100 text-indigo-800"
 
     case "titulos":
       return "bg-amber-100 text-amber-800"
@@ -375,6 +383,14 @@ export default function MeuAssistentePessoalPage() {
     setErro,
   ] =
     useState("")
+
+  const [
+    grupoSelecionado,
+    setGrupoSelecionado,
+  ] =
+    useState<
+      GrupoAssistente | "todos" | null
+    >(null)
 
   const carregarAssistente =
     useCallback(
@@ -560,6 +576,36 @@ export default function MeuAssistentePessoalPage() {
       assistente,
     ])
 
+  const selecionarGrupoResumo = (
+    grupo:
+      GrupoAssistente | "todos"
+  ) => {
+    setGrupoSelecionado(
+      grupo
+    )
+
+    const alvoId =
+      grupo === "todos"
+        ? "assistente-pendencias"
+        : `assistente-grupo-${grupo}`
+
+    window.setTimeout(
+      () => {
+        document
+          .getElementById(
+            alvoId
+          )
+          ?.scrollIntoView({
+            behavior:
+              "smooth",
+            block:
+              "start",
+          })
+      },
+      0
+    )
+  }
+
   const renderizarPendencia = (
     pendencia: PendenciaAssistente
   ) => {
@@ -695,6 +741,7 @@ export default function MeuAssistentePessoalPage() {
   }
 
   const renderizarGrupo = (
+    grupo: GrupoAssistente,
     titulo: string,
     descricao: string,
     itens: PendenciaAssistente[],
@@ -708,7 +755,15 @@ export default function MeuAssistentePessoalPage() {
     }
 
     return (
-      <Card>
+      <Card
+        id={`assistente-grupo-${grupo}`}
+        className={
+          grupoSelecionado ===
+          grupo
+            ? "scroll-mt-6 ring-2 ring-primary/20"
+            : "scroll-mt-6"
+        }
+      >
 
         <CardHeader className="pb-3">
 
@@ -860,7 +915,7 @@ export default function MeuAssistentePessoalPage() {
                   Seu foco operacional em um único lugar.
                 </span>{" "}
 
-                Interações, prospecções, orçamentos, vendas e compromissos financeiros organizados conforme a prioridade.
+                Interações, prospecções, orçamentos, vendas, Agenda e compromissos financeiros organizados conforme a prioridade.
 
               </div>
 
@@ -947,159 +1002,282 @@ export default function MeuAssistentePessoalPage() {
 
             <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
 
-              <Card>
-
-                <CardContent className="p-4">
-
-                  <div className="flex items-center justify-between">
-
-                    <div>
-
-                      <div className="text-sm text-muted-foreground">
-                        Total pendente
-                      </div>
-
-                      <div className="text-2xl font-bold">
-                        {
-                          contadores?.total ??
-                          0
-                        }
-                      </div>
-
-                    </div>
-
-                    <ListTodo className="h-6 w-6 text-muted-foreground" />
-
-                  </div>
-
-                </CardContent>
-
-              </Card>
-
-              <Card
-                className={
-                  (
-                    contadores?.atrasados ??
-                    0
-                  ) > 0
-                    ? "border-red-300"
-                    : ""
+              <button
+                type="button"
+                onClick={() =>
+                  selecionarGrupoResumo(
+                    "todos"
+                  )
+                }
+                className="text-left"
+                aria-pressed={
+                  grupoSelecionado ===
+                  "todos"
                 }
               >
+                <Card
+                  className={`h-full transition hover:border-primary/40 hover:bg-muted/30 ${
+                    grupoSelecionado ===
+                    "todos"
+                      ? "ring-2 ring-primary/20"
+                      : ""
+                  }`}
+                >
 
-                <CardContent className="p-4">
+                  <CardContent className="p-4">
 
-                  <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between">
 
-                    <div>
+                      <div>
 
-                      <div className="text-sm text-muted-foreground">
-                        Atrasados
+                        <div className="text-sm text-muted-foreground">
+                          Total pendente
+                        </div>
+
+                        <div className="text-2xl font-bold">
+                          {
+                            contadores?.total ??
+                            0
+                          }
+                        </div>
+
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Clique para ver todas as pendências
+                        </div>
+
                       </div>
 
-                      <div className="text-2xl font-bold text-red-700">
-                        {
-                          contadores?.atrasados ??
-                          0
-                        }
-                      </div>
+                      <ListTodo className="h-6 w-6 text-muted-foreground" />
 
                     </div>
 
-                    <AlertTriangle className="h-6 w-6 text-red-600" />
+                  </CardContent>
 
-                  </div>
+                </Card>
+              </button>
 
-                </CardContent>
+              <button
+                type="button"
+                onClick={() =>
+                  selecionarGrupoResumo(
+                    "atrasados"
+                  )
+                }
+                className="text-left"
+                aria-pressed={
+                  grupoSelecionado ===
+                  "atrasados"
+                }
+              >
+                <Card
+                  className={`h-full transition hover:border-red-400 hover:bg-red-50/40 ${
+                    (
+                      contadores?.atrasados ??
+                      0
+                    ) > 0
+                      ? "border-red-300"
+                      : ""
+                  } ${
+                    grupoSelecionado ===
+                    "atrasados"
+                      ? "ring-2 ring-red-300"
+                      : ""
+                  }`}
+                >
 
-              </Card>
+                  <CardContent className="p-4">
 
-              <Card>
+                    <div className="flex items-center justify-between">
 
-                <CardContent className="p-4">
+                      <div>
 
-                  <div className="flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">
+                          Atrasados
+                        </div>
 
-                    <div>
+                        <div className="text-2xl font-bold text-red-700">
+                          {
+                            contadores?.atrasados ??
+                            0
+                          }
+                        </div>
 
-                      <div className="text-sm text-muted-foreground">
-                        Hoje
+                        <div className="mt-1 text-xs text-red-700/80">
+                          Clique para abrir os atrasados
+                        </div>
+
                       </div>
 
-                      <div className="text-2xl font-bold">
-                        {
-                          contadores?.hoje ??
-                          0
-                        }
-                      </div>
+                      <AlertTriangle className="h-6 w-6 text-red-600" />
 
                     </div>
 
-                    <Clock3 className="h-6 w-6 text-muted-foreground" />
+                  </CardContent>
 
-                  </div>
+                </Card>
+              </button>
 
-                </CardContent>
+              <button
+                type="button"
+                onClick={() =>
+                  selecionarGrupoResumo(
+                    "hoje"
+                  )
+                }
+                className="text-left"
+                aria-pressed={
+                  grupoSelecionado ===
+                  "hoje"
+                }
+              >
+                <Card
+                  className={`h-full transition hover:border-primary/40 hover:bg-muted/30 ${
+                    grupoSelecionado ===
+                    "hoje"
+                      ? "ring-2 ring-primary/20"
+                      : ""
+                  }`}
+                >
 
-              </Card>
+                  <CardContent className="p-4">
 
-              <Card>
+                    <div className="flex items-center justify-between">
 
-                <CardContent className="p-4">
+                      <div>
 
-                  <div className="flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">
+                          Hoje
+                        </div>
 
-                    <div>
+                        <div className="text-2xl font-bold">
+                          {
+                            contadores?.hoje ??
+                            0
+                          }
+                        </div>
 
-                      <div className="text-sm text-muted-foreground">
-                        Próximos 7 dias
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Clique para abrir os itens de hoje
+                        </div>
+
                       </div>
 
-                      <div className="text-2xl font-bold">
-                        {
-                          contadores?.proximos ??
-                          0
-                        }
-                      </div>
+                      <Clock3 className="h-6 w-6 text-muted-foreground" />
 
                     </div>
 
-                    <CalendarDays className="h-6 w-6 text-muted-foreground" />
+                  </CardContent>
 
-                  </div>
+                </Card>
+              </button>
 
-                </CardContent>
+              <button
+                type="button"
+                onClick={() =>
+                  selecionarGrupoResumo(
+                    "proximos"
+                  )
+                }
+                className="text-left"
+                aria-pressed={
+                  grupoSelecionado ===
+                  "proximos"
+                }
+              >
+                <Card
+                  className={`h-full transition hover:border-primary/40 hover:bg-muted/30 ${
+                    grupoSelecionado ===
+                    "proximos"
+                      ? "ring-2 ring-primary/20"
+                      : ""
+                  }`}
+                >
 
-              </Card>
+                  <CardContent className="p-4">
 
-              <Card>
+                    <div className="flex items-center justify-between">
 
-                <CardContent className="p-4">
+                      <div>
 
-                  <div className="flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">
+                          Próximos 7 dias
+                        </div>
 
-                    <div>
+                        <div className="text-2xl font-bold">
+                          {
+                            contadores?.proximos ??
+                            0
+                          }
+                        </div>
 
-                      <div className="text-sm text-muted-foreground">
-                        Mais adiante
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Clique para abrir os próximos
+                        </div>
+
                       </div>
 
-                      <div className="text-2xl font-bold">
-                        {
-                          contadores?.futuros ??
-                          0
-                        }
-                      </div>
+                      <CalendarDays className="h-6 w-6 text-muted-foreground" />
 
                     </div>
 
-                    <CalendarClock className="h-6 w-6 text-muted-foreground" />
+                  </CardContent>
 
-                  </div>
+                </Card>
+              </button>
 
-                </CardContent>
+              <button
+                type="button"
+                onClick={() =>
+                  selecionarGrupoResumo(
+                    "futuros"
+                  )
+                }
+                className="text-left"
+                aria-pressed={
+                  grupoSelecionado ===
+                  "futuros"
+                }
+              >
+                <Card
+                  className={`h-full transition hover:border-primary/40 hover:bg-muted/30 ${
+                    grupoSelecionado ===
+                    "futuros"
+                      ? "ring-2 ring-primary/20"
+                      : ""
+                  }`}
+                >
 
-              </Card>
+                  <CardContent className="p-4">
+
+                    <div className="flex items-center justify-between">
+
+                      <div>
+
+                        <div className="text-sm text-muted-foreground">
+                          Mais adiante
+                        </div>
+
+                        <div className="text-2xl font-bold">
+                          {
+                            contadores?.futuros ??
+                            0
+                          }
+                        </div>
+
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Clique para abrir os futuros
+                        </div>
+
+                      </div>
+
+                      <CalendarClock className="h-6 w-6 text-muted-foreground" />
+
+                    </div>
+
+                  </CardContent>
+
+                </Card>
+              </button>
 
             </div>
 
@@ -1120,7 +1298,7 @@ export default function MeuAssistentePessoalPage() {
 
                 <CardContent>
 
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
 
                     <div className="rounded-lg border p-3">
 
@@ -1176,6 +1354,38 @@ export default function MeuAssistentePessoalPage() {
 
                     </div>
 
+                    <button
+                      type="button"
+                      onClick={() =>
+                        router.push(
+                          "/agenda"
+                        )
+                      }
+                      className="rounded-lg border p-3 text-left transition hover:border-primary/40 hover:bg-muted/40"
+                    >
+
+                      <div className="flex items-center justify-between gap-2">
+
+                        <div className="text-sm font-semibold">
+                          Agenda
+                        </div>
+
+                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+
+                      </div>
+
+                      <div className="mt-1 text-2xl font-bold">
+                        {
+                          modulos.agenda.quantidade
+                        }
+                      </div>
+
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Ativo · abrir Agenda
+                      </div>
+
+                    </button>
+
                     <div className="rounded-lg border p-3">
 
                       <div className="text-sm font-semibold">
@@ -1230,9 +1440,13 @@ export default function MeuAssistentePessoalPage() {
 
             ) : (
 
-              <div className="space-y-5">
+              <div
+                id="assistente-pendencias"
+                className="scroll-mt-6 space-y-5"
+              >
 
                 {renderizarGrupo(
+                  "atrasados",
                   "Atrasados",
                   "Demandas com prazo ultrapassado e que ainda exigem ação.",
                   grupos.atrasados,
@@ -1240,6 +1454,7 @@ export default function MeuAssistentePessoalPage() {
                 )}
 
                 {renderizarGrupo(
+                  "hoje",
                   "Hoje",
                   "O que precisa de atenção hoje.",
                   grupos.hoje,
@@ -1247,6 +1462,7 @@ export default function MeuAssistentePessoalPage() {
                 )}
 
                 {renderizarGrupo(
+                  "proximos",
                   "Próximos 7 dias",
                   "Demandas e compromissos previstos para os próximos dias.",
                   grupos.proximos,
@@ -1254,6 +1470,7 @@ export default function MeuAssistentePessoalPage() {
                 )}
 
                 {renderizarGrupo(
+                  "semData",
                   "Sem data definida",
                   "Demandas abertas que ainda não possuem prazo objetivo registrado.",
                   grupos.semData,
@@ -1261,6 +1478,7 @@ export default function MeuAssistentePessoalPage() {
                 )}
 
                 {renderizarGrupo(
+                  "futuros",
                   "Mais adiante",
                   "Compromissos futuros já identificados pelo CRM.",
                   grupos.futuros,
@@ -1286,11 +1504,11 @@ export default function MeuAssistentePessoalPage() {
                     </div>
 
                     <div className="mt-1 text-sm text-muted-foreground">
-                      Interações e Prospecções, Orçamentos, Vendas e Títulos já podem alimentar as prioridades operacionais.
+                      Interações e Prospecções, Orçamentos, Vendas, Agenda e Títulos já podem alimentar as prioridades operacionais.
                     </div>
 
                     <div className="mt-1 text-sm text-muted-foreground">
-                      Faturamentos entram pelo acompanhamento das Vendas e dos Títulos. Comissões permanecerão preparadas para ativação após a consolidação das regras financeiras.
+                      Tarefas e Compromissos pendentes da Agenda entram conforme o escopo do usuário logado. Faturamentos entram pelo acompanhamento das Vendas e dos Títulos. Comissões permanecerão preparadas para ativação após a consolidação das regras financeiras.
                     </div>
 
                     <div className="mt-1 text-sm text-muted-foreground">

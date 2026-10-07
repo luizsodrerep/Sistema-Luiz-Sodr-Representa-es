@@ -1,14 +1,18 @@
 ﻿import {
-  prisma,
-} from "@/lib/prisma"
+  Prisma,
+} from "@prisma/client"
+
+import {
+  NextResponse,
+} from "next/server"
 
 import {
   exigirSessao,
 } from "@/lib/auth/server"
 
 import {
-  NextResponse,
-} from "next/server"
+  prisma,
+} from "@/lib/prisma"
 
 function textoObrigatorio(
   valor: unknown
@@ -34,6 +38,69 @@ function somenteNumeros(
     /\D/g,
     ""
   )
+}
+
+function inteiroPositivo(
+  valor: string | null,
+  padrao: number,
+  maximo: number
+) {
+  if (!valor) {
+    return padrao
+  }
+
+  const numero =
+    Number.parseInt(
+      valor,
+      10
+    )
+
+  if (
+    !Number.isInteger(
+      numero
+    ) ||
+    numero <= 0
+  ) {
+    return padrao
+  }
+
+  return Math.min(
+    numero,
+    maximo
+  )
+}
+
+function formatarCnpjCompleto(
+  valor: string
+) {
+  const digitos =
+    somenteNumeros(
+      valor
+    )
+
+  if (
+    digitos.length !==
+    14
+  ) {
+    return null
+  }
+
+  return `${digitos.slice(
+    0,
+    2
+  )}.${digitos.slice(
+    2,
+    5
+  )}.${digitos.slice(
+    5,
+    8
+  )}/${digitos.slice(
+    8,
+    12
+  )}-${digitos.slice(
+    12,
+    14
+  )}`
 }
 
 function emailValido(
@@ -197,11 +264,160 @@ function validarFaixasComissao(
   }
 }
 
-export async function GET() {
+export async function GET(
+  request: Request
+) {
   try {
     const sessao =
       await exigirSessao()
 
+    const {
+      searchParams,
+    } =
+      new URL(
+        request.url
+      )
+
+    /*
+     * MODO SELETOR
+     *
+     * Usado pelos campos de busca
+     * escaláveis do CRM.
+     *
+     * Sem seletor=1, o comportamento
+     * legado permanece exatamente igual:
+     * retorna todas as Representadas
+     * do escritório.
+     */
+    const modoSeletor =
+      searchParams.get(
+        "seletor"
+      ) === "1"
+
+    const busca =
+      searchParams
+        .get("busca")
+        ?.trim() || ""
+
+    const limite =
+      inteiroPositivo(
+        searchParams.get(
+          "limit"
+        ),
+        10,
+        20
+      )
+
+    const somenteAtivas =
+      searchParams.get(
+        "somenteAtivas"
+      ) === "1"
+
+    if (modoSeletor) {
+      if (
+        busca.length < 2
+      ) {
+        return NextResponse.json(
+          []
+        )
+      }
+
+      const cnpjFormatado =
+        formatarCnpjCompleto(
+          busca
+        )
+
+      const filtrosBusca:
+        Prisma.RepresentadaWhereInput[] =
+        [
+          {
+            nome: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+          {
+            codigo: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+          {
+            cnpj: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+        ]
+
+      if (
+        cnpjFormatado &&
+        cnpjFormatado !==
+          busca
+      ) {
+        filtrosBusca.push({
+          cnpj: {
+            contains:
+              cnpjFormatado,
+            mode:
+              "insensitive",
+          },
+        })
+      }
+
+      const representadas =
+        await prisma.representada.findMany({
+          where: {
+            escritorioId:
+              sessao.escritorioId,
+
+            ...(somenteAtivas
+              ? {
+                  status:
+                    "Ativa",
+                }
+              : {}),
+
+            OR:
+              filtrosBusca,
+          },
+
+          orderBy: {
+            nome:
+              "asc",
+          },
+
+          take:
+            limite,
+
+          select: {
+            id: true,
+            codigo: true,
+            nome: true,
+            cnpj: true,
+            status: true,
+            comissao: true,
+          },
+        })
+
+      return NextResponse.json(
+        representadas
+      )
+    }
+
+    /*
+     * COMPORTAMENTO LEGADO
+     *
+     * Mantido para não quebrar telas
+     * que ainda dependem da listagem
+     * completa de Representadas.
+     */
     const representadas =
       await prisma.representada.findMany(
         {
@@ -815,21 +1031,19 @@ export async function POST(
       )
     }
 
-    const statusPermitidos =
-      [
-        "Ativa",
-        "Inativa",
-        "Suspensa",
-      ]
-
+    // ==================================================
+    // STATUS INICIAL
+    // ==================================================
+    //
+    // Toda nova Representada nasce em configuração.
+    // A ativação comercial será feita posteriormente,
+    // após a validação do cadastro e da existência de
+    // regra comercial padrão ativa e vigente.
+    //
+    // O status enviado pela tela é ignorado neste POST
+    // para impedir ativação acidental no cadastro inicial.
     const status =
-      typeof body.status ===
-        "string" &&
-      statusPermitidos.includes(
-        body.status
-      )
-        ? body.status
-        : "Ativa"
+      "Em configuração"
 
     const representada =
       await prisma.representada.create(

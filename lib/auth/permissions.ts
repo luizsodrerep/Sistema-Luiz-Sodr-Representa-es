@@ -6,6 +6,7 @@ export type RecursoSistema =
   | "dashboard"
   | "clientes"
   | "representadas"
+  | "catalogos"
   | "contratosRepresentada"
   | "regrasComerciais"
   | "contasRecebimento"
@@ -80,6 +81,11 @@ export const PERMISSOES: MatrizPermissoes = {
     },
 
     representadas: {
+      acoes: TODAS_ACOES,
+      escopo: "todos",
+    },
+
+    catalogos: {
       acoes: TODAS_ACOES,
       escopo: "todos",
     },
@@ -167,6 +173,11 @@ export const PERMISSOES: MatrizPermissoes = {
     },
 
     representadas: {
+      acoes: ACOES_OPERACIONAIS,
+      escopo: "operacional",
+    },
+
+    catalogos: {
       acoes: ACOES_OPERACIONAIS,
       escopo: "operacional",
     },
@@ -356,6 +367,18 @@ export function recursoDaRota(
     )
   ) {
     return "clientes"
+  }
+
+  if (
+    pathname === "/catalogos" ||
+    pathname.startsWith(
+      "/catalogos/"
+    ) ||
+    pathname.startsWith(
+      "/api/catalogos"
+    )
+  ) {
+    return "catalogos"
   }
 
   if (

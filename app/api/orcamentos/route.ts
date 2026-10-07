@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 
 import { exigirSessao } from "@/lib/auth/server"
@@ -77,6 +78,90 @@ function adicionarDiasCorridos(
   return resultado
 }
 
+function inteiroPositivo(
+  valor: string | null,
+  padrao: number,
+  maximo: number
+) {
+  if (!valor) {
+    return padrao
+  }
+
+  const numero =
+    Number.parseInt(
+      valor,
+      10
+    )
+
+  if (
+    !Number.isInteger(numero) ||
+    numero <= 0
+  ) {
+    return padrao
+  }
+
+  return Math.min(
+    numero,
+    maximo
+  )
+}
+
+function dataFiltro(
+  valor: string | null,
+  fimDoDia = false
+) {
+  if (!valor) {
+    return null
+  }
+
+  const somenteData =
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      valor
+    )
+
+  const data =
+    somenteData
+      ? new Date(
+          `${valor}T${
+            fimDoDia
+              ? "23:59:59.999"
+              : "00:00:00.000"
+          }Z`
+        )
+      : new Date(valor)
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return null
+  }
+
+  return data
+}
+
+function numeroDaBusca(
+  busca: string
+) {
+  const correspondencia =
+    busca.match(/\d+/)
+
+  if (!correspondencia) {
+    return null
+  }
+
+  const numero =
+    Number.parseInt(
+      correspondencia[0],
+      10
+    )
+
+  return Number.isInteger(numero)
+    ? numero
+    : null
+}
+
 function filtroCarteiraPreposto(
   escritorioId: string,
   usuarioId: string
@@ -111,7 +196,7 @@ type SnapshotOrcamento = {
   numeroSequencial: number
   escritorioId: string
   interacaoOrigemId: string | null
-  clienteId: string
+  clienteId: string | null
   representadaId: string
   criadoPorId: string | null
   responsavelId: string | null
@@ -228,6 +313,11 @@ async function sincronizarVencimentos(
         status:
           "Pendente",
 
+        // Propostas ainda não enviadas não vencem automaticamente.
+        enviadoEm: {
+          not: null,
+        },
+
         validadeEm: {
           lt: agora,
         },
@@ -316,199 +406,391 @@ export async function GET(
       new URL(request.url)
 
     const clienteId =
-      searchParams.get(
-        "clienteId"
-      )
+      searchParams
+        .get("clienteId")
+        ?.trim() || null
 
     const representadaId =
-      searchParams.get(
-        "representadaId"
-      )
+      searchParams
+        .get("representadaId")
+        ?.trim() || null
 
     const interacaoOrigemId =
-      searchParams.get(
-        "interacaoOrigemId"
-      )
+      searchParams
+        .get("interacaoOrigemId")
+        ?.trim() || null
 
     const status =
-      searchParams.get(
-        "status"
-      )
+      searchParams
+        .get("status")
+        ?.trim() || null
 
     const busca =
       searchParams
         .get("busca")
-        ?.trim()
+        ?.trim() || null
 
-    const orcamentos =
-      await prisma.orcamento.findMany({
-        where: {
-          escritorioId:
-            sessao.escritorioId,
+    const dataInicioTexto =
+      searchParams
+        .get("dataInicio")
+        ?.trim() || null
 
-          ...(clienteId
-            ? {
-                clienteId,
-              }
-            : {}),
+    const dataFimTexto =
+      searchParams
+        .get("dataFim")
+        ?.trim() || null
 
-          ...(representadaId
-            ? {
-                representadaId,
-              }
-            : {}),
+    const dataInicio =
+      dataFiltro(
+        dataInicioTexto
+      )
 
-          ...(interacaoOrigemId
-            ? {
-                interacaoOrigemId,
-              }
-            : {}),
+    const dataFim =
+      dataFiltro(
+        dataFimTexto,
+        true
+      )
 
-          ...(status &&
-          status !== "Todos"
-            ? {
-                status,
-              }
-            : {}),
+    if (
+      dataInicioTexto &&
+      !dataInicio
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Data inicial inválida.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
 
-          ...(busca
-            ? {
-                OR: [
+    if (
+      dataFimTexto &&
+      !dataFim
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Data final inválida.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    if (
+      dataInicio &&
+      dataFim &&
+      dataInicio.getTime() >
+        dataFim.getTime()
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "A data inicial não pode ser posterior à data final.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    const pagina =
+      inteiroPositivo(
+        searchParams.get(
+          "page"
+        ),
+        1,
+        1000000
+      )
+
+    const limite =
+      inteiroPositivo(
+        searchParams.get(
+          "limit"
+        ),
+        10,
+        50
+      )
+
+    const paginado =
+      searchParams.get(
+        "paginado"
+      ) === "1" ||
+      searchParams.has(
+        "page"
+      ) ||
+      searchParams.has(
+        "limit"
+      )
+
+    const numeroSequencial =
+      busca
+        ? numeroDaBusca(
+            busca
+          )
+        : null
+
+    const filtrosBusca:
+      Prisma.OrcamentoWhereInput[] =
+      busca
+        ? [
+            ...(numeroSequencial !==
+            null
+              ? [
                   {
-                    cliente: {
-                      razaoSocial: {
-                        contains:
-                          busca,
-
-                        mode:
-                          "insensitive",
-                      },
-                    },
+                    numeroSequencial,
                   },
+                ]
+              : []),
 
-                  {
-                    cliente: {
-                      nomeFantasia: {
-                        contains:
-                          busca,
+            {
+              cliente: {
+                razaoSocial: {
+                  contains:
+                    busca,
+                  mode:
+                    "insensitive",
+                },
+              },
+            },
 
-                        mode:
-                          "insensitive",
-                      },
-                    },
-                  },
+            {
+              cliente: {
+                nomeFantasia: {
+                  contains:
+                    busca,
+                  mode:
+                    "insensitive",
+                },
+              },
+            },
 
-                  {
-                    representada: {
-                      nome: {
-                        contains:
-                          busca,
+            {
+              representada: {
+                nome: {
+                  contains:
+                    busca,
+                  mode:
+                    "insensitive",
+                },
+              },
+            },
 
-                        mode:
-                          "insensitive",
-                      },
-                    },
-                  },
+            {
+              descricao: {
+                contains:
+                  busca,
+                mode:
+                  "insensitive",
+              },
+            },
 
-                  {
-                    descricao: {
-                      contains:
-                        busca,
+            {
+              condicaoPagamento: {
+                contains:
+                  busca,
+                mode:
+                  "insensitive",
+              },
+            },
+          ]
+        : []
 
-                      mode:
-                        "insensitive",
-                    },
-                  },
+    const where:
+      Prisma.OrcamentoWhereInput =
+      {
+        escritorioId:
+          sessao.escritorioId,
 
-                  {
-                    condicaoPagamento: {
-                      contains:
-                        busca,
+        ...(clienteId
+          ? {
+              clienteId,
+            }
+          : {}),
 
-                      mode:
-                        "insensitive",
-                    },
-                  },
-                ],
-              }
-            : {}),
+        ...(representadaId
+          ? {
+              representadaId,
+            }
+          : {}),
 
-          ...(sessao.perfil ===
-          "Preposto"
-            ? filtroCarteiraPreposto(
-                sessao.escritorioId,
-                sessao.usuarioId
-              )
-            : {}),
+        ...(interacaoOrigemId
+          ? {
+              interacaoOrigemId,
+            }
+          : {}),
+
+        ...(status &&
+        status !== "Todos"
+          ? {
+              status,
+            }
+          : {}),
+
+        ...(busca
+          ? {
+              OR:
+                filtrosBusca,
+            }
+          : {}),
+
+        ...(dataInicio ||
+        dataFim
+          ? {
+              data: {
+                ...(dataInicio
+                  ? {
+                      gte:
+                        dataInicio,
+                    }
+                  : {}),
+
+                ...(dataFim
+                  ? {
+                      lte:
+                        dataFim,
+                    }
+                  : {}),
+              },
+            }
+          : {}),
+
+        ...(sessao.perfil ===
+        "Preposto"
+          ? filtroCarteiraPreposto(
+              sessao.escritorioId,
+              sessao.usuarioId
+            )
+          : {}),
+      }
+
+    const include:
+      Prisma.OrcamentoInclude =
+      {
+        cliente: {
+          select: {
+            id: true,
+            codigo: true,
+            razaoSocial: true,
+            nomeFantasia: true,
+            cnpj: true,
+            telefone: true,
+            whatsapp: true,
+            email: true,
+          },
         },
 
-        include: {
-          cliente: {
-            select: {
-              id: true,
-              codigo: true,
-              razaoSocial: true,
-              nomeFantasia: true,
-              cnpj: true,
-              telefone: true,
-              whatsapp: true,
-              email: true,
-            },
-          },
-
-          representada: {
-            select: {
-              id: true,
-              codigo: true,
-              nome: true,
-              cnpj: true,
-            },
-          },
-
-          interacaoOrigem: {
-            select: {
-              id: true,
-              numeroSequencial:
-                true,
-              data: true,
-              tipo: true,
-              assunto: true,
-            },
-          },
-
-          criadoPor: {
-            select: {
-              id: true,
-              nome: true,
-              perfil: true,
-            },
-          },
-
-          responsavel: {
-            select: {
-              id: true,
-              nome: true,
-              perfil: true,
-            },
+        representada: {
+          select: {
+            id: true,
+            codigo: true,
+            nome: true,
+            cnpj: true,
           },
         },
 
-        orderBy: [
-          {
-            validadeEm:
-              "asc",
+        interacaoOrigem: {
+          select: {
+            id: true,
+            numeroSequencial:
+              true,
+            data: true,
+            tipo: true,
+            assunto: true,
           },
+        },
 
-          {
-            data:
-              "desc",
+        criadoPor: {
+          select: {
+            id: true,
+            nome: true,
+            perfil: true,
           },
-        ],
-      })
+        },
 
-    return NextResponse.json(
-      orcamentos
-    )
+        responsavel: {
+          select: {
+            id: true,
+            nome: true,
+            perfil: true,
+          },
+        },
+      }
+
+    const orderBy:
+      Prisma.OrcamentoOrderByWithRelationInput[] =
+      [
+        {
+          validadeEm:
+            "asc",
+        },
+
+        {
+          data:
+            "desc",
+        },
+      ]
+
+    if (!paginado) {
+      const orcamentos =
+        await prisma.orcamento.findMany({
+          where,
+          include,
+          orderBy,
+        })
+
+      return NextResponse.json(
+        orcamentos
+      )
+    }
+
+    const [
+      total,
+      orcamentos,
+    ] =
+      await prisma.$transaction([
+        prisma.orcamento.count({
+          where,
+        }),
+
+        prisma.orcamento.findMany({
+          where,
+          include,
+          orderBy,
+
+          skip:
+            (pagina - 1) *
+            limite,
+
+          take:
+            limite,
+        }),
+      ])
+
+    const totalPaginas =
+      Math.max(
+        1,
+        Math.ceil(
+          total /
+            limite
+        )
+      )
+
+    return NextResponse.json({
+      dados:
+        orcamentos,
+
+      paginacao: {
+        pagina,
+        limite,
+        total,
+        totalPaginas,
+      },
+    })
   } catch (error) {
     if (
       error instanceof Error &&
@@ -617,38 +899,96 @@ export async function POST(
     }
 
     /*
-     * Valida o Cliente e, para Preposto,
-     * também a carteira comercial.
+     * A Prospecção original continua sem Cliente.
+     * O Orçamento usa um pré-cadastro legítimo, mantendo
+     * interacaoOrigemId como vínculo histórico.
+     *
+     * Não associar uma Prospecção de outro usuário
+     * a um pré-cadastro apenas por conhecer seu ID.
      */
+    const interacaoOrigem =
+      interacaoOrigemId
+        ? await prisma.interacao.findFirst({
+            where: {
+              id: interacaoOrigemId,
+              escritorioId: sessao.escritorioId,
+              ...(sessao.perfil === "Preposto"
+                ? {
+                    OR: [
+                      { criadoPorId: sessao.usuarioId },
+                      { responsavelId: sessao.usuarioId },
+                      { cliente: filtroCarteiraPreposto(
+                          sessao.escritorioId,
+                          sessao.usuarioId
+                        ).cliente },
+                    ],
+                  }
+                : {}),
+            },
+            select: {
+              id: true,
+              tipo: true,
+              clienteId: true,
+              representadaId: true,
+              nomeProspect: true,
+            },
+          })
+        : null
+
+    if (interacaoOrigemId && !interacaoOrigem) {
+      return NextResponse.json(
+        { message: "Interação de origem não encontrada ou sem permissão de acesso." },
+        { status: 403 }
+      )
+    }
+
+    const origemEProspecaoSemCliente =
+      interacaoOrigem?.tipo === "Prospecção" &&
+      interacaoOrigem.clienteId === null &&
+      interacaoOrigem.representadaId === null &&
+      Boolean(interacaoOrigem.nomeProspect?.trim())
+
+    /*
+     * Não vincular silenciosamente uma Prospecção sem Cliente
+     * a qualquer cadastro. A interface deverá pedir confirmação
+     * explícita da identidade antes de enviar esta opção.
+     */
+    if (
+      origemEProspecaoSemCliente &&
+      body.confirmarVinculoProspeccao !== true
+    ) {
+      return NextResponse.json(
+        { message: "Confirme expressamente que o pré-cadastro corresponde à Prospecção selecionada." },
+        { status: 400 }
+      )
+    }
+
+    if (
+      interacaoOrigem &&
+      !origemEProspecaoSemCliente &&
+      interacaoOrigem.clienteId !== clienteId
+    ) {
+      return NextResponse.json(
+        { message: "A interação de origem não pertence ao Cliente selecionado." },
+        { status: 400 }
+      )
+    }
+
     const cliente =
       await prisma.cliente.findFirst({
         where: {
-          id:
-            clienteId,
-
-          escritorioId:
-            sessao.escritorioId,
-
-          status:
-            "Ativo",
-
-          ...(sessao.perfil ===
-          "Preposto"
+          id: clienteId,
+          escritorioId: sessao.escritorioId,
+          ...(sessao.perfil === "Preposto"
             ? {
                 OR: [
-                  {
-                    responsavelPrincipalId:
-                      sessao.usuarioId,
-                  },
-
+                  { responsavelPrincipalId: sessao.usuarioId },
                   {
                     participantes: {
                       some: {
                         usuarioId:
                           sessao.usuarioId,
-
-                        ativa:
-                          true,
+                        ativa: true,
                       },
                     },
                   },
@@ -663,6 +1003,7 @@ export async function POST(
           razaoSocial: true,
           nomeFantasia: true,
           cnpj: true,
+          status: true,
         },
       })
 
@@ -670,7 +1011,7 @@ export async function POST(
       return NextResponse.json(
         {
           message:
-            "Cliente não encontrado, inativo ou sem permissão de acesso.",
+            "Cliente não encontrado ou sem permissão de acesso.",
         },
         {
           status: 403,
@@ -678,15 +1019,45 @@ export async function POST(
       )
     }
 
-    /*
-     * Regra operacional atual:
-     * orçamentos/vendas comerciais
-     * somente para Cliente com CNPJ.
-     */
+    const emQualificacao =
+      cliente.status ===
+        "Em qualificação"
+
     if (
-      !cliente.cnpj ||
-      cliente.cnpj.trim() ===
-        ""
+      emQualificacao &&
+      !origemEProspecaoSemCliente
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "O pré-cadastro em qualificação exige uma Prospecção de origem válida, ainda sem Cliente.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    if (
+      cliente.status !== "Ativo" &&
+      !emQualificacao
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "O cadastro precisa estar ativo ou em qualificação.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    // Clientes já formalizados mantêm a exigência anterior de CNPJ.
+    // A exceção se aplica somente ao pré-cadastro vinculado à Prospecção.
+    if (
+      !emQualificacao &&
+      !cliente.cnpj?.trim()
     ) {
       return NextResponse.json(
         {
@@ -698,6 +1069,17 @@ export async function POST(
         }
       )
     }
+
+    /*
+     * Data oficial do orçamento definida
+     * no servidor.
+     *
+     * A mesma referência de tempo é usada
+     * para validar a vigência da política
+     * comercial da Representada.
+     */
+    const agora =
+      new Date()
 
     const representada =
       await prisma.representada.findFirst({
@@ -732,55 +1114,74 @@ export async function POST(
     }
 
     /*
-     * Quando houver Interação de origem,
-     * ela precisa pertencer:
+     * PROTEÇÃO COMERCIAL
      *
-     * - ao mesmo Escritório;
-     * - ao mesmo Cliente;
-     * - à carteira acessível pelo usuário.
+     * Representadas antigas podem continuar marcadas
+     * como Ativas mesmo sem política comercial
+     * versionada. Para novos Orçamentos, isso não é
+     * permitido.
+     *
+     * É obrigatória ao menos uma regra:
+     * - padrão;
+     * - sem vínculo exclusivo a Cliente;
+     * - ativa;
+     * - já iniciada;
+     * - ainda vigente.
+     *
+     * A meta mensal não participa desta validação.
      */
+    const regraComercialPadraoVigente =
+      await prisma.regraComercialRepresentada.findFirst({
+        where: {
+          representadaId:
+            representada.id,
+
+          clienteId:
+            null,
+
+          tipoEscopo:
+            "Padrao",
+
+          ativa:
+            true,
+
+          vigenciaInicio: {
+            lte:
+              agora,
+          },
+
+          OR: [
+            {
+              vigenciaFim:
+                null,
+            },
+            {
+              vigenciaFim: {
+                gte:
+                  agora,
+              },
+            },
+          ],
+        },
+
+        select: {
+          id: true,
+          nome: true,
+        },
+      })
+
     if (
-      interacaoOrigemId
+      !regraComercialPadraoVigente
     ) {
-      const interacao =
-        await prisma.interacao.findFirst({
-          where: {
-            id:
-              interacaoOrigemId,
-
-            escritorioId:
-              sessao.escritorioId,
-
-            clienteId,
-
-            ...(sessao.perfil ===
-            "Preposto"
-              ? filtroCarteiraPreposto(
-                  sessao.escritorioId,
-                  sessao.usuarioId
-                )
-              : {}),
-          },
-
-          select: {
-            id: true,
-            numeroSequencial:
-              true,
-            clienteId: true,
-          },
-        })
-
-      if (!interacao) {
-        return NextResponse.json(
-          {
-            message:
-              "A interação de origem não foi encontrada, não pertence ao cliente selecionado ou está fora da sua permissão.",
-          },
-          {
-            status: 400,
-          }
-        )
-      }
+      return NextResponse.json(
+        {
+          message:
+            "Esta Representada está ativa, mas não possui uma política comercial padrão, ativa e vigente. Regularize a política comercial da Representada antes de gerar um novo Orçamento.",
+        },
+        {
+          status: 409,
+        }
+      )
     }
 
     /*
@@ -848,13 +1249,6 @@ export async function POST(
       responsavelId =
         responsavel.id
     }
-
-    /*
-     * Data oficial do orçamento definida
-     * no servidor.
-     */
-    const agora =
-      new Date()
 
     /*
      * Regra comercial:

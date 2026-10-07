@@ -109,6 +109,7 @@ type ResumoRepresentada = {
   vendas: number
   pedidos: number
   comissao: number
+  comissoesAConferir: number
 
   participacao: number
 }
@@ -121,6 +122,7 @@ type ResumoMes = {
   pedidos: number
   ticketMedio: number
   comissao: number
+  comissoesAConferir: number
 }
 
 /*
@@ -180,6 +182,24 @@ function formatarPercentual(
       maximumFractionDigits: 1,
     }
   )}%`
+}
+
+/*
+ * Uma comissão ausente, zerada ou inválida não é
+ * tratada como previsão de R$ 0,00.
+ * Este painel exibe o valor já registrado, sem
+ * conferir se o cálculo comercial histórico está correto.
+ */
+function comissaoPrevistaRegistrada(
+  venda: VendaDashboard
+): number | null {
+  const valor = venda.valorComissaoPrevista
+
+  return typeof valor === "number" &&
+    Number.isFinite(valor) &&
+    valor > 0
+    ? valor
+    : null
 }
 
 function inicioDoDia(
@@ -819,18 +839,19 @@ export default function DashboardPage() {
     useMemo(
       () =>
         vendasPeriodo.reduce(
-          (
-            total,
-            venda
-          ) =>
-            total +
-            Number(
-              venda.valorComissaoPrevista ??
-                venda.comissao ??
-                0
-            ),
+          (total, venda) =>
+            total + (comissaoPrevistaRegistrada(venda) ?? 0),
           0
         ),
+      [vendasPeriodo]
+    )
+
+  const vendasComComissaoAConferir =
+    useMemo(
+      () =>
+        vendasPeriodo.filter(
+          (venda) => comissaoPrevistaRegistrada(venda) === null
+        ).length,
       [vendasPeriodo]
     )
 
@@ -908,12 +929,8 @@ export default function DashboardPage() {
                   0
               )
 
-            const comissao =
-              Number(
-                venda.valorComissaoPrevista ??
-                  venda.comissao ??
-                  0
-              )
+            const previsao = comissaoPrevistaRegistrada(venda)
+            const comissao = previsao ?? 0
 
             if (
               atual
@@ -926,6 +943,10 @@ export default function DashboardPage() {
 
               atual.comissao +=
                 comissao
+
+              if (previsao === null) {
+                atual.comissoesAConferir += 1
+              }
             } else {
               mapa.set(
                 venda.representada.id,
@@ -943,6 +964,7 @@ export default function DashboardPage() {
                     1,
 
                   comissao,
+                  comissoesAConferir: previsao === null ? 1 : 0,
 
                   participacao:
                     0,
@@ -1005,6 +1027,7 @@ export default function DashboardPage() {
               pedidos: 0,
               ticketMedio: 0,
               comissao: 0,
+              comissoesAConferir: 0,
             })
           )
 
@@ -1063,12 +1086,13 @@ export default function DashboardPage() {
             mes.pedidos +=
               1
 
-            mes.comissao +=
-              Number(
-                venda.valorComissaoPrevista ??
-                  venda.comissao ??
-                  0
-              )
+            const previsao = comissaoPrevistaRegistrada(venda)
+
+            mes.comissao += previsao ?? 0
+
+            if (previsao === null) {
+              mes.comissoesAConferir += 1
+            }
           }
         )
 
@@ -1150,6 +1174,7 @@ export default function DashboardPage() {
       "Status",
       "Valor",
       "Comissao Prevista",
+      "Situacao da comissao prevista",
     ]
 
     const linhas =
@@ -1192,18 +1217,16 @@ export default function DashboardPage() {
               ","
             ),
 
-          Number(
-            venda.valorComissaoPrevista ??
-              venda.comissao ??
-              0
-          )
-            .toFixed(
-              2
-            )
-            .replace(
-              ".",
-              ","
-            ),
+          venda.valorComissaoPrevista === null ||
+          !Number.isFinite(venda.valorComissaoPrevista)
+            ? ""
+            : venda.valorComissaoPrevista
+                .toFixed(2)
+                .replace(".", ","),
+
+          comissaoPrevistaRegistrada(venda) === null
+            ? "A conferir"
+            : "Registrada (nao auditada)",
         ]
       )
 
@@ -1727,7 +1750,7 @@ export default function DashboardPage() {
                   </div>
 
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Conforme regras aplicadas nas vendas
+                    Soma das previsões registradas; valores ainda não auditados.
                   </p>
                 </CardContent>
               </Card>
@@ -1761,6 +1784,26 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {vendasComComissaoAConferir > 0 && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+                <p className="font-semibold">
+                  {vendasComComissaoAConferir} venda(s) sem previsão de comissão positiva registrada no período filtrado.
+                </p>
+
+                <p className="mt-1">
+                  A soma acima é parcial: previsão ausente, zerada ou negativa exige conferência individual.
+                  O painel não recalcula nem corrige essas vendas.
+                </p>
+
+                <Link
+                  href="/comissoes"
+                  className="mt-2 inline-block font-semibold underline"
+                >
+                  Abrir conferência de comissões
+                </Link>
+              </div>
+            )}
 
             <div className="rounded-md border bg-muted/20 p-3">
               <p className="text-xs text-muted-foreground">
@@ -2013,11 +2056,17 @@ export default function DashboardPage() {
                                     </p>
 
                                     <p className="text-xs text-muted-foreground">
-                                      Comissão:{" "}
+                                      Comissão prevista registrada:{" "}
                                       {formatarMoeda(
                                         representada.comissao
                                       )}
                                     </p>
+
+                                    {representada.comissoesAConferir > 0 && (
+                                      <p className="text-xs font-semibold text-amber-700">
+                                        {representada.comissoesAConferir} venda(s) a conferir
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
 
@@ -2138,6 +2187,11 @@ export default function DashboardPage() {
                                         representada.comissao
                                       )}
                                     </p>
+                                    {representada.comissoesAConferir > 0 && (
+                                      <p className="text-xs font-semibold text-amber-700">
+                                        {representada.comissoesAConferir} venda(s) a conferir
+                                      </p>
+                                    )}
                                   </div>
 
                                   <div>
@@ -2180,7 +2234,7 @@ export default function DashboardPage() {
                     </CardTitle>
 
                     <CardDescription>
-                      Vendas e comissões reais mês a mês. Meta permanece em aberto até definição oficial.
+                      Vendas e previsões registradas mês a mês. Comissões pendentes de conferência são sinalizadas; meta permanece em aberto.
                     </CardDescription>
                   </CardHeader>
 
@@ -2307,6 +2361,11 @@ export default function DashboardPage() {
                               <div>
                                 {formatarMoeda(
                                   mes.comissao
+                                )}
+                                {mes.comissoesAConferir > 0 && (
+                                  <p className="mt-1 font-semibold text-amber-700">
+                                    {mes.comissoesAConferir} a conferir
+                                  </p>
                                 )}
                               </div>
 

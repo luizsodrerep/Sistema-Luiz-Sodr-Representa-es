@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client"
+
 import { prisma } from "@/lib/prisma"
 import { exigirSessao } from "@/lib/auth/server"
 import { NextResponse } from "next/server"
@@ -13,165 +15,548 @@ const ORIGENS_PROSPECCAO_PERMITIDAS = [
   "Feira / Evento",
 ]
 
+function inteiroPositivo(
+  valor: string | null,
+  padrao: number,
+  maximo: number
+) {
+  if (!valor) {
+    return padrao
+  }
+
+  const numero =
+    Number.parseInt(
+      valor,
+      10
+    )
+
+  if (
+    !Number.isInteger(numero) ||
+    numero <= 0
+  ) {
+    return padrao
+  }
+
+  return Math.min(
+    numero,
+    maximo
+  )
+}
+
+function dataFiltro(
+  valor: string | null,
+  fimDoDia = false
+) {
+  if (!valor) {
+    return null
+  }
+
+  const somenteData =
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      valor
+    )
+
+  const data =
+    somenteData
+      ? new Date(
+          `${valor}T${
+            fimDoDia
+              ? "23:59:59.999"
+              : "00:00:00.000"
+          }Z`
+        )
+      : new Date(valor)
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return null
+  }
+
+  return data
+}
+
+function numeroDaBusca(
+  busca: string
+) {
+  const correspondencia =
+    busca.match(/\d+/)
+
+  if (!correspondencia) {
+    return null
+  }
+
+  const numero =
+    Number.parseInt(
+      correspondencia[0],
+      10
+    )
+
+  return Number.isInteger(numero)
+    ? numero
+    : null
+}
+
 export async function GET(
   request: Request
 ) {
   try {
-    const sessao = await exigirSessao()
+    const sessao =
+      await exigirSessao()
 
     const { searchParams } =
       new URL(request.url)
 
     const clienteId =
-      searchParams.get("clienteId")
+      searchParams
+        .get("clienteId")
+        ?.trim() || null
 
     const representadaId =
-      searchParams.get(
-        "representadaId"
-      )
+      searchParams
+        .get("representadaId")
+        ?.trim() || null
 
     const tipo =
-      searchParams.get("tipo")
+      searchParams
+        .get("tipo")
+        ?.trim() || null
 
-    const interacoes =
-      await prisma.interacao.findMany({
-        where: {
-          escritorioId:
-            sessao.escritorioId,
+    const statusFollowUp =
+      searchParams
+        .get("statusFollowUp")
+        ?.trim() || null
 
-          ...(clienteId
-            ? { clienteId }
-            : {}),
+    const busca =
+      searchParams
+        .get("busca")
+        ?.trim() || null
 
-          ...(representadaId
-            ? { representadaId }
-            : {}),
+    const dataInicioTexto =
+      searchParams
+        .get("dataInicio")
+        ?.trim() || null
 
-          ...(tipo &&
-          tipo !== "todas"
-            ? { tipo }
-            : {}),
+    const dataFimTexto =
+      searchParams
+        .get("dataFim")
+        ?.trim() || null
 
-          /*
-           * PREPOSTO
-           *
-           * Pode visualizar:
-           *
-           * 1. Interações relacionadas aos
-           *    clientes pertencentes à sua carteira;
-           *
-           * 2. Prospecções ainda sem Cliente,
-           *    desde que sejam de sua responsabilidade
-           *    ou tenham sido criadas por ele.
-           *
-           * Diretor e Administrativo continuam
-           * visualizando todas as interações
-           * do escritório.
-           */
-          ...(sessao.perfil ===
-          "Preposto"
-            ? {
+    const dataInicio =
+      dataFiltro(
+        dataInicioTexto
+      )
+
+    const dataFim =
+      dataFiltro(
+        dataFimTexto,
+        true
+      )
+
+    if (
+      dataInicioTexto &&
+      !dataInicio
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Data inicial inválida.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    if (
+      dataFimTexto &&
+      !dataFim
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Data final inválida.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    if (
+      dataInicio &&
+      dataFim &&
+      dataInicio.getTime() >
+        dataFim.getTime()
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "A data inicial não pode ser posterior à data final.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    const pagina =
+      inteiroPositivo(
+        searchParams.get(
+          "page"
+        ),
+        1,
+        1000000
+      )
+
+    const limite =
+      inteiroPositivo(
+        searchParams.get(
+          "limit"
+        ),
+        10,
+        50
+      )
+
+    const paginado =
+      searchParams.get(
+        "paginado"
+      ) === "1" ||
+      searchParams.has(
+        "page"
+      ) ||
+      searchParams.has(
+        "limit"
+      )
+
+    const filtrosAnd:
+      Prisma.InteracaoWhereInput[] =
+      []
+
+    /*
+     * PREPOSTO
+     *
+     * Pode visualizar:
+     *
+     * 1. Interações relacionadas aos
+     *    clientes pertencentes à sua carteira;
+     *
+     * 2. Prospecções ainda sem Cliente,
+     *    desde que sejam de sua responsabilidade
+     *    ou tenham sido criadas por ele.
+     *
+     * Diretor e Administrativo continuam
+     * visualizando todas as interações
+     * do escritório.
+     */
+    if (
+      sessao.perfil ===
+      "Preposto"
+    ) {
+      filtrosAnd.push({
+        OR: [
+          {
+            cliente: {
+              is: {
+                escritorioId:
+                  sessao.escritorioId,
+
                 OR: [
                   {
-                    cliente: {
-                      is: {
-                        escritorioId:
-                          sessao.escritorioId,
-
-                        OR: [
-                          {
-                            responsavelPrincipalId:
-                              sessao.usuarioId,
-                          },
-                          {
-                            participantes: {
-                              some: {
-                                usuarioId:
-                                  sessao.usuarioId,
-                                ativa: true,
-                              },
-                            },
-                          },
-                        ],
+                    responsavelPrincipalId:
+                      sessao.usuarioId,
+                  },
+                  {
+                    participantes: {
+                      some: {
+                        usuarioId:
+                          sessao.usuarioId,
+                        ativa: true,
                       },
                     },
                   },
+                ],
+              },
+            },
+          },
 
+          {
+            AND: [
+              {
+                clienteId:
+                  null,
+              },
+              {
+                representadaId:
+                  null,
+              },
+              {
+                OR: [
                   {
-                    AND: [
-                      {
-                        clienteId:
-                          null,
-                      },
-                      {
-                        representadaId:
-                          null,
-                      },
-                      {
-                        OR: [
-                          {
-                            responsavelId:
-                              sessao.usuarioId,
-                          },
-                          {
-                            criadoPorId:
-                              sessao.usuarioId,
-                          },
-                        ],
-                      },
-                    ],
+                    responsavelId:
+                      sessao.usuarioId,
+                  },
+                  {
+                    criadoPorId:
+                      sessao.usuarioId,
                   },
                 ],
+              },
+            ],
+          },
+        ],
+      })
+    }
+
+    if (busca) {
+      const numeroSequencial =
+        numeroDaBusca(
+          busca
+        )
+
+      const filtrosBusca:
+        Prisma.InteracaoWhereInput[] =
+        [
+          {
+            assunto: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+          {
+            descricao: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+          {
+            resultado: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+          {
+            proximosPasso: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+          {
+            tipo: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+        ]
+
+      if (
+        numeroSequencial !==
+        null
+      ) {
+        filtrosBusca.unshift({
+          numeroSequencial,
+        })
+      }
+
+      filtrosAnd.push({
+        OR:
+          filtrosBusca,
+      })
+    }
+
+    if (
+      dataInicio ||
+      dataFim
+    ) {
+      filtrosAnd.push({
+        data: {
+          ...(dataInicio
+            ? {
+                gte:
+                  dataInicio,
+              }
+            : {}),
+
+          ...(dataFim
+            ? {
+                lte:
+                  dataFim,
               }
             : {}),
         },
-
-        include: {
-          cliente: {
-            select: {
-              id: true,
-              razaoSocial: true,
-              nomeFantasia: true,
-              whatsapp: true,
-              telefone: true,
-              email: true,
-              contato: true,
-            },
-          },
-
-          representada: {
-            select: {
-              id: true,
-              nome: true,
-              cnpj: true,
-            },
-          },
-
-          criadoPor: {
-            select: {
-              id: true,
-              nome: true,
-              perfil: true,
-            },
-          },
-
-          responsavel: {
-            select: {
-              id: true,
-              nome: true,
-              perfil: true,
-            },
-          },
-        },
-
-        orderBy: {
-          data: "desc",
-        },
       })
+    }
 
-    return NextResponse.json(
-      interacoes
-    )
+    const where:
+      Prisma.InteracaoWhereInput =
+      {
+        escritorioId:
+          sessao.escritorioId,
+
+        ...(clienteId
+          ? {
+              clienteId,
+            }
+          : {}),
+
+        ...(representadaId
+          ? {
+              representadaId,
+            }
+          : {}),
+
+        ...(tipo &&
+        tipo !== "todas"
+          ? {
+              tipo,
+            }
+          : {}),
+
+        ...(statusFollowUp &&
+        statusFollowUp !==
+          "todos"
+          ? {
+              statusFollowUp,
+            }
+          : {}),
+
+        ...(filtrosAnd.length >
+        0
+          ? {
+              AND:
+                filtrosAnd,
+            }
+          : {}),
+      }
+
+    const include:
+      Prisma.InteracaoInclude =
+      {
+        cliente: {
+          select: {
+            id: true,
+            razaoSocial: true,
+            nomeFantasia: true,
+            whatsapp: true,
+            telefone: true,
+            email: true,
+            contato: true,
+          },
+        },
+
+        representada: {
+          select: {
+            id: true,
+            nome: true,
+            cnpj: true,
+          },
+        },
+
+        criadoPor: {
+          select: {
+            id: true,
+            nome: true,
+            perfil: true,
+          },
+        },
+
+        responsavel: {
+          select: {
+            id: true,
+            nome: true,
+            perfil: true,
+          },
+        },
+      }
+
+    if (!paginado) {
+      const interacoes =
+        await prisma.interacao.findMany({
+          where,
+          include,
+
+          orderBy: [
+            {
+              data:
+                "desc",
+            },
+            {
+              criadoEm:
+                "desc",
+            },
+          ],
+        })
+
+      return NextResponse.json(
+        interacoes
+      )
+    }
+
+    const [
+      total,
+      interacoes,
+    ] =
+      await prisma.$transaction([
+        prisma.interacao.count({
+          where,
+        }),
+
+        prisma.interacao.findMany({
+          where,
+          include,
+
+          orderBy: [
+            {
+              data:
+                "desc",
+            },
+            {
+              criadoEm:
+                "desc",
+            },
+          ],
+
+          skip:
+            (pagina - 1) *
+            limite,
+
+          take:
+            limite,
+        }),
+      ])
+
+    const totalPaginas =
+      Math.max(
+        1,
+        Math.ceil(
+          total /
+            limite
+        )
+      )
+
+    return NextResponse.json({
+      dados:
+        interacoes,
+
+      paginacao: {
+        pagina,
+        limite,
+        total,
+        totalPaginas,
+      },
+    })
   } catch (error) {
     if (
       error instanceof Error &&
@@ -253,12 +638,16 @@ export async function POST(
         : null
 
     /*
-     * Uma interação pode pertencer a apenas
-     * um dos três contextos:
+     * Contextos permitidos:
      *
      * - Cliente
      * - Representada
-     * - Prospecção / Lead
+     * - Cliente + Representada
+     * - Prospecção / Lead ainda sem cadastro
+     *
+     * A Prospecção / Lead sem cadastro
+     * permanece exclusiva e não pode ser
+     * misturada com Cliente ou Representada.
      */
     const possuiCliente =
       Boolean(clienteId)
@@ -273,20 +662,15 @@ export async function POST(
           origemProspeccao
       )
 
-    const quantidadeVinculos =
-      [
-        possuiCliente,
-        possuiRepresentada,
-        possuiProspeccao,
-      ].filter(Boolean).length
-
     if (
-      quantidadeVinculos === 0
+      !possuiCliente &&
+      !possuiRepresentada &&
+      !possuiProspeccao
     ) {
       return NextResponse.json(
         {
           message:
-            "Selecione um Cliente, uma Representada ou registre uma Prospecção / Lead.",
+            "Selecione um Cliente, uma Representada, Cliente + Representada ou registre uma Prospecção / Lead.",
         },
         {
           status: 400,
@@ -295,12 +679,16 @@ export async function POST(
     }
 
     if (
-      quantidadeVinculos > 1
+      possuiProspeccao &&
+      (
+        possuiCliente ||
+        possuiRepresentada
+      )
     ) {
       return NextResponse.json(
         {
           message:
-            "A interação deve ser relacionada somente a um contexto: Cliente, Representada ou Prospecção.",
+            "A Prospecção / Lead sem cadastro não pode ser combinada com Cliente ou Representada já cadastrados.",
         },
         {
           status: 400,
@@ -426,17 +814,24 @@ export async function POST(
      */
     if (representadaId) {
       /*
-       * Interações institucionais com
-       * representadas permanecem restritas
-       * ao Diretor e Administrativo.
+       * Interações exclusivamente
+       * institucionais com Representadas
+       * permanecem restritas ao Diretor
+       * e Administrativo.
+       *
+       * Quando houver Cliente + Representada,
+       * o Preposto pode registrar a interação
+       * desde que tenha acesso ao Cliente.
+       * Esse acesso já foi validado acima.
        */
       if (
-        sessao.perfil === "Preposto"
+        sessao.perfil === "Preposto" &&
+        !clienteId
       ) {
         return NextResponse.json(
           {
             message:
-              "Seu perfil não possui permissão para registrar interações institucionais com representadas.",
+              "Seu perfil não possui permissão para registrar interações exclusivamente institucionais com representadas.",
           },
           {
             status: 403,

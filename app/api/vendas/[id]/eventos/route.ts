@@ -407,14 +407,19 @@ export async function POST(
         "Pedido enviado" &&
       (
         venda.pedidoEnviadoEm ||
-        venda.status !==
-          "Aguardando envio"
+        venda.confirmadoEm ||
+        ![
+          "Aguardando envio",
+          "Pendente",
+        ].includes(
+          venda.status
+        )
       )
     ) {
       return NextResponse.json(
         {
           message:
-            "Este pedido já possui envio oficial registrado. Para mudanças posteriores, registre uma alteração pós-envio.",
+            "O envio oficial já foi registrado ou a Venda não está em uma etapa que permite registrar o envio. Se já houve envio, utilize o histórico operacional.",
         },
         {
           status: 409,
@@ -582,10 +587,22 @@ export async function POST(
                   id:
                     vendaAtual.id,
 
-                  status:
-                    "Aguardando envio",
+                  // Compatibilidade com Vendas antigas que foram
+                  // criadas com status Pendente, sem envio registrado.
+                  status: {
+                    in: [
+                      "Aguardando envio",
+                      "Pendente",
+                    ],
+                  },
 
                   pedidoEnviadoEm:
+                    null,
+
+                  confirmadoEm:
+                    null,
+
+                  canceladoEm:
                     null,
                 },
 
@@ -603,7 +620,7 @@ export async function POST(
               1
             ) {
               throw new ErroApi(
-                "Este pedido já possui envio oficial registrado. Para mudanças posteriores, registre uma alteração pós-envio.",
+                "O envio oficial já foi registrado ou a Venda não está em uma etapa que permite registrar o envio. Se já houve envio, utilize o histórico operacional.",
                 409
               )
             }

@@ -1,6 +1,9 @@
 "use client"
 
 import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
   useEffect,
   useState,
 } from "react"
@@ -13,10 +16,17 @@ import {
 import {
   AlertCircle,
   ArrowLeft,
+  BadgePercent,
+  Building2,
   CheckCircle2,
+  FileText,
   Loader2,
+  MapPin,
   Plus,
+  Save,
+  Settings2,
   Trash2,
+  Users,
 } from "lucide-react"
 
 import {
@@ -222,6 +232,38 @@ type FormData = {
   observacoes: string
 }
 
+type TituloSecaoProps = {
+  icone: ReactNode
+  titulo: string
+  descricao?: string
+}
+
+function TituloSecao({
+  icone,
+  titulo,
+  descricao,
+}: TituloSecaoProps) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+        {icone}
+      </div>
+
+      <div>
+        <CardTitle className="text-lg">
+          {titulo}
+        </CardTitle>
+
+        {descricao && (
+          <CardDescription className="mt-1">
+            {descricao}
+          </CardDescription>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function EditarRepresentadaPage() {
   const router =
     useRouter()
@@ -263,6 +305,12 @@ export default function EditarRepresentadaPage() {
     useState<
       string | null
     >(null)
+
+  const [
+    alterado,
+    setAlterado,
+  ] =
+    useState(false)
 
   const [
     tipoComissao,
@@ -367,7 +415,8 @@ export default function EditarRepresentadaPage() {
       exigeNFComissao:
         "",
 
-      status: "Ativa",
+      status:
+        "Em configuração",
 
       observacoes:
         "",
@@ -414,7 +463,7 @@ export default function EditarRepresentadaPage() {
         const possuiPedidoMinimo:
           SimNao =
           representada.pedidoMinimo ===
-            null
+          null
             ? ""
             : representada.pedidoMinimo >
                 0
@@ -424,7 +473,7 @@ export default function EditarRepresentadaPage() {
         const possuiMinimoParcela:
           SimNao =
           representada.minimoParcela ===
-            null
+          null
             ? ""
             : representada.minimoParcela >
                 0
@@ -478,7 +527,7 @@ export default function EditarRepresentadaPage() {
 
           comissao:
             representada.comissao !==
-              null
+            null
               ? String(
                   representada.comissao
                 )
@@ -530,7 +579,7 @@ export default function EditarRepresentadaPage() {
 
           prazoEntregaDias:
             representada.prazoEntregaDias !==
-              null
+            null
               ? String(
                   representada.prazoEntregaDias
                 )
@@ -538,7 +587,7 @@ export default function EditarRepresentadaPage() {
 
           prazoFaturamentoDias:
             representada.prazoFaturamentoDias !==
-              null
+            null
               ? String(
                   representada.prazoFaturamentoDias
                 )
@@ -565,7 +614,7 @@ export default function EditarRepresentadaPage() {
 
           status:
             representada.status ||
-            "Ativa",
+            "Em configuração",
 
           observacoes:
             representada.observacoes ||
@@ -630,6 +679,10 @@ export default function EditarRepresentadaPage() {
             ])
           }
         }
+
+        setAlterado(
+          false
+        )
       } catch (
         error
       ) {
@@ -652,6 +705,56 @@ export default function EditarRepresentadaPage() {
 
     carregar()
   }, [id])
+
+  useEffect(() => {
+    if (!alterado) {
+      return
+    }
+
+    function avisarSaida(
+      event:
+        BeforeUnloadEvent
+    ) {
+      event.preventDefault()
+
+      event.returnValue =
+        ""
+    }
+
+    window.addEventListener(
+      "beforeunload",
+      avisarSaida
+    )
+
+    return () => {
+      window.removeEventListener(
+        "beforeunload",
+        avisarSaida
+      )
+    }
+  }, [alterado])
+
+  function navegarComConfirmacao(
+    destino: string
+  ) {
+    if (
+      alterado &&
+      !loading
+    ) {
+      const confirmar =
+        window.confirm(
+          "Existem alterações não salvas nesta Representada. Deseja sair sem salvar?"
+        )
+
+      if (!confirmar) {
+        return
+      }
+    }
+
+    router.push(
+      destino
+    )
+  }
 
   function formatarCNPJ(
     valor: string
@@ -728,6 +831,7 @@ export default function EditarRepresentadaPage() {
         anterior
       ) => ({
         ...anterior,
+
         [campo]:
           "",
       })
@@ -744,9 +848,14 @@ export default function EditarRepresentadaPage() {
         anterior
       ) => ({
         ...anterior,
+
         [campo]:
           valor,
       })
+    )
+
+    setAlterado(
+      true
     )
 
     limparErro(
@@ -756,7 +865,7 @@ export default function EditarRepresentadaPage() {
 
   function handleChange(
     event:
-      React.ChangeEvent<
+      ChangeEvent<
         | HTMLInputElement
         | HTMLTextAreaElement
         | HTMLSelectElement
@@ -819,6 +928,10 @@ export default function EditarRepresentadaPage() {
       }
     )
 
+    setAlterado(
+      true
+    )
+
     limparErro(
       "faixas"
     )
@@ -839,6 +952,10 @@ export default function EditarRepresentadaPage() {
             "",
         },
       ]
+    )
+
+    setAlterado(
+      true
     )
   }
 
@@ -864,6 +981,10 @@ export default function EditarRepresentadaPage() {
             indice !==
             index
         )
+    )
+
+    setAlterado(
+      true
     )
   }
 
@@ -1009,7 +1130,10 @@ export default function EditarRepresentadaPage() {
     }
 
     if (
-      !["Faturamento", "Liquidez"].includes(
+      ![
+        "Faturamento",
+        "Liquidez",
+      ].includes(
         formData.regraReconhecimentoComissao
       )
     ) {
@@ -1171,7 +1295,7 @@ export default function EditarRepresentadaPage() {
 
   async function handleSubmit(
     event:
-      React.FormEvent
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault()
 
@@ -1287,8 +1411,12 @@ export default function EditarRepresentadaPage() {
         )
       }
 
+      setAlterado(
+        false
+      )
+
       alert(
-        "Representada atualizada com sucesso."
+        "Cadastro principal da Representada atualizado com sucesso."
       )
 
       router.push(
@@ -1400,43 +1528,153 @@ export default function EditarRepresentadaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-6xl space-y-6 p-6">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={() =>
-              router.push(
-                `/representadas/${id}`
-              )
-            }
-            disabled={
-              loading
-            }
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-6">
+        <div className="rounded-xl border bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex items-start gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  navegarComConfirmacao(
+                    `/representadas/${id}`
+                  )
+                }
+                disabled={
+                  loading
+                }
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
 
-            Voltar
-          </Button>
+                Voltar
+              </Button>
 
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Editar Representada
-            </h1>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
+                    Cadastro principal da Representada
+                  </h1>
 
-            <p className="mt-1 text-sm text-gray-600">
-              Complete e confira as regras comerciais antes de atualizar o cadastro.
-            </p>
+                  {alterado ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                      <AlertCircle className="h-3.5 w-3.5" />
+
+                      Alterações não salvas
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+
+                      Dados carregados
+                    </span>
+                  )}
+                </div>
+
+                <p className="mt-1 max-w-3xl text-sm text-slate-600">
+                  Aqui você altera o cadastro e a política principal da
+                  Representada. Regras com vigência, versões históricas ou
+                  condições específicas de clientes são administradas em
+                  Regras Comerciais.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  navegarComConfirmacao(
+                    `/representadas/${id}/regras-comerciais`
+                  )
+                }
+                disabled={
+                  loading
+                }
+              >
+                <Settings2 className="mr-2 h-4 w-4" />
+
+                Regras comerciais
+              </Button>
+
+              <Button
+                type="submit"
+                form="form-editar-representada"
+                disabled={
+                  loading
+                }
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+
+                    Salvar alterações
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 
+        <div className="flex flex-wrap gap-2 rounded-xl border bg-white p-2 shadow-sm">
+          <a
+            href="#dados-principais"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Dados principais
+          </a>
+
+          <a
+            href="#contato-endereco"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Contato e endereço
+          </a>
+
+          <a
+            href="#politica-operacional"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Política operacional
+          </a>
+
+          <a
+            href="#comissao"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Comissão
+          </a>
+
+          <a
+            href="#contrato-fiscal"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Contrato e fiscal
+          </a>
+
+          <a
+            href="#observacoes"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Observações
+          </a>
+        </div>
+
         {erroGeral && (
-          <div className="flex items-start gap-3 rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+          <div className="flex items-start gap-3 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
 
             <div>
               <p className="font-semibold">
-                Não foi possível atualizar
+                Não foi possível salvar
               </p>
 
               <p className="mt-1">
@@ -1447,48 +1685,165 @@ export default function EditarRepresentadaPage() {
         )}
 
         <form
+          id="form-editar-representada"
           onSubmit={
             handleSubmit
           }
-          className="space-y-6"
+          className="space-y-4"
         >
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                Informações Básicas
-              </CardTitle>
-
-              <CardDescription>
-                Preserve CNPJ e identidade da Representada. Não recrie cadastros existentes.
-              </CardDescription>
+          <Card
+            id="dados-principais"
+            className="scroll-mt-6"
+          >
+            <CardHeader className="p-4 pb-2">
+              <TituloSecao
+                icone={
+                  <Building2 className="h-5 w-5" />
+                }
+                titulo="Dados principais"
+                descricao="Identificação e situação atual da Representada."
+              />
             </CardHeader>
 
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardContent className="grid grid-cols-1 gap-3 p-4 pt-2 md:grid-cols-2">
+              <div>
+                <Label>
+                  Código interno
+                </Label>
+
+                <Input
+                  value={
+                    formData.codigo
+                  }
+                  disabled
+                  className="mt-1 bg-slate-100"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="nome">
+                  Nome *
+                </Label>
+
+                <Input
+                  id="nome"
+                  name="nome"
+                  value={
+                    formData.nome
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  disabled={
+                    loading
+                  }
+                  className={`mt-1 ${classeErro(
+                    "nome"
+                  )}`}
+                />
+
+                <ErroCampo campo="nome" />
+              </div>
+
+              <div>
+                <Label htmlFor="cnpj">
+                  CNPJ *
+                </Label>
+
+                <Input
+                  id="cnpj"
+                  name="cnpj"
+                  value={
+                    formData.cnpj
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  maxLength={
+                    18
+                  }
+                  disabled={
+                    loading
+                  }
+                  placeholder="00.000.000/0000-00"
+                  className={`mt-1 ${classeErro(
+                    "cnpj"
+                  )}`}
+                />
+
+                <ErroCampo campo="cnpj" />
+              </div>
+
+              <div>
+                <Label htmlFor="status">
+                  Status
+                </Label>
+
+                <select
+                  id="status"
+                  name="status"
+                  value={
+                    formData.status
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  disabled={
+                    loading
+                  }
+                  className="mt-1 h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"
+                >
+                  <option value="Em configuração">
+                    Em configuração
+                  </option>
+
+                  <option value="Ativa">
+                    Ativa
+                  </option>
+
+                  <option value="Inativa">
+                    Inativa
+                  </option>
+
+                  <option value="Suspensa">
+                    Suspensa
+                  </option>
+                </select>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  A ativação comercial depende das regras vigentes da
+                  Representada.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card
+            id="contato-endereco"
+            className="scroll-mt-6"
+          >
+            <CardHeader className="p-4 pb-2">
+              <TituloSecao
+                icone={
+                  <Users className="h-5 w-5" />
+                }
+                titulo="Contato e endereço"
+                descricao="Dados de comunicação e localização da Representada."
+              />
+            </CardHeader>
+
+            <CardContent className="space-y-4 p-4 pt-2">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
-                  <Label>
-                    Código interno
+                  <Label htmlFor="contatoPrincipal">
+                    Contato principal
                   </Label>
 
                   <Input
+                    id="contatoPrincipal"
+                    name="contatoPrincipal"
                     value={
-                      formData.codigo
-                    }
-                    disabled
-                    className="bg-gray-100"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="nome">
-                    Nome *
-                  </Label>
-
-                  <Input
-                    id="nome"
-                    name="nome"
-                    value={
-                      formData.nome
+                      formData.contatoPrincipal
                     }
                     onChange={
                       handleChange
@@ -1496,53 +1851,46 @@ export default function EditarRepresentadaPage() {
                     disabled={
                       loading
                     }
-                    className={classeErro(
-                      "nome"
-                    )}
+                    className="mt-1"
                   />
-
-                  <ErroCampo campo="nome" />
                 </div>
 
                 <div>
-                  <Label htmlFor="cnpj">
-                    CNPJ *
+                  <Label htmlFor="emailPrincipal">
+                    E-mail *
                   </Label>
 
                   <Input
-                    id="cnpj"
-                    name="cnpj"
+                    id="emailPrincipal"
+                    name="emailPrincipal"
+                    type="email"
                     value={
-                      formData.cnpj
+                      formData.emailPrincipal
                     }
                     onChange={
                       handleChange
                     }
-                    maxLength={
-                      18
-                    }
                     disabled={
                       loading
                     }
-                    placeholder="00.000.000/0000-00"
-                    className={classeErro(
-                      "cnpj"
-                    )}
+                    className={`mt-1 ${classeErro(
+                      "emailPrincipal"
+                    )}`}
                   />
 
-                  <ErroCampo campo="cnpj" />
+                  <ErroCampo campo="emailPrincipal" />
                 </div>
 
                 <div>
-                  <Label htmlFor="status">
-                    Status
+                  <Label htmlFor="telefonePrincipal">
+                    Telefone *
                   </Label>
 
-                  <select
-                    id="status"
-                    name="status"
+                  <Input
+                    id="telefonePrincipal"
+                    name="telefonePrincipal"
                     value={
-                      formData.status
+                      formData.telefonePrincipal
                     }
                     onChange={
                       handleChange
@@ -1550,234 +1898,160 @@ export default function EditarRepresentadaPage() {
                     disabled={
                       loading
                     }
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  >
-                    <option value="Ativa">
-                      Ativa
-                    </option>
+                    className={`mt-1 ${classeErro(
+                      "telefonePrincipal"
+                    )}`}
+                  />
 
-                    <option value="Inativa">
-                      Inativa
-                    </option>
+                  <ErroCampo campo="telefonePrincipal" />
+                </div>
 
-                    <option value="Suspensa">
-                      Suspensa
-                    </option>
-                  </select>
+                <div>
+                  <Label htmlFor="whatsappPrincipal">
+                    WhatsApp
+                  </Label>
+
+                  <Input
+                    id="whatsappPrincipal"
+                    name="whatsappPrincipal"
+                    value={
+                      formData.whatsappPrincipal
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={
+                      loading
+                    }
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-slate-500" />
+
+                  <p className="text-sm font-semibold text-slate-800">
+                    Endereço
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
+                  <div className="md:col-span-6">
+                    <Label htmlFor="endereco">
+                      Endereço
+                    </Label>
+
+                    <Input
+                      id="endereco"
+                      name="endereco"
+                      value={
+                        formData.endereco
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        loading
+                      }
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div className="md:col-span-3">
+                    <Label htmlFor="cidade">
+                      Cidade
+                    </Label>
+
+                    <Input
+                      id="cidade"
+                      name="cidade"
+                      value={
+                        formData.cidade
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        loading
+                      }
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div className="md:col-span-1">
+                    <Label htmlFor="estado">
+                      Estado
+                    </Label>
+
+                    <Input
+                      id="estado"
+                      name="estado"
+                      value={
+                        formData.estado
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      maxLength={
+                        2
+                      }
+                      disabled={
+                        loading
+                      }
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Label htmlFor="cep">
+                      CEP
+                    </Label>
+
+                    <Input
+                      id="cep"
+                      name="cep"
+                      value={
+                        formData.cep
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        loading
+                      }
+                      className="mt-1"
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                Contato
-              </CardTitle>
+          <Card
+            id="politica-operacional"
+            className="scroll-mt-6 border-blue-200"
+          >
+            <CardHeader className="p-4 pb-2">
+              <TituloSecao
+                icone={
+                  <Settings2 className="h-5 w-5 text-blue-700" />
+                }
+                titulo="Política operacional principal"
+                descricao="Condições padrão usadas como referência operacional da Representada."
+              />
             </CardHeader>
 
-            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="contatoPrincipal">
-                  Contato principal
-                </Label>
-
-                <Input
-                  id="contatoPrincipal"
-                  name="contatoPrincipal"
-                  value={
-                    formData.contatoPrincipal
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    loading
-                  }
-                />
+            <CardContent className="space-y-4 p-4 pt-2">
+              <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
+                Estes dados formam a referência principal do cadastro.
+                Regras comerciais com vigência própria ou condições
+                específicas devem ser cadastradas em
+                <strong> Regras Comerciais</strong>.
               </div>
 
-              <div>
-                <Label htmlFor="emailPrincipal">
-                  E-mail *
-                </Label>
-
-                <Input
-                  id="emailPrincipal"
-                  name="emailPrincipal"
-                  type="email"
-                  value={
-                    formData.emailPrincipal
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    loading
-                  }
-                  className={classeErro(
-                    "emailPrincipal"
-                  )}
-                />
-
-                <ErroCampo campo="emailPrincipal" />
-              </div>
-
-              <div>
-                <Label htmlFor="telefonePrincipal">
-                  Telefone *
-                </Label>
-
-                <Input
-                  id="telefonePrincipal"
-                  name="telefonePrincipal"
-                  value={
-                    formData.telefonePrincipal
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    loading
-                  }
-                  className={classeErro(
-                    "telefonePrincipal"
-                  )}
-                />
-
-                <ErroCampo campo="telefonePrincipal" />
-              </div>
-
-              <div>
-                <Label htmlFor="whatsappPrincipal">
-                  WhatsApp
-                </Label>
-
-                <Input
-                  id="whatsappPrincipal"
-                  name="whatsappPrincipal"
-                  value={
-                    formData.whatsappPrincipal
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    loading
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                Endereço
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="endereco">
-                  Endereço
-                </Label>
-
-                <Input
-                  id="endereco"
-                  name="endereco"
-                  value={
-                    formData.endereco
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    loading
-                  }
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div>
-                  <Label htmlFor="cidade">
-                    Cidade
-                  </Label>
-
-                  <Input
-                    id="cidade"
-                    name="cidade"
-                    value={
-                      formData.cidade
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    disabled={
-                      loading
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="estado">
-                    Estado
-                  </Label>
-
-                  <Input
-                    id="estado"
-                    name="estado"
-                    value={
-                      formData.estado
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    maxLength={
-                      2
-                    }
-                    disabled={
-                      loading
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="cep">
-                    CEP
-                  </Label>
-
-                  <Input
-                    id="cep"
-                    name="cep"
-                    value={
-                      formData.cep
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    disabled={
-                      loading
-                    }
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-blue-200">
-            <CardHeader>
-              <CardTitle>
-                Política Comercial
-              </CardTitle>
-
-              <CardDescription>
-                Dados utilizados para preparar e validar pedidos.
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
                   <Label htmlFor="possuiPedidoMinimo">
                     Possui pedido mínimo? *
@@ -1795,7 +2069,7 @@ export default function EditarRepresentadaPage() {
                     disabled={
                       loading
                     }
-                    className={`w-full rounded-md border px-3 py-2 text-sm ${classeErro(
+                    className={`mt-1 h-10 w-full rounded-md border px-3 text-sm ${classeErro(
                       "possuiPedidoMinimo"
                     )}`}
                   >
@@ -1837,9 +2111,9 @@ export default function EditarRepresentadaPage() {
                       disabled={
                         loading
                       }
-                      className={classeErro(
+                      className={`mt-1 ${classeErro(
                         "pedidoMinimo"
-                      )}
+                      )}`}
                     />
 
                     <ErroCampo campo="pedidoMinimo" />
@@ -1863,7 +2137,7 @@ export default function EditarRepresentadaPage() {
                     disabled={
                       loading
                     }
-                    className={`w-full rounded-md border px-3 py-2 text-sm ${classeErro(
+                    className={`mt-1 h-10 w-full rounded-md border px-3 text-sm ${classeErro(
                       "possuiMinimoParcela"
                     )}`}
                   >
@@ -1905,9 +2179,9 @@ export default function EditarRepresentadaPage() {
                       disabled={
                         loading
                       }
-                      className={classeErro(
+                      className={`mt-1 ${classeErro(
                         "minimoParcela"
-                      )}
+                      )}`}
                     />
 
                     <ErroCampo campo="minimoParcela" />
@@ -1915,53 +2189,54 @@ export default function EditarRepresentadaPage() {
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="politicaFrete">
-                  Política de frete *
-                </Label>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="politicaFrete">
+                    Política de frete *
+                  </Label>
 
-                <Input
-                  id="politicaFrete"
-                  name="politicaFrete"
-                  value={
-                    formData.politicaFrete
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    loading
-                  }
-                  placeholder="Ex.: CIF, FOB, sob consulta..."
-                  className={classeErro(
-                    "politicaFrete"
-                  )}
-                />
+                  <Input
+                    id="politicaFrete"
+                    name="politicaFrete"
+                    value={
+                      formData.politicaFrete
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={
+                      loading
+                    }
+                    placeholder="Ex.: CIF, FOB, sob consulta..."
+                    className={`mt-1 ${classeErro(
+                      "politicaFrete"
+                    )}`}
+                  />
 
-                <ErroCampo campo="politicaFrete" />
-              </div>
+                  <ErroCampo campo="politicaFrete" />
+                </div>
 
-              <div>
-                <Label htmlFor="regiaoAtendimento">
-                  Região de atendimento
-                </Label>
+                <div>
+                  <Label htmlFor="regiaoAtendimento">
+                    Região de atendimento
+                  </Label>
 
-                <Input
-                  id="regiaoAtendimento"
-                  name="regiaoAtendimento"
-                  value={
-                    formData.regiaoAtendimento
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    loading
-                  }
-                />
-              </div>
+                  <Input
+                    id="regiaoAtendimento"
+                    name="regiaoAtendimento"
+                    value={
+                      formData.regiaoAtendimento
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={
+                      loading
+                    }
+                    className="mt-1"
+                  />
+                </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <Label htmlFor="prazoEntregaDias">
                     Prazo de entrega padrão (dias)
@@ -1983,9 +2258,9 @@ export default function EditarRepresentadaPage() {
                       loading
                     }
                     placeholder="Vazio = sob consulta"
-                    className={classeErro(
+                    className={`mt-1 ${classeErro(
                       "prazoEntregaDias"
-                    )}
+                    )}`}
                   />
 
                   <ErroCampo campo="prazoEntregaDias" />
@@ -2012,9 +2287,9 @@ export default function EditarRepresentadaPage() {
                       loading
                     }
                     placeholder="Vazio = sob consulta"
-                    className={classeErro(
+                    className={`mt-1 ${classeErro(
                       "prazoFaturamentoDias"
-                    )}
+                    )}`}
                   />
 
                   <ErroCampo campo="prazoFaturamentoDias" />
@@ -2023,20 +2298,48 @@ export default function EditarRepresentadaPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-green-200">
-            <CardHeader>
-              <CardTitle>
-                Comissão
-              </CardTitle>
-
-              <CardDescription>
-                Somente dois tipos: Fixa ou Variada.
-              </CardDescription>
+          <Card
+            id="comissao"
+            className="scroll-mt-6 border-emerald-200"
+          >
+            <CardHeader className="p-4 pb-2">
+              <TituloSecao
+                icone={
+                  <BadgePercent className="h-5 w-5 text-emerald-700" />
+                }
+                titulo="Comissão principal"
+                descricao="Parâmetros comerciais padrão atualmente cadastrados na Representada."
+              />
             </CardHeader>
 
-            <CardContent className="space-y-5">
+            <CardContent className="space-y-4 p-4 pt-2">
+              <div className="flex flex-col gap-3 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-950 sm:flex-row sm:items-center sm:justify-between">
+                <p>
+                  Esta seção mantém a política principal. Para criar
+                  histórico de vigência e versões comerciais, utilize
+                  Regras Comerciais.
+                </p>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    navegarComConfirmacao(
+                      `/representadas/${id}/regras-comerciais`
+                    )
+                  }
+                  disabled={
+                    loading
+                  }
+                  className="shrink-0 bg-white"
+                >
+                  Abrir regras comerciais
+                </Button>
+              </div>
+
               <div className="flex flex-wrap gap-6">
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
                   <input
                     type="radio"
                     checked={
@@ -2044,9 +2347,18 @@ export default function EditarRepresentadaPage() {
                       "fixa"
                     }
                     onChange={() => {
-                      setTipoComissao(
+                      if (
+                        tipoComissao !==
                         "fixa"
-                      )
+                      ) {
+                        setTipoComissao(
+                          "fixa"
+                        )
+
+                        setAlterado(
+                          true
+                        )
+                      }
 
                       limparErro(
                         "faixas"
@@ -2060,7 +2372,7 @@ export default function EditarRepresentadaPage() {
                   Fixa
                 </label>
 
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
                   <input
                     type="radio"
                     checked={
@@ -2068,9 +2380,18 @@ export default function EditarRepresentadaPage() {
                       "variada"
                     }
                     onChange={() => {
-                      setTipoComissao(
+                      if (
+                        tipoComissao !==
                         "variada"
-                      )
+                      ) {
+                        setTipoComissao(
+                          "variada"
+                        )
+
+                        setAlterado(
+                          true
+                        )
+                      }
 
                       limparErro(
                         "comissao"
@@ -2087,7 +2408,7 @@ export default function EditarRepresentadaPage() {
 
               {tipoComissao ===
                 "fixa" && (
-                <div>
+                <div className="max-w-md">
                   <Label htmlFor="comissao">
                     Comissão (%) *
                   </Label>
@@ -2108,9 +2429,9 @@ export default function EditarRepresentadaPage() {
                     disabled={
                       loading
                     }
-                    className={classeErro(
+                    className={`mt-1 ${classeErro(
                       "comissao"
-                    )}
+                    )}`}
                   />
 
                   <ErroCampo campo="comissao" />
@@ -2119,7 +2440,7 @@ export default function EditarRepresentadaPage() {
 
               {tipoComissao ===
                 "variada" && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {faixas.map(
                     (
                       faixa,
@@ -2129,7 +2450,7 @@ export default function EditarRepresentadaPage() {
                         key={
                           index
                         }
-                        className="grid grid-cols-1 items-end gap-3 md:grid-cols-[1fr_1fr_auto]"
+                        className="grid grid-cols-1 items-end gap-3 rounded-lg border bg-slate-50 p-3 md:grid-cols-[1fr_1fr_auto]"
                       >
                         <div>
                           <Label>
@@ -2150,14 +2471,13 @@ export default function EditarRepresentadaPage() {
                               handleFaixaChange(
                                 index,
                                 "desconto",
-                                event
-                                  .target
-                                  .value
+                                event.target.value
                               )
                             }
                             disabled={
                               loading
                             }
+                            className="mt-1"
                           />
                         </div>
 
@@ -2180,14 +2500,13 @@ export default function EditarRepresentadaPage() {
                               handleFaixaChange(
                                 index,
                                 "comissao",
-                                event
-                                  .target
-                                  .value
+                                event.target.value
                               )
                             }
                             disabled={
                               loading
                             }
+                            className="mt-1"
                           />
                         </div>
 
@@ -2217,6 +2536,7 @@ export default function EditarRepresentadaPage() {
                   <Button
                     type="button"
                     variant="outline"
+                    size="sm"
                     onClick={
                       adicionarFaixa
                     }
@@ -2226,49 +2546,49 @@ export default function EditarRepresentadaPage() {
                   >
                     <Plus className="mr-2 h-4 w-4" />
 
-                    Adicionar Faixa
+                    Adicionar faixa
                   </Button>
                 </div>
               )}
 
-              <div>
-                <Label htmlFor="regraReconhecimentoComissao">
-                  Comissão calculada sobre *
-                </Label>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <Label htmlFor="regraReconhecimentoComissao">
+                    Comissão calculada sobre *
+                  </Label>
 
-                <select
-                  id="regraReconhecimentoComissao"
-                  name="regraReconhecimentoComissao"
-                  value={
-                    formData.regraReconhecimentoComissao
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    loading
-                  }
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${classeErro(
-                    "regraReconhecimentoComissao"
-                  )}`}
-                >
-                  <option value="">
-                    Selecione
-                  </option>
+                  <select
+                    id="regraReconhecimentoComissao"
+                    name="regraReconhecimentoComissao"
+                    value={
+                      formData.regraReconhecimentoComissao
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={
+                      loading
+                    }
+                    className={`mt-1 h-10 w-full rounded-md border px-3 text-sm ${classeErro(
+                      "regraReconhecimentoComissao"
+                    )}`}
+                  >
+                    <option value="">
+                      Selecione
+                    </option>
 
-                  <option value="Faturamento">
-                    Faturamento
-                  </option>
+                    <option value="Faturamento">
+                      Faturamento
+                    </option>
 
-                  <option value="Liquidez">
-                    Liquidez
-                  </option>
-                </select>
+                    <option value="Liquidez">
+                      Liquidez
+                    </option>
+                  </select>
 
-                <ErroCampo campo="regraReconhecimentoComissao" />
-              </div>
+                  <ErroCampo campo="regraReconhecimentoComissao" />
+                </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <Label htmlFor="fechamentoComissao">
                     Regra de fechamento *
@@ -2287,9 +2607,9 @@ export default function EditarRepresentadaPage() {
                       loading
                     }
                     placeholder="Ex.: fecha todo dia 25"
-                    className={classeErro(
+                    className={`mt-1 ${classeErro(
                       "fechamentoComissao"
-                    )}
+                    )}`}
                   />
 
                   <ErroCampo campo="fechamentoComissao" />
@@ -2313,49 +2633,58 @@ export default function EditarRepresentadaPage() {
                       loading
                     }
                     placeholder="Ex.: paga dia 10 do mês seguinte"
-                    className={classeErro(
+                    className={`mt-1 ${classeErro(
                       "pagamentoComissao"
-                    )}
+                    )}`}
                   />
 
                   <ErroCampo campo="pagamentoComissao" />
                 </div>
-              </div>
 
-              <div>
-                <Label htmlFor="bancoComissao">
-                  Informação bancária antiga / observação
-                </Label>
+                <div className="md:col-span-2">
+                  <Label htmlFor="bancoComissao">
+                    Informação bancária antiga / observação
+                  </Label>
 
-                <Input
-                  id="bancoComissao"
-                  name="bancoComissao"
-                  value={
-                    formData.bancoComissao
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    loading
-                  }
-                />
+                  <Input
+                    id="bancoComissao"
+                    name="bancoComissao"
+                    value={
+                      formData.bancoComissao
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={
+                      loading
+                    }
+                    className="mt-1"
+                  />
 
-                <p className="mt-1 text-xs text-gray-500">
-                  As contas efetivas continuam sendo controladas em Contas de Recebimento.
-                </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    As contas efetivas continuam sendo controladas em
+                    Contas de Recebimento.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                Contrato e Documentos Fiscais
-              </CardTitle>
+          <Card
+            id="contrato-fiscal"
+            className="scroll-mt-6"
+          >
+            <CardHeader className="p-4 pb-2">
+              <TituloSecao
+                icone={
+                  <FileText className="h-5 w-5" />
+                }
+                titulo="Contrato e documentos fiscais"
+                descricao="Informações básicas sobre formalização e emissão de documentos."
+              />
             </CardHeader>
 
-            <CardContent className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            <CardContent className="grid grid-cols-1 gap-3 p-4 pt-2 md:grid-cols-3">
               <div>
                 <Label htmlFor="contratoAssinado">
                   Existe contrato assinado? *
@@ -2373,7 +2702,7 @@ export default function EditarRepresentadaPage() {
                   disabled={
                     loading
                   }
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${classeErro(
+                  className={`mt-1 h-10 w-full rounded-md border px-3 text-sm ${classeErro(
                     "contratoAssinado"
                   )}`}
                 >
@@ -2410,7 +2739,7 @@ export default function EditarRepresentadaPage() {
                   disabled={
                     loading
                   }
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${classeErro(
+                  className={`mt-1 h-10 w-full rounded-md border px-3 text-sm ${classeErro(
                     "emiteNF"
                   )}`}
                 >
@@ -2447,7 +2776,7 @@ export default function EditarRepresentadaPage() {
                   disabled={
                     loading
                   }
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${classeErro(
+                  className={`mt-1 h-10 w-full rounded-md border px-3 text-sm ${classeErro(
                     "exigeNFComissao"
                   )}`}
                 >
@@ -2466,20 +2795,35 @@ export default function EditarRepresentadaPage() {
 
                 <ErroCampo campo="exigeNFComissao" />
               </div>
+
+              <div className="md:col-span-3">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+                  Data de início, encerramento, vigência e documentos do
+                  contrato pertencem ao controle contratual da Representada
+                  e não devem ser confundidos com este cadastro principal.
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                Observações
-              </CardTitle>
+          <Card
+            id="observacoes"
+            className="scroll-mt-6"
+          >
+            <CardHeader className="p-4 pb-2">
+              <TituloSecao
+                icone={
+                  <FileText className="h-5 w-5" />
+                }
+                titulo="Observações"
+                descricao="Particularidades gerais do cadastro principal."
+              />
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="p-4 pt-2">
               <Textarea
                 rows={
-                  5
+                  4
                 }
                 name="observacoes"
                 value={
@@ -2496,48 +2840,77 @@ export default function EditarRepresentadaPage() {
             </CardContent>
           </Card>
 
-          <div className="rounded-md border border-green-200 bg-green-50 p-4">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 text-green-700" />
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
 
-              <div className="text-sm text-green-900">
+              <div className="text-sm text-emerald-950">
                 <p className="font-semibold">
-                  Revisão necessária para cadastros antigos
+                  Revisão de cadastros antigos
                 </p>
 
                 <p className="mt-1">
-                  Confira os dados reais antes de atualizar. Não preencha valores fictícios apenas para liberar o cadastro.
+                  Confira os dados reais antes de salvar. Não preencha
+                  valores fictícios apenas para completar o cadastro.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <Button
-              type="submit"
-              disabled={
-                loading
-              }
-            >
-              {loading
-                ? "Validando e salvando..."
-                : "Atualizar Representada"}
-            </Button>
+          <div className="flex flex-col-reverse gap-3 rounded-xl border bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm">
+              {alterado ? (
+                <span className="inline-flex items-center gap-2 font-medium text-amber-700">
+                  <AlertCircle className="h-4 w-4" />
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                router.push(
-                  `/representadas/${id}`
-                )
-              }
-              disabled={
-                loading
-              }
-            >
-              Cancelar
-            </Button>
+                  Existem alterações ainda não salvas.
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2 text-slate-500">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+
+                  Nenhuma alteração pendente.
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  navegarComConfirmacao(
+                    `/representadas/${id}`
+                  )
+                }
+                disabled={
+                  loading
+                }
+              >
+                Cancelar
+              </Button>
+
+              <Button
+                type="submit"
+                disabled={
+                  loading
+                }
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+
+                    Validando e salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+
+                    Salvar alterações
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </form>
       </div>

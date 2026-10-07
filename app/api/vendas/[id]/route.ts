@@ -66,27 +66,6 @@ function numeroOpcional(valor: unknown) {
   return numero
 }
 
-function regraEstaVigente(
-  vigenciaInicio: Date,
-  vigenciaFim: Date | null,
-  agora: Date
-) {
-  if (
-    vigenciaInicio > agora
-  ) {
-    return false
-  }
-
-  if (
-    vigenciaFim &&
-    vigenciaFim < agora
-  ) {
-    return false
-  }
-
-  return true
-}
-
 export async function GET(
   request: NextRequest,
   {
@@ -234,6 +213,13 @@ export async function PUT(
     const body =
       await request.json()
 
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json(
+        { message: "Dados inválidos." },
+        { status: 400 }
+      )
+    }
+
     const vendaExistente =
       await prisma.venda.findFirst({
         where:
@@ -274,367 +260,167 @@ export async function PUT(
       )
     }
 
-    let clienteId =
-      vendaExistente.clienteId
-
-    let representadaId =
-      vendaExistente.representadaId
-
-    let valorTotal =
-      Number(
-        vendaExistente.valorTotal ||
-          0
-      )
-
-    let condicaoPagamento =
-      vendaExistente.condicaoPagamento
+    /*
+     * A edição operacional não é uma autorização para alterar
+     * as condições comerciais nem para recalcular comissão.
+     * Esses dados permanecem exatamente como foram gravados.
+     * Correções comerciais/históricas exigem fluxo separado.
+     */
+    const camposComissaoProtegidos = [
+      "regraComercialId",
+      "orcamentoOrigemId",
+      "percentualComissaoAplicado",
+      "baseCalculoComissao",
+      "valorComissaoPrevista",
+      "comissao",
+      "regraReconhecimentoComissao",
+    ]
 
     if (
-      vendaExistente.orcamentoOrigem
+      camposComissaoProtegidos.some((campo) =>
+        Object.prototype.hasOwnProperty.call(body, campo)
+      )
     ) {
-      clienteId =
-        vendaExistente.orcamentoOrigem.clienteId
+      return NextResponse.json(
+        {
+          message:
+            "Os dados da comissão e seus vínculos não podem ser alterados pela edição operacional da Venda.",
+        },
+        { status: 409 }
+      )
+    }
 
-      representadaId =
-        vendaExistente.orcamentoOrigem.representadaId
+    const camposVinculo = ["clienteId", "representadaId"] as const
 
-      valorTotal =
-        Number(
-          vendaExistente.orcamentoOrigem.valorTotal
-        )
+    for (const campo of camposVinculo) {
+      if (body[campo] !== undefined) {
+        const informado =
+          typeof body[campo] === "string" ? body[campo].trim() : null
 
-      condicaoPagamento =
-        vendaExistente.orcamentoOrigem.condicaoPagamento
-    } else {
-      if (
-        typeof body.clienteId ===
-          "string" &&
-        body.clienteId.trim() !==
-          ""
-      ) {
-        clienteId =
-          body.clienteId.trim()
-      }
-
-      if (
-        typeof body.representadaId ===
-          "string" &&
-        body.representadaId.trim() !==
-          ""
-      ) {
-        representadaId =
-          body.representadaId.trim()
-      }
-
-      if (
-        body.valorTotal !==
-        undefined
-      ) {
-        const novoValor =
-          numeroOpcional(
-            body.valorTotal
+        if (!informado || informado !== vendaExistente[campo]) {
+          return NextResponse.json(
+            {
+              message:
+                "Cliente e Representada não podem ser alterados nesta edição sem revisão da comissão.",
+            },
+            { status: 409 }
           )
+        }
+      }
+    }
+
+    const camposMonetarios = ["valorTotal", "desconto", "bonificacaoValor"] as const
+
+    for (const campo of camposMonetarios) {
+      if (body[campo] !== undefined) {
+        const informado = numeroOpcional(body[campo])
+        const gravado = vendaExistente[campo]
 
         if (
-          novoValor === null ||
-          novoValor <= 0
+          informado === null ||
+          informado < 0 ||
+          (campo === "valorTotal" && informado <= 0) ||
+          gravado === null ||
+          Math.abs(informado - gravado) > 0.000001
         ) {
           return NextResponse.json(
             {
               message:
-                "Informe um valor de venda maior que zero.",
+                "Valor, desconto e bonificação não podem ser alterados nesta edição sem revisão da comissão.",
             },
-            {
-              status: 400,
-            }
+            { status: 409 }
           )
         }
-
-        valorTotal =
-          novoValor
-      }
-
-      if (
-        body.condicaoPagamento !==
-        undefined
-      ) {
-        condicaoPagamento =
-          typeof body.condicaoPagamento ===
-            "string" &&
-          body.condicaoPagamento.trim() !==
-            ""
-            ? body.condicaoPagamento.trim()
-            : null
       }
     }
 
-    const cliente =
-      await prisma.cliente.findFirst({
-        where: {
-          id:
-            clienteId,
+    if (body.condicaoPagamento !== undefined) {
+      const informada =
+        typeof body.condicaoPagamento === "string" &&
+        body.condicaoPagamento.trim() !== ""
+          ? body.condicaoPagamento.trim()
+          : null
 
-          escritorioId:
-            sessao.escritorioId,
-        },
+      if (informada !== vendaExistente.condicaoPagamento) {
+        return NextResponse.json(
+          {
+            message:
+              "A condição de pagamento não pode ser alterada nesta edição sem revisão comercial.",
+          },
+          { status: 409 }
+        )
+      }
+    }
 
-        select: {
-          id: true,
-          status: true,
-          cnpj: true,
-        },
-      })
+    if (body.data !== undefined) {
+      const informada = dataValida(body.data)
+      const mesmaData =
+        informada !== null &&
+        (typeof body.data === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.data)
+          ? body.data === vendaExistente.data.toISOString().slice(0, 10)
+          : informada.getTime() === vendaExistente.data.getTime())
+
+      if (!mesmaData) {
+        return NextResponse.json(
+          {
+            message:
+              "A data comercial da Venda não pode ser alterada nesta edição sem revisão da comissão.",
+          },
+          { status: 409 }
+        )
+      }
+    }
+
+    const cliente = await prisma.cliente.findFirst({
+      where: {
+        id: vendaExistente.clienteId,
+        escritorioId: sessao.escritorioId,
+      },
+      select: { id: true, status: true, cnpj: true },
+    })
 
     if (!cliente) {
       return NextResponse.json(
-        {
-          message:
-            "Cliente não encontrado neste escritório.",
-        },
-        {
-          status: 404,
-        }
+        { message: "Cliente não encontrado neste escritório." },
+        { status: 404 }
       )
     }
 
-    if (
-      cliente.status !==
-      "Ativo"
-    ) {
+    if (cliente.status !== "Ativo") {
       return NextResponse.json(
-        {
-          message:
-            "O cliente precisa estar ativo.",
-        },
-        {
-          status: 400,
-        }
+        { message: "O cliente precisa estar ativo." },
+        { status: 400 }
       )
     }
 
-    if (
-      !cliente.cnpj ||
-      cliente.cnpj.trim() ===
-        ""
-    ) {
+    if (!cliente.cnpj?.trim()) {
       return NextResponse.json(
-        {
-          message:
-            "O cliente precisa possuir CNPJ cadastrado.",
-        },
-        {
-          status: 400,
-        }
+        { message: "O cliente precisa possuir CNPJ cadastrado." },
+        { status: 400 }
       )
     }
 
-    const representada =
-      await prisma.representada.findFirst({
-        where: {
-          id:
-            representadaId,
-
-          escritorioId:
-            sessao.escritorioId,
-        },
-
-        select: {
-          id: true,
-          status: true,
-          comissao: true,
-          regraReconhecimentoComissao:
-            true,
-        },
-      })
+    const representada = await prisma.representada.findFirst({
+      where: {
+        id: vendaExistente.representadaId,
+        escritorioId: sessao.escritorioId,
+      },
+      select: { id: true, status: true },
+    })
 
     if (!representada) {
       return NextResponse.json(
-        {
-          message:
-            "Representada não encontrada neste escritório.",
-        },
-        {
-          status: 404,
-        }
+        { message: "Representada não encontrada neste escritório." },
+        { status: 404 }
       )
     }
 
-    if (
-      representada.status !==
-      "Ativa"
-    ) {
+    if (representada.status !== "Ativa") {
       return NextResponse.json(
-        {
-          message:
-            "A Representada precisa estar ativa.",
-        },
-        {
-          status: 400,
-        }
+        { message: "A Representada precisa estar ativa." },
+        { status: 400 }
       )
     }
-
-    const dataVenda =
-      body.data !== undefined
-        ? dataValida(body.data)
-        : vendaExistente.data
-
-    if (!dataVenda) {
-      return NextResponse.json(
-        {
-          message:
-            "Informe uma data de venda válida.",
-        },
-        {
-          status: 400,
-        }
-      )
-    }
-
-    const desconto =
-      body.desconto !==
-      undefined
-        ? numeroOpcional(
-            body.desconto
-          ) || 0
-        : Number(
-            vendaExistente.desconto ||
-              0
-          )
-
-    const bonificacaoValor =
-      body.bonificacaoValor !==
-      undefined
-        ? numeroOpcional(
-            body.bonificacaoValor
-          ) || 0
-        : Number(
-            vendaExistente.bonificacaoValor ||
-              0
-          )
-
-    const agora =
-      new Date()
-
-    const regras =
-      await prisma.regraComercialRepresentada.findMany({
-        where: {
-          representadaId:
-            representada.id,
-
-          ativa: true,
-
-          OR: [
-            {
-              clienteId:
-                cliente.id,
-            },
-            {
-              clienteId:
-                null,
-
-              tipoEscopo:
-                "Padrao",
-            },
-          ],
-        },
-
-        orderBy: {
-          vigenciaInicio:
-            "desc",
-        },
-      })
-
-    const regrasVigentes =
-      regras.filter(
-        (regra) =>
-          regraEstaVigente(
-            regra.vigenciaInicio,
-            regra.vigenciaFim,
-            agora
-          )
-      )
-
-    const regraEspecifica =
-      regrasVigentes.find(
-        (regra) =>
-          regra.clienteId ===
-          cliente.id
-      )
-
-    const regraPadrao =
-      regrasVigentes.find(
-        (regra) =>
-          regra.clienteId ===
-            null &&
-          regra.tipoEscopo ===
-            "Padrao"
-      )
-
-    const regraAplicavel =
-      regraEspecifica ||
-      regraPadrao ||
-      null
-
-    let percentualComissao:
-      | number
-      | null =
-      null
-
-    if (
-      regraAplicavel
-        ?.percentualComissao !==
-        null &&
-      regraAplicavel
-        ?.percentualComissao !==
-        undefined
-    ) {
-      percentualComissao =
-        Number(
-          regraAplicavel.percentualComissao
-        )
-    } else if (
-      representada.comissao !==
-        null &&
-      representada.comissao !==
-        undefined
-    ) {
-      percentualComissao =
-        Number(
-          representada.comissao
-        )
-    }
-
-    if (
-      percentualComissao !==
-        null &&
-      !Number.isFinite(
-        percentualComissao
-      )
-    ) {
-      percentualComissao =
-        null
-    }
-
-    const baseCalculoComissao =
-      Math.max(
-        valorTotal -
-          desconto -
-          bonificacaoValor,
-        0
-      )
-
-    const valorComissaoPrevista =
-      percentualComissao !==
-      null
-        ? Number(
-            (
-              (baseCalculoComissao *
-                percentualComissao) /
-              100
-            ).toFixed(2)
-          )
-        : null
 
     const previsaoFaturamento =
       body.previsaoFaturamento !==
@@ -761,25 +547,6 @@ export async function PUT(
               },
 
               data: {
-                data:
-                  dataVenda,
-
-                clienteId,
-
-                representadaId,
-
-                regraComercialId:
-                  regraAplicavel?.id ||
-                  null,
-
-                valorTotal,
-
-                desconto,
-
-                bonificacaoValor,
-
-                condicaoPagamento,
-
                 previsaoFaturamento,
 
                 numeroPedido:
@@ -839,21 +606,6 @@ export async function PUT(
                         )
                       : null
                     : vendaExistente.quantidade,
-
-                percentualComissaoAplicado:
-                  percentualComissao,
-
-                baseCalculoComissao,
-
-                valorComissaoPrevista,
-
-                comissao:
-                  valorComissaoPrevista,
-
-                regraReconhecimentoComissao:
-                  regraAplicavel?.reconhecimentoComissao ||
-                  representada.regraReconhecimentoComissao ||
-                  null,
 
                 status,
 

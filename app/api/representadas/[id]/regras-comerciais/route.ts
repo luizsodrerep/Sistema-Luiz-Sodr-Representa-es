@@ -1,77 +1,86 @@
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server"
+import { Prisma } from "@prisma/client"
+import { NextRequest, NextResponse } from "next/server"
 
-import {
-  exigirSessao,
-} from "@/lib/auth/server"
+import { exigirSessao } from "@/lib/auth/server"
+import { podeExecutarAcao } from "@/lib/auth/permissions"
+import { prisma } from "@/lib/prisma"
 
-import {
-  podeExecutarAcao,
-} from "@/lib/auth/permissions"
+function parseDataComercial(valor: string): Date {
+  const texto = valor.trim()
 
-import {
-  prisma,
-} from "@/lib/prisma"
+  /*
+   * Os formulários de política usam campos do tipo date e enviam YYYY-MM-DD.
+   * O dia é gravado ao meio-dia de Brasília para manter a data comercial
+   * estável e permitir comparação inclusiva de início e fim de vigência.
+   */
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+    const data = new Date(`${texto}T12:00:00-03:00`)
 
-function parseDataObrigatoria(
-  valor: unknown
-): Date {
-  if (
-    typeof valor !== "string" ||
-    valor.trim() === ""
-  ) {
-    throw new Error(
-      "DATA_OBRIGATORIA"
-    )
+    if (Number.isNaN(data.getTime())) {
+      throw new Error("DATA_INVALIDA")
+    }
+
+    const partes = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(data)
+
+    const parte = (tipo: string) =>
+      partes.find((item) => item.type === tipo)?.value
+
+    const dia = `${parte("year")}-${parte("month")}-${parte("day")}`
+
+    if (dia !== texto) {
+      throw new Error("DATA_INVALIDA")
+    }
+
+    return data
   }
 
-  const data =
-    new Date(valor)
+  const data = new Date(texto)
 
-  if (
-    Number.isNaN(
-      data.getTime()
-    )
-  ) {
-    throw new Error(
-      "DATA_INVALIDA"
-    )
+  if (Number.isNaN(data.getTime())) {
+    throw new Error("DATA_INVALIDA")
   }
 
   return data
 }
 
-function parseDataOpcional(
-  valor: unknown
-): Date | null {
-  if (
-    typeof valor !== "string" ||
-    valor.trim() === ""
-  ) {
+function parseDataObrigatoria(valor: unknown): Date {
+  if (typeof valor !== "string" || valor.trim() === "") {
+    throw new Error("DATA_OBRIGATORIA")
+  }
+
+  return parseDataComercial(valor)
+}
+
+function parseDataOpcional(valor: unknown): Date | null {
+  if (typeof valor !== "string" || valor.trim() === "") {
     return null
   }
 
-  const data =
-    new Date(valor)
-
-  if (
-    Number.isNaN(
-      data.getTime()
-    )
-  ) {
-    throw new Error(
-      "DATA_INVALIDA"
-    )
-  }
-
-  return data
+  return parseDataComercial(valor)
 }
 
-function parseNumeroOpcional(
-  valor: unknown
-): number | null {
+function normalizarDataCadastroComoDataComercial(data: Date): Date {
+  const partes = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(data)
+
+  const parte = (tipo: string) =>
+    partes.find((item) => item.type === tipo)?.value
+
+  const dia = `${parte("year")}-${parte("month")}-${parte("day")}`
+
+  return parseDataComercial(dia)
+}
+
+function parseNumeroOpcional(valor: unknown): number | null {
   if (
     valor === undefined ||
     valor === null ||
@@ -80,20 +89,114 @@ function parseNumeroOpcional(
     return null
   }
 
-  const numero =
-    Number(valor)
+  const texto = String(valor).trim().replace(",", ".")
+  const numero = Number(texto)
 
-  if (
-    !Number.isFinite(
-      numero
-    )
-  ) {
-    throw new Error(
-      "NUMERO_INVALIDO"
-    )
+  if (!Number.isFinite(numero)) {
+    throw new Error("NUMERO_INVALIDO")
   }
 
   return numero
+}
+
+function parsePercentual(valor: unknown): number | null {
+  if (typeof valor !== "string" && typeof valor !== "number") {
+    return null
+  }
+
+  const texto = String(valor).trim().replace(",", ".")
+
+  if (!/^\d+(?:\.\d{1,2})?$/.test(texto)) {
+    return null
+  }
+
+  const numero = Number(texto)
+
+  return Number.isFinite(numero) && numero >= 0 && numero <= 100
+    ? numero
+    : null
+}
+
+function textoOpcional(valor: unknown): string | null {
+  return typeof valor === "string" && valor.trim() !== ""
+    ? valor.trim()
+    : null
+}
+
+type FaixaComissaoNormalizada = {
+  desconto: string
+  comissao: string
+  pedidoMinimo: number | null
+}
+
+function normalizarFaixasComissao(valor: unknown): string {
+  if (typeof valor !== "string" || valor.trim() === "") {
+    throw new Error("FAIXAS_INVALIDAS")
+  }
+
+  let faixas: unknown
+
+  try {
+    faixas = JSON.parse(valor)
+  } catch {
+    throw new Error("FAIXAS_INVALIDAS")
+  }
+
+  if (!Array.isArray(faixas) || faixas.length === 0) {
+    throw new Error("FAIXAS_INVALIDAS")
+  }
+
+  const descontosVistos = new Set<number>()
+  const normalizadas: FaixaComissaoNormalizada[] = []
+
+  for (const item of faixas) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error("FAIXAS_INVALIDAS")
+    }
+
+    const faixa = item as Record<string, unknown>
+    const desconto = parsePercentual(faixa.desconto)
+    const comissao = parsePercentual(faixa.comissao)
+
+    if (
+      desconto === null ||
+      comissao === null ||
+      comissao <= 0 ||
+      descontosVistos.has(desconto)
+    ) {
+      throw new Error("FAIXAS_INVALIDAS")
+    }
+
+    let pedidoMinimoFaixa: number | null = null
+
+    try {
+      pedidoMinimoFaixa = parseNumeroOpcional(
+        faixa.pedidoMinimo
+      )
+    } catch {
+      throw new Error("FAIXAS_INVALIDAS")
+    }
+
+    if (
+      pedidoMinimoFaixa !== null &&
+      pedidoMinimoFaixa < 0
+    ) {
+      throw new Error("FAIXAS_INVALIDAS")
+    }
+
+    descontosVistos.add(desconto)
+
+    normalizadas.push({
+      desconto: String(desconto),
+      comissao: String(comissao),
+      pedidoMinimo:
+        pedidoMinimoFaixa === null
+          ? null
+          : Number(pedidoMinimoFaixa.toFixed(2)),
+    })
+  }
+
+  return JSON.stringify(normalizadas)
 }
 
 function respostaNaoAutorizada(
@@ -110,7 +213,7 @@ function respostaNaoAutorizada(
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   {
     params,
   }: {
@@ -137,34 +240,21 @@ export async function GET(
 
     const {
       id: representadaId,
-    } =
-      await params
+    } = await params
 
-    /*
-     * ISOLAMENTO POR ESCRITÓRIO
-     *
-     * Conhecer o ID da Representada não pode
-     * permitir consultar regras pertencentes
-     * a outro escritório.
-     */
     const representada =
       await prisma.representada.findFirst({
         where: {
-          id:
-            representadaId,
-
+          id: representadaId,
           escritorioId:
             sessao.escritorioId,
         },
-
         select: {
           id: true,
         },
       })
 
-    if (
-      !representada
-    ) {
+    if (!representada) {
       return NextResponse.json(
         {
           message:
@@ -177,168 +267,96 @@ export async function GET(
     }
 
     /*
-     * PREPOSTO
-     *
-     * A matriz atual ainda permite leitura das
-     * regras comerciais, porém os dados financeiros
-     * internos do escritório não devem ser enviados.
-     *
-     * Portanto retornamos somente as condições
-     * operacionais necessárias para comercialização.
-     *
-     * Esta regra será substituída posteriormente
-     * pelas permissões individuais do Cadastro 360.
+     * Preposto recebe condições operacionais,
+     * mas não recebe dados financeiros internos
+     * de comissão.
      */
     if (
-      sessao.perfil ===
-      "Preposto"
+      sessao.perfil === "Preposto"
     ) {
       const regrasOperacionais =
-        await prisma.regraComercialRepresentada.findMany({
-          where: {
-            representadaId:
-              representada.id,
-          },
-
-          select: {
-            id: true,
-
-            representadaId:
-              true,
-
-            clienteId:
-              true,
-
-            contratoId:
-              true,
-
-            nome: true,
-
-            tipoEscopo:
-              true,
-
-            vigenciaInicio:
-              true,
-
-            vigenciaFim:
-              true,
-
-            ativa: true,
-
-            pedidoMinimo:
-              true,
-
-            minimoParcela:
-              true,
-
-            prazoEntregaDias:
-              true,
-
-            prazoFaturamentoDias:
-              true,
-
-            frete: true,
-
-            regiao: true,
-
-            criadoEm:
-              true,
-
-            atualizadoEm:
-              true,
-
-            cliente: {
-              select: {
-                id: true,
-
-                codigo: true,
-
-                razaoSocial:
-                  true,
-
-                nomeFantasia:
-                  true,
-
-                status: true,
+        await prisma.regraComercialRepresentada.findMany(
+          {
+            where: {
+              representadaId:
+                representada.id,
+            },
+            select: {
+              id: true,
+              representadaId: true,
+              clienteId: true,
+              contratoId: true,
+              nome: true,
+              tipoEscopo: true,
+              vigenciaInicio: true,
+              vigenciaFim: true,
+              ativa: true,
+              pedidoMinimo: true,
+              minimoParcela: true,
+              prazoEntregaDias: true,
+              prazoFaturamentoDias:
+                true,
+              frete: true,
+              regiao: true,
+              criadoEm: true,
+              atualizadoEm: true,
+              cliente: {
+                select: {
+                  id: true,
+                  codigo: true,
+                  razaoSocial: true,
+                  nomeFantasia: true,
+                  status: true,
+                },
+              },
+              contrato: {
+                select: {
+                  id: true,
+                  tipoFormalizacao:
+                    true,
+                  dataInicio: true,
+                  dataEncerramento:
+                    true,
+                  vigente: true,
+                },
+              },
+              _count: {
+                select: {
+                  vendas: true,
+                },
               },
             },
-
-            contrato: {
-              select: {
-                id: true,
-
-                tipoFormalizacao:
-                  true,
-
-                dataInicio:
-                  true,
-
-                dataEncerramento:
-                  true,
-
-                vigente:
-                  true,
+            orderBy: [
+              {
+                ativa: "desc",
               },
-            },
-
-            _count: {
-              select: {
-                vendas: true,
+              {
+                vigenciaInicio:
+                  "desc",
               },
-            },
-          },
-
-          orderBy: [
-            {
-              ativa:
-                "desc",
-            },
-
-            {
-              vigenciaInicio:
-                "desc",
-            },
-
-            {
-              criadoEm:
-                "desc",
-            },
-          ],
-        })
+              {
+                criadoEm: "desc",
+              },
+            ],
+          }
+        )
 
       const resposta =
         regrasOperacionais.map(
-          (
-            regra
-          ) => ({
+          (regra) => ({
             ...regra,
 
-            /*
-             * Mantemos estes campos na resposta
-             * com valor nulo para preservar uma
-             * estrutura previsível no frontend,
-             * sem revelar valores confidenciais.
-             */
-            tipoComissao:
-              null,
-
+            tipoComissao: null,
             percentualComissao:
               null,
-
-            faixasComissao:
-              null,
-
+            faixasComissao: null,
             reconhecimentoComissao:
               null,
-
             fechamentoComissao:
               null,
-
             pagamentoComissao:
               null,
-
-            observacoes:
-              null,
+            observacoes: null,
 
             informacoesFinanceirasRestritas:
               true,
@@ -356,81 +374,56 @@ export async function GET(
       )
     }
 
-    /*
-     * Diretor e Administrativo autorizado
-     * recebem o conteúdo completo da regra.
-     */
     const regras =
-      await prisma.regraComercialRepresentada.findMany({
-        where: {
-          representadaId:
-            representada.id,
-        },
-
-        include: {
-          cliente: {
-            select: {
-              id: true,
-
-              codigo: true,
-
-              razaoSocial:
-                true,
-
-              nomeFantasia:
-                true,
-
-              cnpj: true,
-
-              status: true,
+      await prisma.regraComercialRepresentada.findMany(
+        {
+          where: {
+            representadaId:
+              representada.id,
+          },
+          include: {
+            cliente: {
+              select: {
+                id: true,
+                codigo: true,
+                razaoSocial: true,
+                nomeFantasia: true,
+                cnpj: true,
+                status: true,
+              },
+            },
+            contrato: {
+              select: {
+                id: true,
+                tipoFormalizacao:
+                  true,
+                descricao: true,
+                dataInicio: true,
+                dataEncerramento:
+                  true,
+                vigente: true,
+              },
+            },
+            _count: {
+              select: {
+                vendas: true,
+              },
             },
           },
-
-          contrato: {
-            select: {
-              id: true,
-
-              tipoFormalizacao:
-                true,
-
-              descricao:
-                true,
-
-              dataInicio:
-                true,
-
-              dataEncerramento:
-                true,
-
-              vigente:
-                true,
+          orderBy: [
+            {
+              ativa: "desc",
             },
-          },
-
-          _count: {
-            select: {
-              vendas: true,
+            {
+              vigenciaInicio:
+                "desc",
             },
-          },
-        },
-
-        orderBy: [
-          {
-            ativa:
-              "desc",
-          },
-
-          {
-            vigenciaInicio:
-              "desc",
-          },
-
-          {
-            criadoEm:
-              "desc",
-          },
-        ],
-      })
+            {
+              criadoEm: "desc",
+            },
+          ],
+        }
+      )
 
     return NextResponse.json(
       regras,
@@ -503,34 +496,50 @@ export async function POST(
 
     const {
       id: representadaId,
-    } =
-      await params
+    } = await params
 
-    const body =
+    const recebido: unknown =
       await request.json()
 
-    /*
-     * Representada obrigatoriamente
-     * pertencente ao escritório da sessão.
-     */
-    const representada =
-      await prisma.representada.findFirst({
-        where: {
-          id:
-            representadaId,
-
-          escritorioId:
-            sessao.escritorioId,
-        },
-
-        select: {
-          id: true,
-        },
-      })
-
     if (
-      !representada
+      !recebido ||
+      typeof recebido !== "object" ||
+      Array.isArray(recebido)
     ) {
+      return NextResponse.json(
+        {
+          message:
+            "Dados da política comercial são inválidos.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    const body =
+      recebido as Record<
+        string,
+        unknown
+      >
+
+    const representada =
+      await prisma.representada.findFirst(
+        {
+          where: {
+            id: representadaId,
+            escritorioId:
+              sessao.escritorioId,
+          },
+          select: {
+            id: true,
+            nome: true,
+            criadoEm: true,
+          },
+        }
+      )
+
+    if (!representada) {
       return NextResponse.json(
         {
           message:
@@ -545,13 +554,12 @@ export async function POST(
     if (
       typeof body.nome !==
         "string" ||
-      body.nome.trim() ===
-        ""
+      body.nome.trim() === ""
     ) {
       return NextResponse.json(
         {
           message:
-            "Nome da regra comercial é obrigatório.",
+            "Nome da política comercial é obrigatório.",
         },
         {
           status: 400,
@@ -559,18 +567,57 @@ export async function POST(
       )
     }
 
-    let vigenciaInicio:
-      Date
+    const nome =
+      body.nome.trim()
 
+    /*
+     * REGRA DE DATA DA PRIMEIRA POLÍTICA
+     *
+     * A primeira política Padrão da Representada começa,
+     * por definição operacional atual, na própria data de
+     * cadastro da Representada no CRM.
+     *
+     * A partir da segunda política Padrão, a data de início
+     * volta a ser obrigatória, pois representa uma nova
+     * versão comercial com vigência própria.
+     */
+    const politicaPadraoExistente =
+      await prisma.regraComercialRepresentada.findFirst(
+        {
+          where: {
+            representadaId:
+              representada.id,
+
+            clienteId:
+              null,
+
+            tipoEscopo:
+              "Padrao",
+          },
+
+          select: {
+            id: true,
+          },
+        }
+      )
+
+    const primeiraPoliticaPadrao =
+      !politicaPadraoExistente
+
+    let vigenciaInicio: Date
     let vigenciaFim:
       | Date
       | null
 
     try {
       vigenciaInicio =
-        parseDataObrigatoria(
-          body.vigenciaInicio
-        )
+        primeiraPoliticaPadrao
+          ? normalizarDataCadastroComoDataComercial(
+              representada.criadoEm
+            )
+          : parseDataObrigatoria(
+              body.vigenciaInicio
+            )
 
       vigenciaFim =
         parseDataOpcional(
@@ -580,7 +627,9 @@ export async function POST(
       return NextResponse.json(
         {
           message:
-            "A vigência da regra comercial contém data inválida.",
+            primeiraPoliticaPadrao
+              ? "Não foi possível determinar a data inicial da primeira política a partir da data de cadastro da Representada."
+              : "Informe uma data válida para o início da nova versão da política comercial.",
         },
         {
           status: 400,
@@ -604,56 +653,58 @@ export async function POST(
       )
     }
 
-    let clienteId:
-      | string
-      | null =
-      null
+    /*
+     * MODELO COMERCIAL CONTROLADO
+     *
+     * Novas políticas são sempre da própria Representada.
+     * O CRM não aceita novas regras livres por Cliente.
+     *
+     * Na comissão variável, cada faixa pode definir:
+     * - desconto;
+     * - comissão;
+     * - pedido mínimo próprio.
+     *
+     * O valor do pedido nunca concede desconto automaticamente.
+     * Ele apenas valida se a faixa realmente negociada pode ser usada.
+     *
+     * Regras antigas vinculadas a Cliente permanecem preservadas
+     * no histórico e seguem visíveis no GET.
+     */
+    const tipoEscopoInformado =
+      textoOpcional(
+        body.tipoEscopo
+      )
+
+    const clienteIdInformado =
+      textoOpcional(
+        body.clienteId
+      )
 
     if (
-      typeof body.clienteId ===
-        "string" &&
-      body.clienteId.trim() !==
-        ""
+      clienteIdInformado ||
+      (
+        tipoEscopoInformado !==
+          null &&
+        tipoEscopoInformado !==
+          "Padrao"
+      )
     ) {
-      const clienteIdValidado =
-        body.clienteId.trim()
-
-      /*
-       * Cliente vinculado à regra precisa
-       * pertencer ao mesmo escritório.
-       */
-      const cliente =
-        await prisma.cliente.findFirst({
-          where: {
-            id:
-              clienteIdValidado,
-
-            escritorioId:
-              sessao.escritorioId,
-          },
-
-          select: {
-            id: true,
-          },
-        })
-
-      if (
-        !cliente
-      ) {
-        return NextResponse.json(
-          {
-            message:
-              "Cliente informado não foi encontrado.",
-          },
-          {
-            status: 400,
-          }
-        )
-      }
-
-      clienteId =
-        cliente.id
+      return NextResponse.json(
+        {
+          message:
+            "Novas políticas específicas por Cliente estão desabilitadas. Cadastre as faixas de desconto, comissão e pedido mínimo na política comercial da própria Representada.",
+        },
+        {
+          status: 409,
+        }
+      )
     }
+
+    const tipoEscopo =
+      "Padrao"
+
+    const clienteId =
+      null
 
     let contratoId:
       | string
@@ -669,34 +720,26 @@ export async function POST(
       const contratoIdValidado =
         body.contratoId.trim()
 
-      /*
-       * Contrato precisa simultaneamente:
-       * - pertencer à Representada;
-       * - estar dentro do mesmo escritório.
-       */
       const contrato =
-        await prisma.contratoRepresentada.findFirst({
-          where: {
-            id:
-              contratoIdValidado,
-
-            representadaId:
-              representada.id,
-
-            representada: {
-              escritorioId:
-                sessao.escritorioId,
+        await prisma.contratoRepresentada.findFirst(
+          {
+            where: {
+              id:
+                contratoIdValidado,
+              representadaId:
+                representada.id,
+              representada: {
+                escritorioId:
+                  sessao.escritorioId,
+              },
             },
-          },
+            select: {
+              id: true,
+            },
+          }
+        )
 
-          select: {
-            id: true,
-          },
-        })
-
-      if (
-        !contrato
-      ) {
+      if (!contrato) {
         return NextResponse.json(
           {
             message:
@@ -710,46 +753,6 @@ export async function POST(
 
       contratoId =
         contrato.id
-    }
-
-    const tipoEscopo =
-      typeof body.tipoEscopo ===
-        "string" &&
-      body.tipoEscopo.trim() !==
-        ""
-        ? body.tipoEscopo.trim()
-        : "Padrao"
-
-    if (
-      clienteId &&
-      tipoEscopo ===
-        "Padrao"
-    ) {
-      return NextResponse.json(
-        {
-          message:
-            "Uma regra vinculada a cliente não pode ter escopo Padrão.",
-        },
-        {
-          status: 400,
-        }
-      )
-    }
-
-    if (
-      !clienteId &&
-      tipoEscopo !==
-        "Padrao"
-    ) {
-      return NextResponse.json(
-        {
-          message:
-            "Regra sem cliente específico deve usar escopo Padrão.",
-        },
-        {
-          status: 400,
-        }
-      )
     }
 
     let pedidoMinimo:
@@ -810,10 +813,8 @@ export async function POST(
     }
 
     if (
-      pedidoMinimo !==
-        null &&
-      pedidoMinimo <
-        0
+      pedidoMinimo !== null &&
+      pedidoMinimo < 0
     ) {
       return NextResponse.json(
         {
@@ -827,10 +828,8 @@ export async function POST(
     }
 
     if (
-      minimoParcela !==
-        null &&
-      minimoParcela <
-        0
+      minimoParcela !== null &&
+      minimoParcela < 0
     ) {
       return NextResponse.json(
         {
@@ -850,8 +849,7 @@ export async function POST(
         !Number.isInteger(
           prazoEntregaDias
         ) ||
-        prazoEntregaDias <
-          0
+        prazoEntregaDias < 0
       )
     ) {
       return NextResponse.json(
@@ -888,12 +886,24 @@ export async function POST(
     }
 
     const tipoComissao =
-      typeof body.tipoComissao ===
-        "string" &&
-      body.tipoComissao.trim() !==
-        ""
-        ? body.tipoComissao.trim()
-        : null
+      textoOpcional(
+        body.tipoComissao
+      )
+
+    if (
+      tipoComissao !== "fixa" &&
+      tipoComissao !== "variada"
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Toda política comercial precisa definir comissão fixa ou variável.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
 
     let faixasComissao:
       | string
@@ -901,41 +911,22 @@ export async function POST(
       null
 
     if (
-      tipoComissao ===
-      "fixa"
+      tipoComissao === "fixa"
     ) {
+      const percentualValidado =
+        parsePercentual(
+          percentualComissao
+        )
+
       if (
-        percentualComissao ===
+        percentualValidado ===
           null ||
-        percentualComissao <=
-          0
+        percentualValidado <= 0
       ) {
         return NextResponse.json(
           {
             message:
-              "Percentual de comissão é obrigatório para regra de comissão fixa.",
-          },
-          {
-            status: 400,
-          }
-        )
-      }
-    }
-
-    if (
-      tipoComissao ===
-      "variada"
-    ) {
-      if (
-        typeof body.faixasComissao !==
-          "string" ||
-        body.faixasComissao.trim() ===
-          ""
-      ) {
-        return NextResponse.json(
-          {
-            message:
-              "Faixas de comissão são obrigatórias para comissão variada.",
+              "Percentual de comissão fixa deve ser maior que zero e no máximo 100%.",
           },
           {
             status: 400,
@@ -943,47 +934,13 @@ export async function POST(
         )
       }
 
+      percentualComissao =
+        percentualValidado
+    } else {
       try {
-        const faixas =
-          JSON.parse(
-            body.faixasComissao
-          )
-
-        if (
-          !Array.isArray(
-            faixas
-          ) ||
-          faixas.length ===
-            0
-        ) {
-          throw new Error()
-        }
-
-        const validas =
-          faixas.every(
-            (
-              faixa
-            ) =>
-              faixa &&
-              typeof faixa.desconto ===
-                "string" &&
-              faixa.desconto.trim() !==
-                "" &&
-              typeof faixa.comissao ===
-                "string" &&
-              faixa.comissao.trim() !==
-                ""
-          )
-
-        if (
-          !validas
-        ) {
-          throw new Error()
-        }
-
         faixasComissao =
-          JSON.stringify(
-            faixas
+          normalizarFaixasComissao(
+            body.faixasComissao
           )
 
         percentualComissao =
@@ -992,7 +949,7 @@ export async function POST(
         return NextResponse.json(
           {
             message:
-              "Faixas de comissão inválidas.",
+              "Faixas de comissão inválidas. Informe desconto de 0% a 100%, comissão maior que 0% e até 100%, sem descontos repetidos. O pedido mínimo da faixa é opcional e, quando informado, deve ser igual ou maior que zero.",
           },
           {
             status: 400,
@@ -1001,159 +958,322 @@ export async function POST(
       }
     }
 
-    if (
-      tipoComissao !==
-        null &&
-      tipoComissao !==
-        "fixa" &&
-      tipoComissao !==
-        "variada"
-    ) {
-      return NextResponse.json(
-        {
-          message:
-            "Tipo de comissão inválido.",
-        },
-        {
-          status: 400,
-        }
+    const ativa =
+      typeof body.ativa ===
+      "boolean"
+        ? body.ativa
+        : true
+
+    const frete =
+      textoOpcional(
+        body.frete
       )
-    }
+
+    const regiao =
+      textoOpcional(
+        body.regiao
+      )
+
+    const reconhecimentoComissao =
+      textoOpcional(
+        body.reconhecimentoComissao
+      )
+
+    const fechamentoComissao =
+      textoOpcional(
+        body.fechamentoComissao
+      )
+
+    const pagamentoComissao =
+      textoOpcional(
+        body.pagamentoComissao
+      )
+
+    const observacoes =
+      textoOpcional(
+        body.observacoes
+      )
 
     const regra =
-      await prisma.regraComercialRepresentada.create({
-        data: {
-          representadaId:
-            representada.id,
+      await prisma.$transaction(
+        async (tx) => {
+          /*
+           * Nunca permitimos duas políticas Padrão ativas
+           * com vigências sobrepostas.
+           *
+           * Se houver uma versão atual aberta, ela precisa
+           * ser encerrada antes da entrada de uma nova
+           * versão ativa.
+           */
+          if (ativa) {
+            const conflito =
+              await tx.regraComercialRepresentada.findFirst(
+                {
+                  where: {
+                    representadaId:
+                      representada.id,
 
-          clienteId,
+                    clienteId:
+                      null,
 
-          contratoId,
+                    tipoEscopo:
+                      "Padrao",
 
-          nome:
-            body.nome.trim(),
+                    ativa:
+                      true,
 
-          tipoEscopo,
+                    ...(vigenciaFim
+                      ? {
+                          vigenciaInicio:
+                            {
+                              lte:
+                                vigenciaFim,
+                            },
+                        }
+                      : {}),
 
-          vigenciaInicio,
+                    AND: [
+                      {
+                        OR: [
+                          {
+                            vigenciaFim:
+                              null,
+                          },
+                          {
+                            vigenciaFim:
+                              {
+                                gte:
+                                  vigenciaInicio,
+                              },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  select: {
+                    id: true,
+                    nome: true,
+                    vigenciaInicio:
+                      true,
+                    vigenciaFim:
+                      true,
+                  },
+                }
+              )
 
-          vigenciaFim,
+            if (conflito) {
+              throw new Error(
+                "POLITICA_VIGENCIA_CONFLITANTE"
+              )
+            }
+          }
 
-          ativa:
-            typeof body.ativa ===
-            "boolean"
-              ? body.ativa
-              : true,
+          const criada =
+            await tx.regraComercialRepresentada.create(
+              {
+                data: {
+                  representadaId:
+                    representada.id,
 
-          pedidoMinimo,
+                  clienteId,
 
-          minimoParcela,
+                  contratoId,
 
-          prazoEntregaDias:
-            prazoEntregaDias ===
-            null
-              ? null
-              : Math.trunc(
-                  prazoEntregaDias
-                ),
+                  nome,
 
-          prazoFaturamentoDias:
-            prazoFaturamentoDias ===
-            null
-              ? null
-              : Math.trunc(
-                  prazoFaturamentoDias
-                ),
+                  tipoEscopo,
 
-          frete:
-            typeof body.frete ===
-              "string" &&
-            body.frete.trim() !==
-              ""
-              ? body.frete.trim()
-              : null,
+                  vigenciaInicio,
 
-          regiao:
-            typeof body.regiao ===
-              "string" &&
-            body.regiao.trim() !==
-              ""
-              ? body.regiao.trim()
-              : null,
+                  vigenciaFim,
 
-          tipoComissao,
+                  ativa,
 
-          percentualComissao,
+                  pedidoMinimo,
 
-          faixasComissao,
+                  minimoParcela,
 
-          reconhecimentoComissao:
-            typeof body.reconhecimentoComissao ===
-              "string" &&
-            body.reconhecimentoComissao.trim() !==
-              ""
-              ? body.reconhecimentoComissao.trim()
-              : null,
+                  prazoEntregaDias:
+                    prazoEntregaDias ===
+                    null
+                      ? null
+                      : Math.trunc(
+                          prazoEntregaDias
+                        ),
 
-          fechamentoComissao:
-            typeof body.fechamentoComissao ===
-              "string" &&
-            body.fechamentoComissao.trim() !==
-              ""
-              ? body.fechamentoComissao.trim()
-              : null,
+                  prazoFaturamentoDias:
+                    prazoFaturamentoDias ===
+                    null
+                      ? null
+                      : Math.trunc(
+                          prazoFaturamentoDias
+                        ),
 
-          pagamentoComissao:
-            typeof body.pagamentoComissao ===
-              "string" &&
-            body.pagamentoComissao.trim() !==
-              ""
-              ? body.pagamentoComissao.trim()
-              : null,
+                  frete,
 
-          observacoes:
-            typeof body.observacoes ===
-              "string" &&
-            body.observacoes.trim() !==
-              ""
-              ? body.observacoes.trim()
-              : null,
+                  regiao,
+
+                  tipoComissao,
+
+                  percentualComissao,
+
+                  faixasComissao,
+
+                  reconhecimentoComissao,
+
+                  fechamentoComissao,
+
+                  pagamentoComissao,
+
+                  observacoes,
+                },
+
+                include: {
+                  cliente: {
+                    select: {
+                      id: true,
+                      codigo: true,
+                      razaoSocial:
+                        true,
+                      nomeFantasia:
+                        true,
+                    },
+                  },
+
+                  contrato: {
+                    select: {
+                      id: true,
+                      tipoFormalizacao:
+                        true,
+                      vigente: true,
+                    },
+                  },
+
+                  _count: {
+                    select: {
+                      vendas: true,
+                    },
+                  },
+                },
+              }
+            )
+
+          await tx.auditoria.create(
+            {
+              data: {
+                escritorioId:
+                  sessao.escritorioId,
+
+                usuarioId:
+                  sessao.usuarioId,
+
+                entidade:
+                  "RegraComercialRepresentada",
+
+                entidadeId:
+                  criada.id,
+
+                acao:
+                  "CRIACAO_POLITICA_COMERCIAL",
+
+                dadosDepois: {
+                  id:
+                    criada.id,
+
+                  representadaId:
+                    representada.id,
+
+                  representadaNome:
+                    representada.nome,
+
+                  nome:
+                    criada.nome,
+
+                  tipoEscopo:
+                    criada.tipoEscopo,
+
+                  vigenciaInicio:
+                    criada.vigenciaInicio.toISOString(),
+
+                  origemVigenciaInicio:
+                    primeiraPoliticaPadrao
+                      ? "DATA_CADASTRO_REPRESENTADA"
+                      : "INFORMADA_NOVA_VERSAO",
+
+                  vigenciaFim:
+                    criada.vigenciaFim
+                      ?.toISOString() ??
+                    null,
+
+                  ativa:
+                    criada.ativa,
+
+                  pedidoMinimo:
+                    criada.pedidoMinimo,
+
+                  minimoParcela:
+                    criada.minimoParcela,
+
+                  prazoEntregaDias:
+                    criada.prazoEntregaDias,
+
+                  prazoFaturamentoDias:
+                    criada.prazoFaturamentoDias,
+
+                  frete:
+                    criada.frete,
+
+                  regiao:
+                    criada.regiao,
+
+                  tipoComissao:
+                    criada.tipoComissao,
+
+                  percentualComissao:
+                    criada.percentualComissao,
+
+                  faixasComissao:
+                    criada.faixasComissao,
+
+                  reconhecimentoComissao:
+                    criada.reconhecimentoComissao,
+
+                  fechamentoComissao:
+                    criada.fechamentoComissao,
+
+                  pagamentoComissao:
+                    criada.pagamentoComissao,
+
+                  observacoes:
+                    criada.observacoes,
+
+                  modeloComercial: {
+                    politicaUnicaDaRepresentada:
+                      true,
+
+                    faixaVariavelComPedidoMinimo:
+                      true,
+
+                    descontoAutomatico:
+                      false,
+
+                    primeiraPoliticaUsaDataCadastroRepresentada:
+                      true,
+                  },
+                },
+              },
+            }
+          )
+
+          return criada
         },
-
-        include: {
-          cliente: {
-            select: {
-              id: true,
-
-              codigo: true,
-
-              razaoSocial:
-                true,
-
-              nomeFantasia:
-                true,
-            },
-          },
-
-          contrato: {
-            select: {
-              id: true,
-
-              tipoFormalizacao:
-                true,
-
-              vigente:
-                true,
-            },
-          },
-
-          _count: {
-            select: {
-              vendas: true,
-            },
-          },
-        },
-      })
+        {
+          isolationLevel:
+            Prisma
+              .TransactionIsolationLevel
+              .Serializable,
+        }
+      )
 
     return NextResponse.json(
       regra,
@@ -1178,15 +1298,47 @@ export async function POST(
       )
     }
 
+    if (
+      error instanceof Error &&
+      error.message ===
+        "POLITICA_VIGENCIA_CONFLITANTE"
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Conflito cadastral: já existe uma política comercial Padrão ativa com vigência sobreposta para esta Representada. Encerre a vigência anterior antes de criar uma nova versão ativa.",
+        },
+        {
+          status: 409,
+        }
+      )
+    }
+
+    if (
+      error instanceof
+        Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "A política comercial foi alterada por outra operação simultânea. Atualize a página e tente novamente.",
+        },
+        {
+          status: 409,
+        }
+      )
+    }
+
     console.error(
-      "Erro ao cadastrar regra comercial:",
+      "Erro ao cadastrar política comercial:",
       error
     )
 
     return NextResponse.json(
       {
         message:
-          "Erro ao cadastrar regra comercial.",
+          "Erro ao cadastrar política comercial.",
       },
       {
         status: 500,

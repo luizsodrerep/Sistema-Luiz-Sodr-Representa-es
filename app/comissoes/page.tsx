@@ -102,6 +102,20 @@ type Previsao = {
   possuiMovimento: boolean
 }
 
+type VendaParaConferencia = {
+  id: string
+  numeroSequencial: number
+  data: string
+  status: string
+  valorVenda: number
+  baseCalculo: number | null
+  percentual: number | null
+  valorRegistrado: number | null
+  situacao: "SEM_VALOR_REGISTRADO" | "VALOR_ZERO" | "VALOR_NEGATIVO"
+  cliente: Cliente
+  representada: Representada
+}
+
 type Parcela = {
   id: string
   comissaoMovimentoId: string
@@ -285,11 +299,14 @@ type RespostaApi = {
   }
   resumo: Resumo
   previsoes: Previsao[]
+  // O campo opcional permite identificar uma API ainda não atualizada.
+  vendasSemComissaoPrevista?: VendaParaConferencia[]
   movimentos: Movimento[]
 }
 
 type Aba =
   | "previsoes"
+  | "conferencia"
   | "movimentos"
 
 function formatarMoeda(
@@ -693,6 +710,28 @@ export default function ComissoesPage() {
       ]
     )
 
+  const vendasConferenciaFiltradas = useMemo(() => {
+    const termo = normalizar(busca)
+    return (dados?.vendasSemComissaoPrevista ?? []).filter((venda) => {
+      if (!termo) return true
+      const situacao = venda.situacao === "SEM_VALOR_REGISTRADO"
+        ? "sem valor registrado"
+        : venda.situacao === "VALOR_ZERO"
+          ? "valor zero"
+          : "valor negativo"
+      return [
+        codigo("VEN", venda.numeroSequencial),
+        nomeCliente(venda.cliente),
+        venda.representada.nome,
+        venda.status,
+        situacao,
+      ].join(" ").toLowerCase().includes(termo)
+    })
+  }, [dados, busca])
+
+  const conferenciaDisponivel =
+    Array.isArray(dados?.vendasSemComissaoPrevista)
+
   const movimentosFiltrados =
     useMemo(
       () => {
@@ -965,7 +1004,9 @@ export default function ComissoesPage() {
 
                     <p className="mt-1 text-sm text-slate-500">
                       Visualização operacional sem geração automática
-                      de movimentos.
+                      de movimentos. O total previsto considera somente
+                      as vendas com previsão positiva; consulte as demais
+                      na aba de conferência.
                     </p>
                   </div>
 
@@ -1012,6 +1053,22 @@ export default function ComissoesPage() {
                     )}
                   >
                     Previsão das vendas
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAba("conferencia")}
+                    className={[
+                      "rounded-xl px-4 py-2.5 text-sm font-semibold transition",
+                      aba === "conferencia"
+                        ? "bg-amber-700 text-white shadow-sm"
+                        : "border border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300",
+                    ].join(" ")}
+                  >
+                    Conferir vendas{" "}
+                    {conferenciaDisponivel
+                      ? `(${dados?.vendasSemComissaoPrevista?.length ?? 0})`
+                      : "(dados indisponíveis)"}
                   </button>
 
                   <button
@@ -1218,6 +1275,128 @@ export default function ComissoesPage() {
                         </article>
                       )
                     )}
+                  </div>
+                )
+              ) : aba === "conferencia" ? (
+                !conferenciaDisponivel ? (
+                  <div className="px-6 py-16 text-center">
+                    <AlertCircle className="mx-auto h-10 w-10 text-amber-600" />
+                    <h3 className="mt-4 text-base font-semibold text-slate-800">
+                      Dados de conferência indisponíveis
+                    </h3>
+                    <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
+                      A consulta ainda não retornou a lista de vendas sem previsão
+                      positiva. Não é possível concluir que não existam vendas a conferir.
+                    </p>
+                  </div>
+                ) : vendasConferenciaFiltradas.length === 0 ? (
+                  <div className="px-6 py-16 text-center">
+                    <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" />
+                    <h3 className="mt-4 text-base font-semibold text-slate-800">
+                      Nenhuma venda encontrada para conferência
+                    </h3>
+                    <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
+                      Nenhum registro corresponde à busca nesta lista.
+                      Isso não valida as previsões positivas.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    <div className="border-b border-amber-100 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                      Vendas com comissão prevista ausente, zerada ou negativa,
+                      apresentadas para conferência sem qualquer recálculo.
+                      Elas não integram o total de comissões previstas.
+                    </div>
+                    {vendasConferenciaFiltradas.map((venda) => (
+                      <article
+                        key={venda.id}
+                        className="p-5 transition hover:bg-amber-50/40 lg:p-6"
+                      >
+                        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Link
+                                href={`/vendas/${venda.id}`}
+                                className="text-sm font-bold text-blue-800 transition hover:text-orange-600"
+                              >
+                                {codigo("VEN", venda.numeroSequencial)}
+                              </Link>
+                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                                {venda.situacao === "SEM_VALOR_REGISTRADO"
+                                  ? "Sem valor registrado"
+                                  : venda.situacao === "VALOR_ZERO"
+                                    ? "Valor registrado: zero"
+                                    : "Valor negativo registrado"}
+                              </span>
+                            </div>
+                            <h3 className="mt-3 text-lg font-bold text-slate-950">
+                              {nomeCliente(venda.cliente)}
+                            </h3>
+                            <p className="mt-1 text-sm font-medium text-slate-600">
+                              {venda.representada.nome}
+                            </p>
+                            <div className="mt-4 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                  Valor da venda
+                                </p>
+                                <p className="mt-1 font-semibold text-slate-800">
+                                  {formatarMoeda(venda.valorVenda)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                  Base registrada
+                                </p>
+                                <p className="mt-1 font-semibold text-slate-800">
+                                  {venda.baseCalculo === null
+                                    ? "Não registrada"
+                                    : formatarMoeda(venda.baseCalculo)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                  Percentual registrado
+                                </p>
+                                <p className="mt-1 font-semibold text-slate-800">
+                                  {venda.percentual === null
+                                    ? "Não registrado"
+                                    : `${venda.percentual}%`}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                  Comissão registrada
+                                </p>
+                                <p className="mt-1 font-bold text-amber-800">
+                                  {venda.valorRegistrado === null
+                                    ? "Não registrada"
+                                    : formatarMoeda(venda.valorRegistrado)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="grid min-w-0 gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm sm:grid-cols-2 xl:w-[300px]">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                Data da venda
+                              </p>
+                              <p className="mt-1 font-semibold text-slate-700">
+                                {formatarData(venda.data)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                Status da venda
+                              </p>
+                              <p className="mt-1 font-semibold text-slate-700">
+                                {venda.status}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
                   </div>
                 )
               ) : movimentosFiltrados.length ===

@@ -1,7 +1,15 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
+
 import Link from "next/link"
+
 import {
   addDays,
   addMonths,
@@ -12,12 +20,27 @@ import {
   isSameWeek,
   startOfDay,
 } from "date-fns"
-import { ptBR } from "date-fns/locale"
 
-import { PageLayout } from "@/components/page-layout"
-import { NavigationButtons } from "@/components/navigation-buttons"
-import { Calendar } from "@/components/ui/calendar"
-import { Button } from "@/components/ui/button"
+import {
+  ptBR,
+} from "date-fns/locale"
+
+import {
+  PageLayout,
+} from "@/components/page-layout"
+
+import {
+  NavigationButtons,
+} from "@/components/navigation-buttons"
+
+import {
+  Calendar,
+} from "@/components/ui/calendar"
+
+import {
+  Button,
+} from "@/components/ui/button"
+
 import {
   Card,
   CardContent,
@@ -25,9 +48,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+
+import {
+  Input,
+} from "@/components/ui/input"
+
+import {
+  Label,
+} from "@/components/ui/label"
+
+import {
+  Textarea,
+} from "@/components/ui/textarea"
+
 import {
   Select,
   SelectContent,
@@ -41,6 +74,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Ban,
+  Building2,
   CalendarClock,
   CalendarDays,
   CheckCircle2,
@@ -48,6 +82,7 @@ import {
   ChevronRight,
   ClipboardList,
   Download,
+  Factory,
   FileText,
   Loader2,
   MessageSquare,
@@ -56,6 +91,7 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
+  Search,
   ShoppingCart,
   UserRound,
   WalletCards,
@@ -76,6 +112,7 @@ type ModuloAssistente =
   | "faturamentos"
   | "comissoes"
   | "redes-sociais"
+  | "agenda"
 
 type ModuloAgenda =
   | ModuloAssistente
@@ -93,6 +130,13 @@ type Visualizacao =
   | "semana"
   | "dia"
 
+type FiltroRapidoAgenda =
+  | "todos"
+  | "atrasado"
+  | "hoje"
+  | "proximos"
+  | "sem-data"
+
 type TipoTarefa =
   | "Tarefa"
   | "Compromisso"
@@ -102,11 +146,6 @@ type PrioridadeTarefa =
   | "Normal"
   | "Alta"
   | "Urgente"
-
-type StatusTarefa =
-  | "Pendente"
-  | "Concluida"
-  | "Cancelada"
 
 interface PendenciaAssistente {
   id: string
@@ -218,18 +257,55 @@ interface FormularioTarefa {
   fimEm: string
   vencimentoEm: string
   observacoes: string
+  responsavelId: string
+  clienteId: string
+  representadaId: string
 }
 
-const FORMULARIO_INICIAL: FormularioTarefa = {
-  titulo: "",
-  descricao: "",
-  tipo: "Tarefa",
-  prioridade: "Normal",
-  inicioEm: "",
-  fimEm: "",
-  vencimentoEm: "",
-  observacoes: "",
+interface UsuarioSeletor {
+  id: string
+  nome: string
+  perfil: string
+  ativo: boolean
 }
+
+interface ClienteSeletor {
+  id: string
+  codigo: string | null
+  razaoSocial: string
+  nomeFantasia: string | null
+  cnpj?: string | null
+  status?: string
+}
+
+interface RepresentadaSeletor {
+  id: string
+  codigo: string | null
+  nome: string
+  cnpj?: string | null
+  status?: string
+}
+
+interface OpcaoBusca {
+  id: string
+  titulo: string
+  subtitulo: string | null
+}
+
+const FORMULARIO_INICIAL:
+  FormularioTarefa = {
+    titulo: "",
+    descricao: "",
+    tipo: "Tarefa",
+    prioridade: "Normal",
+    inicioEm: "",
+    fimEm: "",
+    vencimentoEm: "",
+    observacoes: "",
+    responsavelId: "",
+    clienteId: "",
+    representadaId: "",
+  }
 
 function converterData(
   valor: string | null
@@ -293,7 +369,10 @@ function paraDatetimeLocal(
 
   return local
     .toISOString()
-    .slice(0, 16)
+    .slice(
+      0,
+      16
+    )
 }
 
 function paraIso(
@@ -373,18 +452,28 @@ function nomeModulo(
   switch (modulo) {
     case "interacoes":
       return "Interações"
+
     case "orcamentos":
       return "Orçamentos"
+
     case "vendas":
       return "Vendas"
+
     case "titulos":
       return "Títulos"
+
     case "faturamentos":
       return "Faturamentos"
+
     case "comissoes":
       return "Comissões"
+
     case "redes-sociais":
       return "Redes Sociais"
+
+    case "agenda":
+      return "Agenda"
+
     case "tarefas":
       return "Tarefas / Compromissos"
   }
@@ -396,12 +485,16 @@ function nomeSituacao(
   switch (situacao) {
     case "atrasado":
       return "Atrasado"
+
     case "hoje":
       return "Hoje"
+
     case "proximos":
       return "Próximos 7 dias"
+
     case "futuro":
       return "Futuro"
+
     case "sem-data":
       return "Sem data"
   }
@@ -413,12 +506,16 @@ function classeSituacao(
   switch (situacao) {
     case "atrasado":
       return "bg-red-100 text-red-800"
+
     case "hoje":
       return "bg-amber-100 text-amber-800"
+
     case "proximos":
       return "bg-blue-100 text-blue-800"
+
     case "futuro":
       return "bg-slate-100 text-slate-700"
+
     case "sem-data":
       return "bg-gray-100 text-gray-700"
   }
@@ -430,18 +527,26 @@ function classeModulo(
   switch (modulo) {
     case "interacoes":
       return "bg-blue-100 text-blue-800"
+
     case "orcamentos":
       return "bg-violet-100 text-violet-800"
+
     case "vendas":
       return "bg-green-100 text-green-800"
+
     case "titulos":
       return "bg-amber-100 text-amber-800"
+
     case "faturamentos":
       return "bg-cyan-100 text-cyan-800"
+
     case "comissoes":
       return "bg-emerald-100 text-emerald-800"
+
     case "redes-sociais":
       return "bg-pink-100 text-pink-800"
+
+    case "agenda":
     case "tarefas":
       return "bg-indigo-100 text-indigo-800"
   }
@@ -453,10 +558,13 @@ function classePrioridadeTarefa(
   switch (prioridade) {
     case "Urgente":
       return "bg-red-100 text-red-800"
+
     case "Alta":
       return "bg-orange-100 text-orange-800"
+
     case "Baixa":
       return "bg-slate-100 text-slate-700"
+
     default:
       return "bg-blue-100 text-blue-800"
   }
@@ -468,8 +576,10 @@ function classeStatusTarefa(
   switch (status) {
     case "Concluida":
       return "bg-emerald-100 text-emerald-800"
+
     case "Cancelada":
       return "bg-slate-200 text-slate-700"
+
     default:
       return "bg-amber-100 text-amber-800"
   }
@@ -485,23 +595,29 @@ function IconeModulo({
       return (
         <MessageSquare className="h-4 w-4" />
       )
+
     case "orcamentos":
       return (
         <FileText className="h-4 w-4" />
       )
+
     case "vendas":
       return (
         <ShoppingCart className="h-4 w-4" />
       )
+
     case "titulos":
     case "comissoes":
       return (
         <WalletCards className="h-4 w-4" />
       )
+
+    case "agenda":
     case "tarefas":
       return (
         <ClipboardList className="h-4 w-4" />
       )
+
     default:
       return (
         <CalendarClock className="h-4 w-4" />
@@ -527,28 +643,42 @@ function escaparCsv(
 function relacionadoDaTarefa(
   tarefa: TarefaApi
 ) {
+  const relacionados:
+    string[] = []
+
   if (tarefa.cliente) {
-    return (
-      tarefa.cliente.nomeFantasia ||
-      tarefa.cliente.razaoSocial
+    relacionados.push(
+      tarefa.cliente
+        .nomeFantasia ||
+        tarefa.cliente
+          .razaoSocial
     )
   }
 
   if (tarefa.representada) {
-    return tarefa.representada.nome
+    relacionados.push(
+      tarefa.representada.nome
+    )
   }
 
   if (tarefa.interacao) {
-    return `Interação INT-${String(
-      tarefa.interacao
-        .numeroSequencial
-    ).padStart(
-      6,
-      "0"
-    )}`
+    relacionados.push(
+      `Interação INT-${String(
+        tarefa.interacao
+          .numeroSequencial
+      ).padStart(
+        6,
+        "0"
+      )}`
+    )
   }
 
-  return null
+  return relacionados.length >
+    0
+    ? relacionados.join(
+        " • "
+      )
+    : null
 }
 
 function dataReferenciaTarefa(
@@ -567,6 +697,191 @@ function dataReferenciaTarefa(
   return (
     tarefa.vencimentoEm ??
     tarefa.inicioEm
+  )
+}
+
+function rotuloCliente(
+  cliente:
+    | ClienteTarefa
+    | ClienteSeletor
+) {
+  return (
+    cliente.nomeFantasia ||
+    cliente.razaoSocial
+  )
+}
+
+function rotuloRepresentada(
+  representada:
+    | RepresentadaTarefa
+    | RepresentadaSeletor
+) {
+  return representada.nome
+}
+
+function CampoBusca({
+  label,
+  valor,
+  placeholder,
+  aberto,
+  carregando,
+  opcoes,
+  selecionado,
+  observacao,
+  icone,
+  onFocus,
+  onChange,
+  onFechar,
+  onSelecionar,
+  onLimpar,
+}: {
+  label: string
+  valor: string
+  placeholder: string
+  aberto: boolean
+  carregando: boolean
+  opcoes: OpcaoBusca[]
+  selecionado: boolean
+  observacao: string
+  icone:
+    ReactNode
+  onFocus: () => void
+  onChange:
+    (
+      valor: string
+    ) => void
+  onFechar: () => void
+  onSelecionar:
+    (
+      id: string
+    ) => void
+  onLimpar: () => void
+}) {
+  const termo =
+    valor.trim()
+
+  return (
+    <div className="space-y-2">
+      <Label>
+        {label}
+      </Label>
+
+      <div className="relative">
+        <div className="pointer-events-none absolute left-3 top-2.5 text-muted-foreground">
+          {icone}
+        </div>
+
+        <Input
+          value={
+            valor
+          }
+          onFocus={
+            onFocus
+          }
+          onBlur={() => {
+            window.setTimeout(
+              onFechar,
+              150
+            )
+          }}
+          onChange={(
+            event
+          ) =>
+            onChange(
+              event.target.value
+            )
+          }
+          placeholder={
+            placeholder
+          }
+          className="pl-9 pr-10"
+          autoComplete="off"
+        />
+
+        {(selecionado ||
+          valor) && (
+          <button
+            type="button"
+            onMouseDown={(
+              event
+            ) => {
+              event.preventDefault()
+              onLimpar()
+            }}
+            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+            aria-label={`Limpar ${label}`}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+
+        {aberto && (
+          <div className="absolute z-40 mt-1 max-h-64 w-full overflow-y-auto rounded-md border bg-background shadow-lg">
+            {selecionado ? (
+              <div className="px-3 py-3 text-sm text-emerald-700">
+                Seleção definida. Limpe o campo para pesquisar outro registro.
+              </div>
+            ) : termo.length <
+              2 ? (
+              <div className="px-3 py-3 text-sm text-muted-foreground">
+                Digite pelo menos 2 caracteres.
+              </div>
+            ) : carregando ? (
+              <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Pesquisando...
+              </div>
+            ) : opcoes.length ===
+              0 ? (
+              <div className="px-3 py-3 text-sm text-muted-foreground">
+                Nenhum resultado encontrado.
+              </div>
+            ) : (
+              opcoes.map(
+                (
+                  opcao
+                ) => (
+                  <button
+                    key={
+                      opcao.id
+                    }
+                    type="button"
+                    className="block w-full border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/60 focus:bg-muted/60 focus:outline-none"
+                    onMouseDown={(
+                      event
+                    ) => {
+                      event.preventDefault()
+
+                      onSelecionar(
+                        opcao.id
+                      )
+                    }}
+                  >
+                    <div className="text-sm font-medium">
+                      {
+                        opcao.titulo
+                      }
+                    </div>
+
+                    {opcao.subtitulo && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {
+                          opcao.subtitulo
+                        }
+                      </div>
+                    )}
+                  </button>
+                )
+              )
+            )}
+          </div>
+        )}
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        {observacao}
+      </p>
+    </div>
   )
 }
 
@@ -619,13 +934,17 @@ export default function AgendaPage() {
     dataSelecionada,
     setDataSelecionada,
   ] =
-    useState(new Date())
+    useState(
+      new Date()
+    )
 
   const [
     mes,
     setMes,
   ] =
-    useState(new Date())
+    useState(
+      new Date()
+    )
 
   const [
     visualizacao,
@@ -639,13 +958,25 @@ export default function AgendaPage() {
     filtroModulo,
     setFiltroModulo,
   ] =
-    useState("todos")
+    useState(
+      "todos"
+    )
 
   const [
     filtroResponsavel,
     setFiltroResponsavel,
   ] =
-    useState("todos")
+    useState(
+      "todos"
+    )
+
+  const [
+    filtroRapido,
+    setFiltroRapido,
+  ] =
+    useState<FiltroRapidoAgenda>(
+      "todos"
+    )
 
   const [
     formularioAberto,
@@ -665,9 +996,9 @@ export default function AgendaPage() {
     formulario,
     setFormulario,
   ] =
-    useState<FormularioTarefa>(
-      FORMULARIO_INICIAL
-    )
+    useState<FormularioTarefa>({
+      ...FORMULARIO_INICIAL,
+    })
 
   const [
     salvando,
@@ -683,18 +1014,126 @@ export default function AgendaPage() {
       null
     )
 
+  const [
+    buscaResponsavel,
+    setBuscaResponsavel,
+  ] =
+    useState("")
+
+  const [
+    responsavelSelecionado,
+    setResponsavelSelecionado,
+  ] =
+    useState<UsuarioSeletor | null>(
+      null
+    )
+
+  const [
+    resultadosResponsaveis,
+    setResultadosResponsaveis,
+  ] =
+    useState<UsuarioSeletor[]>(
+      []
+    )
+
+  const [
+    carregandoResponsaveis,
+    setCarregandoResponsaveis,
+  ] =
+    useState(false)
+
+  const [
+    listaResponsaveisAberta,
+    setListaResponsaveisAberta,
+  ] =
+    useState(false)
+
+  const [
+    buscaCliente,
+    setBuscaCliente,
+  ] =
+    useState("")
+
+  const [
+    clienteSelecionado,
+    setClienteSelecionado,
+  ] =
+    useState<ClienteSeletor | null>(
+      null
+    )
+
+  const [
+    resultadosClientes,
+    setResultadosClientes,
+  ] =
+    useState<ClienteSeletor[]>(
+      []
+    )
+
+  const [
+    carregandoClientes,
+    setCarregandoClientes,
+  ] =
+    useState(false)
+
+  const [
+    listaClientesAberta,
+    setListaClientesAberta,
+  ] =
+    useState(false)
+
+  const [
+    buscaRepresentada,
+    setBuscaRepresentada,
+  ] =
+    useState("")
+
+  const [
+    representadaSelecionada,
+    setRepresentadaSelecionada,
+  ] =
+    useState<RepresentadaSeletor | null>(
+      null
+    )
+
+  const [
+    resultadosRepresentadas,
+    setResultadosRepresentadas,
+  ] =
+    useState<RepresentadaSeletor[]>(
+      []
+    )
+
+  const [
+    carregandoRepresentadas,
+    setCarregandoRepresentadas,
+  ] =
+    useState(false)
+
+  const [
+    listaRepresentadasAberta,
+    setListaRepresentadasAberta,
+  ] =
+    useState(false)
+
   const carregarAgenda =
     useCallback(
       async (
         silencioso = false
       ) => {
         if (silencioso) {
-          setAtualizando(true)
+          setAtualizando(
+            true
+          )
         } else {
-          setLoading(true)
+          setLoading(
+            true
+          )
         }
 
-        setErro(null)
+        setErro(
+          null
+        )
 
         try {
           const [
@@ -709,6 +1148,7 @@ export default function AgendaPage() {
                     "no-store",
                 }
               ),
+
               fetch(
                 "/api/tarefas",
                 {
@@ -796,8 +1236,13 @@ export default function AgendaPage() {
               : "Erro ao carregar a Agenda."
           )
         } finally {
-          setLoading(false)
-          setAtualizando(false)
+          setLoading(
+            false
+          )
+
+          setAtualizando(
+            false
+          )
         }
       },
       []
@@ -828,27 +1273,458 @@ export default function AgendaPage() {
     carregarAgenda,
   ])
 
+  /*
+   * RESPONSÁVEL
+   *
+   * A busca ocorre no servidor.
+   * Com menos de 2 caracteres não
+   * fazemos consulta automática.
+   */
+  useEffect(() => {
+    if (
+      !formularioAberto ||
+      responsavelSelecionado
+    ) {
+      setResultadosResponsaveis(
+        []
+      )
+
+      setCarregandoResponsaveis(
+        false
+      )
+
+      return
+    }
+
+    const termo =
+      buscaResponsavel.trim()
+
+    if (
+      termo.length <
+      2
+    ) {
+      setResultadosResponsaveis(
+        []
+      )
+
+      setCarregandoResponsaveis(
+        false
+      )
+
+      return
+    }
+
+    const controller =
+      new AbortController()
+
+    const timer =
+      window.setTimeout(
+        async () => {
+          setCarregandoResponsaveis(
+            true
+          )
+
+          try {
+            const params =
+              new URLSearchParams({
+                seletor:
+                  "agenda",
+                busca:
+                  termo,
+                limit:
+                  "10",
+              })
+
+            const response =
+              await fetch(
+                `/api/usuarios?${params.toString()}`,
+                {
+                  cache:
+                    "no-store",
+                  signal:
+                    controller.signal,
+                }
+              )
+
+            const data =
+              await response
+                .json()
+                .catch(
+                  () => []
+                )
+
+            if (
+              !response.ok
+            ) {
+              throw new Error(
+                data?.message ||
+                  "Não foi possível pesquisar responsáveis."
+              )
+            }
+
+            setResultadosResponsaveis(
+              Array.isArray(
+                data
+              )
+                ? data
+                : []
+            )
+          } catch (error) {
+            if (
+              error instanceof DOMException &&
+              error.name ===
+                "AbortError"
+            ) {
+              return
+            }
+
+            console.error(
+              "Erro ao pesquisar responsáveis:",
+              error
+            )
+
+            setResultadosResponsaveis(
+              []
+            )
+          } finally {
+            if (
+              !controller.signal.aborted
+            ) {
+              setCarregandoResponsaveis(
+                false
+              )
+            }
+          }
+        },
+        350
+      )
+
+    return () => {
+      window.clearTimeout(
+        timer
+      )
+
+      controller.abort()
+    }
+  }, [
+    formularioAberto,
+    buscaResponsavel,
+    responsavelSelecionado,
+  ])
+
+  /*
+   * CLIENTE
+   */
+  useEffect(() => {
+    if (
+      !formularioAberto ||
+      clienteSelecionado
+    ) {
+      setResultadosClientes(
+        []
+      )
+
+      setCarregandoClientes(
+        false
+      )
+
+      return
+    }
+
+    const termo =
+      buscaCliente.trim()
+
+    if (
+      termo.length <
+      2
+    ) {
+      setResultadosClientes(
+        []
+      )
+
+      setCarregandoClientes(
+        false
+      )
+
+      return
+    }
+
+    const controller =
+      new AbortController()
+
+    const timer =
+      window.setTimeout(
+        async () => {
+          setCarregandoClientes(
+            true
+          )
+
+          try {
+            const params =
+              new URLSearchParams({
+                seletor:
+                  "1",
+                busca:
+                  termo,
+                limit:
+                  "10",
+                somenteAtivos:
+                  "1",
+              })
+
+            const response =
+              await fetch(
+                `/api/clientes?${params.toString()}`,
+                {
+                  cache:
+                    "no-store",
+                  signal:
+                    controller.signal,
+                }
+              )
+
+            const data =
+              await response
+                .json()
+                .catch(
+                  () => []
+                )
+
+            if (
+              !response.ok
+            ) {
+              throw new Error(
+                data?.message ||
+                  "Não foi possível pesquisar Clientes."
+              )
+            }
+
+            setResultadosClientes(
+              Array.isArray(
+                data
+              )
+                ? data
+                : []
+            )
+          } catch (error) {
+            if (
+              error instanceof DOMException &&
+              error.name ===
+                "AbortError"
+            ) {
+              return
+            }
+
+            console.error(
+              "Erro ao pesquisar Clientes:",
+              error
+            )
+
+            setResultadosClientes(
+              []
+            )
+          } finally {
+            if (
+              !controller.signal.aborted
+            ) {
+              setCarregandoClientes(
+                false
+              )
+            }
+          }
+        },
+        350
+      )
+
+    return () => {
+      window.clearTimeout(
+        timer
+      )
+
+      controller.abort()
+    }
+  }, [
+    formularioAberto,
+    buscaCliente,
+    clienteSelecionado,
+  ])
+
+  /*
+   * REPRESENTADA
+   */
+  useEffect(() => {
+    if (
+      !formularioAberto ||
+      representadaSelecionada
+    ) {
+      setResultadosRepresentadas(
+        []
+      )
+
+      setCarregandoRepresentadas(
+        false
+      )
+
+      return
+    }
+
+    const termo =
+      buscaRepresentada.trim()
+
+    if (
+      termo.length <
+      2
+    ) {
+      setResultadosRepresentadas(
+        []
+      )
+
+      setCarregandoRepresentadas(
+        false
+      )
+
+      return
+    }
+
+    const controller =
+      new AbortController()
+
+    const timer =
+      window.setTimeout(
+        async () => {
+          setCarregandoRepresentadas(
+            true
+          )
+
+          try {
+            const params =
+              new URLSearchParams({
+                seletor:
+                  "1",
+                busca:
+                  termo,
+                limit:
+                  "10",
+                somenteAtivas:
+                  "1",
+              })
+
+            const response =
+              await fetch(
+                `/api/representadas?${params.toString()}`,
+                {
+                  cache:
+                    "no-store",
+                  signal:
+                    controller.signal,
+                }
+              )
+
+            const data =
+              await response
+                .json()
+                .catch(
+                  () => []
+                )
+
+            if (
+              !response.ok
+            ) {
+              throw new Error(
+                data?.message ||
+                  "Não foi possível pesquisar Representadas."
+              )
+            }
+
+            setResultadosRepresentadas(
+              Array.isArray(
+                data
+              )
+                ? data
+                : []
+            )
+          } catch (error) {
+            if (
+              error instanceof DOMException &&
+              error.name ===
+                "AbortError"
+            ) {
+              return
+            }
+
+            console.error(
+              "Erro ao pesquisar Representadas:",
+              error
+            )
+
+            setResultadosRepresentadas(
+              []
+            )
+          } finally {
+            if (
+              !controller.signal.aborted
+            ) {
+              setCarregandoRepresentadas(
+                false
+              )
+            }
+          }
+        },
+        350
+      )
+
+    return () => {
+      window.clearTimeout(
+        timer
+      )
+
+      controller.abort()
+    }
+  }, [
+    formularioAberto,
+    buscaRepresentada,
+    representadaSelecionada,
+  ])
+
   const itensAssistente =
     useMemo<ItemAgenda[]>(
       () =>
         (
           dados?.pendencias ??
           []
-        ).map(
-          (item) => ({
-            ...item,
-            id:
-              `assistente:${item.id}`,
-            origemAgenda:
-              "assistente",
-            tarefaId:
-              null,
-            href:
-              item.href,
-            tipoTarefa:
-              null,
-          })
-        ),
+        )
+          /*
+           * O Meu Assistente também pode
+           * devolver o módulo Agenda.
+           * Aqui ele é removido para não
+           * duplicar a mesma Tarefa que
+           * já vem de /api/tarefas.
+           */
+          .filter(
+            (item) =>
+              item.modulo !==
+              "agenda"
+          )
+          .map(
+            (item) => ({
+              ...item,
+
+              id:
+                `assistente:${item.id}`,
+
+              origemAgenda:
+                "assistente",
+
+              tarefaId:
+                null,
+
+              href:
+                item.href,
+
+              tipoTarefa:
+                null,
+            })
+          ),
       [
         dados,
       ]
@@ -880,29 +1756,38 @@ export default function AgendaPage() {
             return {
               id:
                 `tarefa:${tarefa.id}`,
+
               origemAgenda:
                 "tarefa",
+
               tarefaId:
                 tarefa.id,
+
               modulo:
                 "tarefas",
+
               entidadeId:
                 tarefa.id,
+
               codigo:
                 tarefa.tipo ===
                 "Compromisso"
                   ? "COMP"
                   : "TAR",
+
               titulo:
                 tarefa.titulo,
+
               descricao:
                 tarefa.descricao ??
                 tarefa.observacoes ??
                 "",
+
               relacionadoA:
                 relacionadoDaTarefa(
                   tarefa
                 ),
+
               responsavel:
                 tarefa
                   .responsavel
@@ -911,22 +1796,29 @@ export default function AgendaPage() {
                   .criadoPor
                   ?.nome ??
                 null,
+
               dataReferencia,
+
               situacaoTemporal:
                 situacaoDaData(
                   dataReferencia
                 ),
+
               prioridade:
                 (
                   tarefa.prioridade ||
                   "Normal"
                 ) as PrioridadeTarefa,
+
               status:
                 tarefa.status,
+
               href:
                 null,
+
               origem:
                 "Agenda",
+
               tipoTarefa:
                 tarefa.tipo,
             }
@@ -1012,7 +1904,7 @@ export default function AgendaPage() {
       ]
     )
 
-  const itensFiltrados =
+  const itensBaseFiltrados =
     useMemo(
       () =>
         itensAgenda.filter(
@@ -1048,7 +1940,7 @@ export default function AgendaPage() {
   const itensComData =
     useMemo(
       () =>
-        itensFiltrados
+        itensBaseFiltrados
           .filter(
             (item) =>
               converterData(
@@ -1083,21 +1975,21 @@ export default function AgendaPage() {
             }
           ),
       [
-        itensFiltrados,
+        itensBaseFiltrados,
       ]
     )
 
   const itensSemData =
     useMemo(
       () =>
-        itensFiltrados.filter(
+        itensBaseFiltrados.filter(
           (item) =>
             !converterData(
               item.dataReferencia
             )
         ),
       [
-        itensFiltrados,
+        itensBaseFiltrados,
       ]
     )
 
@@ -1126,8 +2018,47 @@ export default function AgendaPage() {
 
   const itensPeriodo =
     useMemo(
-      () =>
-        itensComData.filter(
+      () => {
+        if (
+          filtroRapido !==
+          "todos"
+        ) {
+          return itensBaseFiltrados
+            .filter(
+              (item) =>
+                item.situacaoTemporal ===
+                filtroRapido
+            )
+            .sort(
+              (
+                a,
+                b
+              ) => {
+                const dataA =
+                  converterData(
+                    a.dataReferencia
+                  )
+
+                const dataB =
+                  converterData(
+                    b.dataReferencia
+                  )
+
+                return (
+                  (
+                    dataA?.getTime() ??
+                    Number.MAX_SAFE_INTEGER
+                  ) -
+                  (
+                    dataB?.getTime() ??
+                    Number.MAX_SAFE_INTEGER
+                  )
+                )
+              }
+            )
+        }
+
+        return itensComData.filter(
           (item) => {
             const data =
               converterData(
@@ -1167,8 +2098,11 @@ export default function AgendaPage() {
               mes
             )
           }
-        ),
+        )
+      },
       [
+        filtroRapido,
+        itensBaseFiltrados,
         itensComData,
         visualizacao,
         dataSelecionada,
@@ -1214,21 +2148,21 @@ export default function AgendaPage() {
           itensComData.length,
 
         atrasados:
-          itensFiltrados.filter(
+          itensBaseFiltrados.filter(
             (item) =>
               item.situacaoTemporal ===
               "atrasado"
           ).length,
 
         hoje:
-          itensFiltrados.filter(
+          itensBaseFiltrados.filter(
             (item) =>
               item.situacaoTemporal ===
               "hoje"
           ).length,
 
         proximos:
-          itensFiltrados.filter(
+          itensBaseFiltrados.filter(
             (item) =>
               item.situacaoTemporal ===
               "proximos"
@@ -1239,7 +2173,7 @@ export default function AgendaPage() {
       }),
       [
         itensComData,
-        itensFiltrados,
+        itensBaseFiltrados,
         itensSemData,
       ]
     )
@@ -1316,6 +2250,187 @@ export default function AgendaPage() {
       ]
     )
 
+  const opcoesResponsaveis =
+    useMemo<OpcaoBusca[]>(
+      () =>
+        resultadosResponsaveis.map(
+          (usuario) => ({
+            id:
+              usuario.id,
+
+            titulo:
+              usuario.nome,
+
+            subtitulo:
+              usuario.perfil,
+          })
+        ),
+      [
+        resultadosResponsaveis,
+      ]
+    )
+
+  const opcoesClientes =
+    useMemo<OpcaoBusca[]>(
+      () =>
+        resultadosClientes.map(
+          (cliente) => ({
+            id:
+              cliente.id,
+
+            titulo:
+              rotuloCliente(
+                cliente
+              ),
+
+            subtitulo:
+              [
+                cliente.codigo,
+                cliente.cnpj
+                  ? `CNPJ: ${cliente.cnpj}`
+                  : null,
+              ]
+                .filter(
+                  Boolean
+                )
+                .join(
+                  " • "
+                ) ||
+              null,
+          })
+        ),
+      [
+        resultadosClientes,
+      ]
+    )
+
+  const opcoesRepresentadas =
+    useMemo<OpcaoBusca[]>(
+      () =>
+        resultadosRepresentadas.map(
+          (representada) => ({
+            id:
+              representada.id,
+
+            titulo:
+              rotuloRepresentada(
+                representada
+              ),
+
+            subtitulo:
+              [
+                representada.codigo,
+                representada.cnpj
+                  ? `CNPJ: ${representada.cnpj}`
+                  : null,
+              ]
+                .filter(
+                  Boolean
+                )
+                .join(
+                  " • "
+                ) ||
+              null,
+          })
+        ),
+      [
+        resultadosRepresentadas,
+      ]
+    )
+
+  const tituloListaPrincipal =
+    useMemo(
+      () => {
+        switch (
+          filtroRapido
+        ) {
+          case "atrasado":
+            return "Itens atrasados"
+
+          case "hoje":
+            return "Itens de hoje"
+
+          case "proximos":
+            return "Próximos 7 dias"
+
+          case "sem-data":
+            return "Itens sem data"
+
+          default:
+            return "Compromissos do período"
+        }
+      },
+      [
+        filtroRapido,
+      ]
+    )
+
+  const descricaoListaPrincipal =
+    useMemo(
+      () => {
+        switch (
+          filtroRapido
+        ) {
+          case "atrasado":
+            return "Todos os itens atrasados dentro dos filtros de módulo e responsável."
+
+          case "hoje":
+            return "Todos os itens com atenção prevista para hoje."
+
+          case "proximos":
+            return "Todos os itens previstos para os próximos 7 dias."
+
+          case "sem-data":
+            return "Todos os itens pendentes que ainda não possuem data definida."
+
+          default:
+            return tituloPeriodo
+        }
+      },
+      [
+        filtroRapido,
+        tituloPeriodo,
+      ]
+    )
+
+  function voltarAoTopo() {
+    document
+      .getElementById(
+        "agenda-topo"
+      )
+      ?.scrollIntoView({
+        behavior:
+          "smooth",
+        block:
+          "start",
+      })
+  }
+
+  function aplicarFiltroRapido(
+    filtro:
+      FiltroRapidoAgenda
+  ) {
+    setFiltroRapido(
+      filtro
+    )
+
+    window.setTimeout(
+      () => {
+        document
+          .getElementById(
+            "agenda-lista-principal"
+          )
+          ?.scrollIntoView({
+            behavior:
+              "smooth",
+            block:
+              "start",
+          })
+      },
+      0
+    )
+  }
+
   function irHoje() {
     const hoje =
       new Date()
@@ -1323,6 +2438,7 @@ export default function AgendaPage() {
     setDataSelecionada(
       hoje
     )
+
     setMes(
       hoje
     )
@@ -1342,6 +2458,7 @@ export default function AgendaPage() {
       setMes(
         novaData
       )
+
       setDataSelecionada(
         novaData
       )
@@ -1362,6 +2479,7 @@ export default function AgendaPage() {
       setDataSelecionada(
         novaData
       )
+
       setMes(
         novaData
       )
@@ -1378,6 +2496,7 @@ export default function AgendaPage() {
     setDataSelecionada(
       novaData
     )
+
     setMes(
       novaData
     )
@@ -1397,6 +2516,7 @@ export default function AgendaPage() {
       setMes(
         novaData
       )
+
       setDataSelecionada(
         novaData
       )
@@ -1417,6 +2537,7 @@ export default function AgendaPage() {
       setDataSelecionada(
         novaData
       )
+
       setMes(
         novaData
       )
@@ -1433,6 +2554,7 @@ export default function AgendaPage() {
     setDataSelecionada(
       novaData
     )
+
     setMes(
       novaData
     )
@@ -1487,6 +2609,7 @@ export default function AgendaPage() {
         .join(
           ";"
         ),
+
       ...linhas,
     ].join(
       "\n"
@@ -1540,6 +2663,56 @@ export default function AgendaPage() {
     )
   }
 
+  function limparBuscasFormulario() {
+    setBuscaResponsavel(
+      ""
+    )
+
+    setResponsavelSelecionado(
+      null
+    )
+
+    setResultadosResponsaveis(
+      []
+    )
+
+    setBuscaCliente(
+      ""
+    )
+
+    setClienteSelecionado(
+      null
+    )
+
+    setResultadosClientes(
+      []
+    )
+
+    setBuscaRepresentada(
+      ""
+    )
+
+    setRepresentadaSelecionada(
+      null
+    )
+
+    setResultadosRepresentadas(
+      []
+    )
+
+    setListaResponsaveisAberta(
+      false
+    )
+
+    setListaClientesAberta(
+      false
+    )
+
+    setListaRepresentadasAberta(
+      false
+    )
+  }
+
   function fecharFormulario() {
     setFormularioAberto(
       false
@@ -1549,9 +2722,11 @@ export default function AgendaPage() {
       null
     )
 
-    setFormulario(
-      FORMULARIO_INICIAL
-    )
+    setFormulario({
+      ...FORMULARIO_INICIAL,
+    })
+
+    limparBuscasFormulario()
   }
 
   function abrirNovaTarefa() {
@@ -1559,13 +2734,19 @@ export default function AgendaPage() {
       null
     )
 
+    setErro(
+      null
+    )
+
     setTarefaEmEdicao(
       null
     )
 
-    setFormulario(
-      FORMULARIO_INICIAL
-    )
+    setFormulario({
+      ...FORMULARIO_INICIAL,
+    })
+
+    limparBuscasFormulario()
 
     setFormularioAberto(
       true
@@ -1576,6 +2757,10 @@ export default function AgendaPage() {
     tarefa: TarefaApi
   ) {
     setMensagem(
+      null
+    )
+
+    setErro(
       null
     )
 
@@ -1629,10 +2814,314 @@ export default function AgendaPage() {
       observacoes:
         tarefa.observacoes ??
         "",
+
+      responsavelId:
+        tarefa.responsavel
+          ?.id ??
+        "",
+
+      clienteId:
+        tarefa.cliente
+          ?.id ??
+        "",
+
+      representadaId:
+        tarefa.representada
+          ?.id ??
+        "",
     })
+
+    if (
+      tarefa.responsavel
+    ) {
+      setResponsavelSelecionado({
+        id:
+          tarefa.responsavel.id,
+
+        nome:
+          tarefa.responsavel.nome,
+
+        perfil:
+          tarefa.responsavel.perfil,
+
+        ativo:
+          true,
+      })
+
+      setBuscaResponsavel(
+        tarefa.responsavel.nome
+      )
+    } else {
+      setResponsavelSelecionado(
+        null
+      )
+
+      setBuscaResponsavel(
+        ""
+      )
+    }
+
+    if (
+      tarefa.cliente
+    ) {
+      setClienteSelecionado({
+        id:
+          tarefa.cliente.id,
+
+        codigo:
+          tarefa.cliente.codigo,
+
+        razaoSocial:
+          tarefa.cliente.razaoSocial,
+
+        nomeFantasia:
+          tarefa.cliente.nomeFantasia,
+      })
+
+      setBuscaCliente(
+        rotuloCliente(
+          tarefa.cliente
+        )
+      )
+    } else {
+      setClienteSelecionado(
+        null
+      )
+
+      setBuscaCliente(
+        ""
+      )
+    }
+
+    if (
+      tarefa.representada
+    ) {
+      setRepresentadaSelecionada({
+        id:
+          tarefa.representada.id,
+
+        codigo:
+          tarefa.representada.codigo,
+
+        nome:
+          tarefa.representada.nome,
+      })
+
+      setBuscaRepresentada(
+        tarefa.representada.nome
+      )
+    } else {
+      setRepresentadaSelecionada(
+        null
+      )
+
+      setBuscaRepresentada(
+        ""
+      )
+    }
+
+    setResultadosResponsaveis(
+      []
+    )
+
+    setResultadosClientes(
+      []
+    )
+
+    setResultadosRepresentadas(
+      []
+    )
 
     setFormularioAberto(
       true
+    )
+
+    window.setTimeout(
+      () => {
+        document
+          .getElementById(
+            "agenda-formulario"
+          )
+          ?.scrollIntoView({
+            behavior:
+              "smooth",
+            block:
+              "start",
+          })
+      },
+      0
+    )
+  }
+
+  useEffect(() => {
+    function abrirCompromissoDoAtalho() {
+      const prefixo = "#editar-tarefa-"
+
+      if (
+        loading ||
+        !window.location.hash.startsWith(prefixo)
+      ) {
+        return
+      }
+
+      let tarefaId: string
+
+      try {
+        tarefaId = decodeURIComponent(
+          window.location.hash.slice(prefixo.length)
+        )
+      } catch {
+        setErro("O atalho do compromisso é inválido.")
+        return
+      }
+
+      const tarefa = tarefas.find(
+        (item) => item.id === tarefaId
+      )
+
+      if (!tarefa) {
+        setErro(
+          "Compromisso não encontrado ou sem permissão de acesso."
+        )
+        return
+      }
+
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}${window.location.search}`
+      )
+
+      abrirEdicao(tarefa)
+    }
+
+    window.addEventListener(
+      "hashchange",
+      abrirCompromissoDoAtalho
+    )
+
+    abrirCompromissoDoAtalho()
+
+    return () => {
+      window.removeEventListener(
+        "hashchange",
+        abrirCompromissoDoAtalho
+      )
+    }
+  }, [loading, tarefas])
+  function selecionarResponsavel(
+    id: string
+  ) {
+    const usuario =
+      resultadosResponsaveis.find(
+        (item) =>
+          item.id ===
+          id
+      )
+
+    if (!usuario) {
+      return
+    }
+
+    setFormulario(
+      (
+        atual
+      ) => ({
+        ...atual,
+
+        responsavelId:
+          usuario.id,
+      })
+    )
+
+    setResponsavelSelecionado(
+      usuario
+    )
+
+    setBuscaResponsavel(
+      usuario.nome
+    )
+
+    setListaResponsaveisAberta(
+      false
+    )
+  }
+
+  function selecionarCliente(
+    id: string
+  ) {
+    const cliente =
+      resultadosClientes.find(
+        (item) =>
+          item.id ===
+          id
+      )
+
+    if (!cliente) {
+      return
+    }
+
+    setFormulario(
+      (
+        atual
+      ) => ({
+        ...atual,
+
+        clienteId:
+          cliente.id,
+      })
+    )
+
+    setClienteSelecionado(
+      cliente
+    )
+
+    setBuscaCliente(
+      rotuloCliente(
+        cliente
+      )
+    )
+
+    setListaClientesAberta(
+      false
+    )
+  }
+
+  function selecionarRepresentada(
+    id: string
+  ) {
+    const representada =
+      resultadosRepresentadas.find(
+        (item) =>
+          item.id ===
+          id
+      )
+
+    if (!representada) {
+      return
+    }
+
+    setFormulario(
+      (
+        atual
+      ) => ({
+        ...atual,
+
+        representadaId:
+          representada.id,
+      })
+    )
+
+    setRepresentadaSelecionada(
+      representada
+    )
+
+    setBuscaRepresentada(
+      representada.nome
+    )
+
+    setListaRepresentadasAberta(
+      false
     )
   }
 
@@ -1663,46 +3152,79 @@ export default function AgendaPage() {
     setSalvando(
       true
     )
+
     setErro(
       null
     )
+
     setMensagem(
       null
     )
 
     try {
-      const payload = {
-        titulo:
-          formulario.titulo.trim(),
+      const payload:
+        Record<
+          string,
+          unknown
+        > = {
+          titulo:
+            formulario.titulo.trim(),
 
-        descricao:
-          formulario.descricao.trim() ||
-          null,
+          descricao:
+            formulario.descricao.trim() ||
+            null,
 
-        tipo:
-          formulario.tipo,
+          tipo:
+            formulario.tipo,
 
-        prioridade:
-          formulario.prioridade,
+          prioridade:
+            formulario.prioridade,
 
-        inicioEm:
-          paraIso(
-            formulario.inicioEm
-          ),
+          inicioEm:
+            paraIso(
+              formulario.inicioEm
+            ),
 
-        fimEm:
-          paraIso(
-            formulario.fimEm
-          ),
+          fimEm:
+            paraIso(
+              formulario.fimEm
+            ),
 
-        vencimentoEm:
-          paraIso(
-            formulario.vencimentoEm
-          ),
+          vencimentoEm:
+            paraIso(
+              formulario.vencimentoEm
+            ),
 
-        observacoes:
-          formulario.observacoes.trim() ||
-          null,
+          observacoes:
+            formulario.observacoes.trim() ||
+            null,
+
+          clienteId:
+            formulario.clienteId ||
+            null,
+
+          representadaId:
+            formulario.representadaId ||
+            null,
+        }
+
+      /*
+       * Em item novo, ausência de
+       * responsavelId faz a API atribuir
+       * automaticamente ao usuário
+       * autenticado.
+       *
+       * Em edição, enviamos também null
+       * caso o Diretor/Administrativo
+       * tenha removido o responsável.
+       */
+      if (
+        tarefaEmEdicao ||
+        formulario.responsavelId
+      ) {
+        payload.responsavelId =
+          formulario.responsavelId ||
+          null
       }
 
       const response =
@@ -1781,9 +3303,11 @@ export default function AgendaPage() {
     setTarefaEmAcao(
       tarefaId
     )
+
     setErro(
       null
     )
+
     setMensagem(
       null
     )
@@ -1832,6 +3356,13 @@ export default function AgendaPage() {
             : "Item reaberto com sucesso."
       )
 
+      if (
+        acao === "concluir" &&
+        tarefaEmEdicao === tarefaId
+      ) {
+        fecharFormulario()
+      }
+
       await carregarAgenda(
         true
       )
@@ -1871,7 +3402,10 @@ export default function AgendaPage() {
       <NavigationButtons />
 
       <div className="space-y-6">
-        <Card className="border-blue-200 bg-blue-50/30">
+        <Card
+          id="agenda-topo"
+          className="scroll-mt-4 border-blue-200 bg-blue-50/30"
+        >
           <CardContent className="pt-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-start gap-3">
@@ -1883,9 +3417,7 @@ export default function AgendaPage() {
                   </div>
 
                   <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-                    A agenda reúne as pendências reais do Meu Assistente Pessoal
-                    com tarefas e compromissos administrativos persistentes no
-                    banco do CRM.
+                    A Agenda reúne as pendências reais do Meu Assistente Pessoal com tarefas e compromissos persistentes no banco do CRM. Tarefas da própria Agenda são consolidadas uma única vez, sem duplicação.
                   </p>
                 </div>
               </div>
@@ -1968,7 +3500,10 @@ export default function AgendaPage() {
         )}
 
         {formularioAberto && (
-          <Card className="border-indigo-200">
+          <Card
+            id="agenda-formulario"
+            className="scroll-mt-24 border-indigo-200"
+          >
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -1979,8 +3514,7 @@ export default function AgendaPage() {
                   </CardTitle>
 
                   <CardDescription className="mt-1">
-                    Tarefas podem possuir vencimento. Compromissos exigem
-                    data/hora de início.
+                    Tarefas podem possuir vencimento. Compromissos exigem data/hora de início. Cliente, Representada e responsável podem ser vinculados ao item.
                   </CardDescription>
                 </div>
 
@@ -1999,7 +3533,7 @@ export default function AgendaPage() {
               </div>
             </CardHeader>
 
-            <CardContent className="space-y-5">
+            <CardContent className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="agenda-tipo">
@@ -2018,6 +3552,7 @@ export default function AgendaPage() {
                           atual
                         ) => ({
                           ...atual,
+
                           tipo:
                             valor as TipoTarefa,
                         })
@@ -2057,6 +3592,7 @@ export default function AgendaPage() {
                           atual
                         ) => ({
                           ...atual,
+
                           prioridade:
                             valor as PrioridadeTarefa,
                         })
@@ -2106,6 +3642,7 @@ export default function AgendaPage() {
                         atual
                       ) => ({
                         ...atual,
+
                         titulo:
                           event
                             .target
@@ -2113,7 +3650,7 @@ export default function AgendaPage() {
                       })
                     )
                   }
-                  placeholder="Ex.: Reunião com contador"
+                  placeholder="Ex.: Retornar orçamento da BRASFESTAS"
                   maxLength={
                     200
                   }
@@ -2138,6 +3675,7 @@ export default function AgendaPage() {
                         atual
                       ) => ({
                         ...atual,
+
                         descricao:
                           event
                             .target
@@ -2150,6 +3688,292 @@ export default function AgendaPage() {
                     3
                   }
                 />
+              </div>
+
+              <div className="rounded-lg border border-indigo-200 bg-indigo-50/30 p-4">
+                <div className="mb-4">
+                  <div className="font-semibold">
+                    Execução e vínculos 360
+                  </div>
+
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Pesquise apenas o que precisa. O CRM não carrega listas gigantes de Clientes ou Representadas neste formulário.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <CampoBusca
+                    label="Responsável"
+                    valor={
+                      buscaResponsavel
+                    }
+                    placeholder="Digite Luiz, Paula..."
+                    aberto={
+                      listaResponsaveisAberta
+                    }
+                    carregando={
+                      carregandoResponsaveis
+                    }
+                    opcoes={
+                      opcoesResponsaveis
+                    }
+                    selecionado={
+                      Boolean(
+                        responsavelSelecionado
+                      )
+                    }
+                    observacao={
+                      dados?.usuario.perfil ===
+                      "Preposto"
+                        ? "Seu perfil só pode manter itens sob sua própria responsabilidade."
+                        : "Opcional. Se não escolher no item novo, o sistema atribui a você."
+                    }
+                    icone={
+                      <UserRound className="h-4 w-4" />
+                    }
+                    onFocus={() =>
+                      setListaResponsaveisAberta(
+                        true
+                      )
+                    }
+                    onChange={(
+                      valor
+                    ) => {
+                      setBuscaResponsavel(
+                        valor
+                      )
+
+                      setResponsavelSelecionado(
+                        null
+                      )
+
+                      setFormulario(
+                        (
+                          atual
+                        ) => ({
+                          ...atual,
+
+                          responsavelId:
+                            "",
+                        })
+                      )
+
+                      setListaResponsaveisAberta(
+                        true
+                      )
+                    }}
+                    onFechar={() =>
+                      setListaResponsaveisAberta(
+                        false
+                      )
+                    }
+                    onSelecionar={
+                      selecionarResponsavel
+                    }
+                    onLimpar={() => {
+                      setBuscaResponsavel(
+                        ""
+                      )
+
+                      setResponsavelSelecionado(
+                        null
+                      )
+
+                      setResultadosResponsaveis(
+                        []
+                      )
+
+                      setFormulario(
+                        (
+                          atual
+                        ) => ({
+                          ...atual,
+
+                          responsavelId:
+                            "",
+                        })
+                      )
+                    }}
+                  />
+
+                  <CampoBusca
+                    label="Cliente"
+                    valor={
+                      buscaCliente
+                    }
+                    placeholder="Nome, fantasia, código ou CNPJ..."
+                    aberto={
+                      listaClientesAberta
+                    }
+                    carregando={
+                      carregandoClientes
+                    }
+                    opcoes={
+                      opcoesClientes
+                    }
+                    selecionado={
+                      Boolean(
+                        clienteSelecionado
+                      )
+                    }
+                    observacao="Opcional. O resultado respeita a carteira e as permissões do usuário."
+                    icone={
+                      <Building2 className="h-4 w-4" />
+                    }
+                    onFocus={() =>
+                      setListaClientesAberta(
+                        true
+                      )
+                    }
+                    onChange={(
+                      valor
+                    ) => {
+                      setBuscaCliente(
+                        valor
+                      )
+
+                      setClienteSelecionado(
+                        null
+                      )
+
+                      setFormulario(
+                        (
+                          atual
+                        ) => ({
+                          ...atual,
+
+                          clienteId:
+                            "",
+                        })
+                      )
+
+                      setListaClientesAberta(
+                        true
+                      )
+                    }}
+                    onFechar={() =>
+                      setListaClientesAberta(
+                        false
+                      )
+                    }
+                    onSelecionar={
+                      selecionarCliente
+                    }
+                    onLimpar={() => {
+                      setBuscaCliente(
+                        ""
+                      )
+
+                      setClienteSelecionado(
+                        null
+                      )
+
+                      setResultadosClientes(
+                        []
+                      )
+
+                      setFormulario(
+                        (
+                          atual
+                        ) => ({
+                          ...atual,
+
+                          clienteId:
+                            "",
+                        })
+                      )
+                    }}
+                  />
+
+                  <CampoBusca
+                    label="Representada"
+                    valor={
+                      buscaRepresentada
+                    }
+                    placeholder="Nome, código ou CNPJ..."
+                    aberto={
+                      listaRepresentadasAberta
+                    }
+                    carregando={
+                      carregandoRepresentadas
+                    }
+                    opcoes={
+                      opcoesRepresentadas
+                    }
+                    selecionado={
+                      Boolean(
+                        representadaSelecionada
+                      )
+                    }
+                    observacao="Opcional. Pesquise a Representada relacionada à ação."
+                    icone={
+                      <Factory className="h-4 w-4" />
+                    }
+                    onFocus={() =>
+                      setListaRepresentadasAberta(
+                        true
+                      )
+                    }
+                    onChange={(
+                      valor
+                    ) => {
+                      setBuscaRepresentada(
+                        valor
+                      )
+
+                      setRepresentadaSelecionada(
+                        null
+                      )
+
+                      setFormulario(
+                        (
+                          atual
+                        ) => ({
+                          ...atual,
+
+                          representadaId:
+                            "",
+                        })
+                      )
+
+                      setListaRepresentadasAberta(
+                        true
+                      )
+                    }}
+                    onFechar={() =>
+                      setListaRepresentadasAberta(
+                        false
+                      )
+                    }
+                    onSelecionar={
+                      selecionarRepresentada
+                    }
+                    onLimpar={() => {
+                      setBuscaRepresentada(
+                        ""
+                      )
+
+                      setRepresentadaSelecionada(
+                        null
+                      )
+
+                      setResultadosRepresentadas(
+                        []
+                      )
+
+                      setFormulario(
+                        (
+                          atual
+                        ) => ({
+                          ...atual,
+
+                          representadaId:
+                            "",
+                        })
+                      )
+                    }}
+                  />
+                </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
@@ -2172,6 +3996,7 @@ export default function AgendaPage() {
                           atual
                         ) => ({
                           ...atual,
+
                           inicioEm:
                             event
                               .target
@@ -2201,6 +4026,7 @@ export default function AgendaPage() {
                           atual
                         ) => ({
                           ...atual,
+
                           fimEm:
                             event
                               .target
@@ -2230,6 +4056,7 @@ export default function AgendaPage() {
                           atual
                         ) => ({
                           ...atual,
+
                           vencimentoEm:
                             event
                               .target
@@ -2259,6 +4086,7 @@ export default function AgendaPage() {
                         atual
                       ) => ({
                         ...atual,
+
                         observacoes:
                           event
                             .target
@@ -2266,7 +4094,7 @@ export default function AgendaPage() {
                       })
                     )
                   }
-                  placeholder="Observações internas opcionais."
+                  placeholder="Ex.: mensagem ainda não lida no WhatsApp; confirmar preços antes do retorno."
                   rows={
                     2
                   }
@@ -2286,6 +4114,43 @@ export default function AgendaPage() {
                   Cancelar
                 </Button>
 
+                {tarefaEmEdicao &&
+                  tarefas.some(
+                    (tarefa) =>
+                      tarefa.id === tarefaEmEdicao &&
+                      tarefa.status === "Pendente"
+                  ) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={
+                        salvando ||
+                        tarefaEmAcao === tarefaEmEdicao
+                      }
+                      onClick={() => {
+                        if (
+                          !tarefaEmEdicao ||
+                          !window.confirm(
+                            "Concluir este item? Alterações ainda não salvas no formulário serão descartadas."
+                          )
+                        ) {
+                          return
+                        }
+
+                        executarAcaoTarefa(
+                          tarefaEmEdicao,
+                          "concluir"
+                        )
+                      }}
+                    >
+                      {tarefaEmAcao === tarefaEmEdicao ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                      )}
+                      Concluir
+                    </Button>
+                  )}
                 <Button
                   onClick={
                     salvarTarefa
@@ -2302,7 +4167,10 @@ export default function AgendaPage() {
 
                   {tarefaEmEdicao
                     ? "Salvar alterações"
-                    : "Criar item"}
+                    : formulario.tipo ===
+                        "Compromisso"
+                      ? "Criar compromisso"
+                      : "Criar tarefa"}
                 </Button>
               </div>
             </CardContent>
@@ -2310,65 +4178,200 @@ export default function AgendaPage() {
         )}
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>
-                Compromissos datados
-              </CardDescription>
+          <button
+            type="button"
+            onClick={() =>
+              aplicarFiltroRapido(
+                "todos"
+              )
+            }
+            className="text-left"
+            aria-pressed={
+              filtroRapido ===
+              "todos"
+            }
+          >
+            <Card
+              className={`h-full transition hover:border-primary/40 hover:bg-muted/30 ${
+                filtroRapido ===
+                "todos"
+                  ? "ring-2 ring-primary/20"
+                  : ""
+              }`}
+            >
+              <CardHeader className="pb-2">
+                <CardDescription>
+                  Compromissos datados
+                </CardDescription>
 
-              <CardTitle className="text-3xl">
-                {contadores.datados}
-              </CardTitle>
-            </CardHeader>
-          </Card>
+                <CardTitle className="text-3xl">
+                  {
+                    contadores.datados
+                  }
+                </CardTitle>
 
-          <Card className="border-red-200">
-            <CardHeader className="pb-2">
-              <CardDescription>
-                Atrasados
-              </CardDescription>
+                <p className="text-xs text-muted-foreground">
+                  Clique para voltar ao período atual
+                </p>
+              </CardHeader>
+            </Card>
+          </button>
 
-              <CardTitle className="text-3xl text-red-700">
-                {contadores.atrasados}
-              </CardTitle>
-            </CardHeader>
-          </Card>
+          <button
+            type="button"
+            onClick={() =>
+              aplicarFiltroRapido(
+                "atrasado"
+              )
+            }
+            className="text-left"
+            aria-pressed={
+              filtroRapido ===
+              "atrasado"
+            }
+          >
+            <Card
+              className={`h-full border-red-200 transition hover:border-red-400 hover:bg-red-50/50 ${
+                filtroRapido ===
+                "atrasado"
+                  ? "ring-2 ring-red-300"
+                  : ""
+              }`}
+            >
+              <CardHeader className="pb-2">
+                <CardDescription>
+                  Atrasados
+                </CardDescription>
 
-          <Card className="border-amber-200">
-            <CardHeader className="pb-2">
-              <CardDescription>
-                Hoje
-              </CardDescription>
+                <CardTitle className="text-3xl text-red-700">
+                  {
+                    contadores.atrasados
+                  }
+                </CardTitle>
 
-              <CardTitle className="text-3xl text-amber-700">
-                {contadores.hoje}
-              </CardTitle>
-            </CardHeader>
-          </Card>
+                <p className="text-xs text-red-700/80">
+                  Clique para ver todos os atrasados
+                </p>
+              </CardHeader>
+            </Card>
+          </button>
 
-          <Card className="border-blue-200">
-            <CardHeader className="pb-2">
-              <CardDescription>
-                Próximos 7 dias
-              </CardDescription>
+          <button
+            type="button"
+            onClick={() =>
+              aplicarFiltroRapido(
+                "hoje"
+              )
+            }
+            className="text-left"
+            aria-pressed={
+              filtroRapido ===
+              "hoje"
+            }
+          >
+            <Card
+              className={`h-full border-amber-200 transition hover:border-amber-400 hover:bg-amber-50/50 ${
+                filtroRapido ===
+                "hoje"
+                  ? "ring-2 ring-amber-300"
+                  : ""
+              }`}
+            >
+              <CardHeader className="pb-2">
+                <CardDescription>
+                  Hoje
+                </CardDescription>
 
-              <CardTitle className="text-3xl text-blue-700">
-                {contadores.proximos}
-              </CardTitle>
-            </CardHeader>
-          </Card>
+                <CardTitle className="text-3xl text-amber-700">
+                  {
+                    contadores.hoje
+                  }
+                </CardTitle>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>
-                Sem data
-              </CardDescription>
+                <p className="text-xs text-amber-700/80">
+                  Clique para ver os itens de hoje
+                </p>
+              </CardHeader>
+            </Card>
+          </button>
 
-              <CardTitle className="text-3xl">
-                {contadores.semData}
-              </CardTitle>
-            </CardHeader>
-          </Card>
+          <button
+            type="button"
+            onClick={() =>
+              aplicarFiltroRapido(
+                "proximos"
+              )
+            }
+            className="text-left"
+            aria-pressed={
+              filtroRapido ===
+              "proximos"
+            }
+          >
+            <Card
+              className={`h-full border-blue-200 transition hover:border-blue-400 hover:bg-blue-50/50 ${
+                filtroRapido ===
+                "proximos"
+                  ? "ring-2 ring-blue-300"
+                  : ""
+              }`}
+            >
+              <CardHeader className="pb-2">
+                <CardDescription>
+                  Próximos 7 dias
+                </CardDescription>
+
+                <CardTitle className="text-3xl text-blue-700">
+                  {
+                    contadores.proximos
+                  }
+                </CardTitle>
+
+                <p className="text-xs text-blue-700/80">
+                  Clique para ver os próximos
+                </p>
+              </CardHeader>
+            </Card>
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              aplicarFiltroRapido(
+                "sem-data"
+              )
+            }
+            className="text-left"
+            aria-pressed={
+              filtroRapido ===
+              "sem-data"
+            }
+          >
+            <Card
+              className={`h-full transition hover:border-primary/40 hover:bg-muted/30 ${
+                filtroRapido ===
+                "sem-data"
+                  ? "ring-2 ring-primary/20"
+                  : ""
+              }`}
+            >
+              <CardHeader className="pb-2">
+                <CardDescription>
+                  Sem data
+                </CardDescription>
+
+                <CardTitle className="text-3xl">
+                  {
+                    contadores.semData
+                  }
+                </CardTitle>
+
+                <p className="text-xs text-muted-foreground">
+                  Clique para ver os itens sem data
+                </p>
+              </CardHeader>
+            </Card>
+          </button>
         </div>
 
         <Card className="border-indigo-200">
@@ -2380,29 +4383,35 @@ export default function AgendaPage() {
                 </CardTitle>
 
                 <CardDescription className="mt-1">
-                  Itens persistentes do CRM, separados das pendências
-                  automáticas do Meu Assistente Pessoal.
+                  Itens persistentes do CRM, separados das pendências automáticas do Meu Assistente Pessoal.
                 </CardDescription>
               </div>
 
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800">
-                  Pendentes: {contadoresTarefas.pendentes}
+                  Pendentes: {
+                    contadoresTarefas.pendentes
+                  }
                 </span>
 
                 <span className="rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-800">
-                  Concluídas: {contadoresTarefas.concluidas}
+                  Concluídas: {
+                    contadoresTarefas.concluidas
+                  }
                 </span>
 
                 <span className="rounded-full bg-slate-200 px-3 py-1 font-medium text-slate-700">
-                  Canceladas: {contadoresTarefas.canceladas}
+                  Canceladas: {
+                    contadoresTarefas.canceladas
+                  }
                 </span>
               </div>
             </div>
           </CardHeader>
 
           <CardContent>
-            {tarefas.length === 0 ? (
+            {tarefas.length ===
+            0 ? (
               <div className="flex flex-col items-center py-8 text-center">
                 <ClipboardList className="mb-3 h-10 w-10 text-indigo-600" />
 
@@ -2440,7 +4449,9 @@ export default function AgendaPage() {
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap gap-2">
                               <span className="rounded-full bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-800">
-                                {tarefa.tipo}
+                                {
+                                  tarefa.tipo
+                                }
                               </span>
 
                               <span
@@ -2448,7 +4459,9 @@ export default function AgendaPage() {
                                   tarefa.prioridade
                                 )}`}
                               >
-                                {tarefa.prioridade}
+                                {
+                                  tarefa.prioridade
+                                }
                               </span>
 
                               <span
@@ -2467,12 +4480,16 @@ export default function AgendaPage() {
                             </div>
 
                             <div className="mt-2 font-semibold">
-                              {tarefa.titulo}
+                              {
+                                tarefa.titulo
+                              }
                             </div>
 
                             {tarefa.descricao && (
                               <div className="mt-1 whitespace-pre-wrap text-sm">
-                                {tarefa.descricao}
+                                {
+                                  tarefa.descricao
+                                }
                               </div>
                             )}
 
@@ -2488,16 +4505,38 @@ export default function AgendaPage() {
                               {tarefa.responsavel && (
                                 <span className="inline-flex items-center gap-1">
                                   <UserRound className="h-3.5 w-3.5" />
-                                  {tarefa.responsavel.nome}
+                                  {
+                                    tarefa.responsavel.nome
+                                  }
                                 </span>
                               )}
 
-                              {relacionadoDaTarefa(
-                                tarefa
-                              ) && (
+                              {tarefa.cliente && (
+                                <span className="inline-flex items-center gap-1">
+                                  <Building2 className="h-3.5 w-3.5" />
+                                  {rotuloCliente(
+                                    tarefa.cliente
+                                  )}
+                                </span>
+                              )}
+
+                              {tarefa.representada && (
+                                <span className="inline-flex items-center gap-1">
+                                  <Factory className="h-3.5 w-3.5" />
+                                  {
+                                    tarefa.representada.nome
+                                  }
+                                </span>
+                              )}
+
+                              {tarefa.interacao && (
                                 <span>
-                                  {relacionadoDaTarefa(
-                                    tarefa
+                                  INT-
+                                  {String(
+                                    tarefa.interacao.numeroSequencial
+                                  ).padStart(
+                                    6,
+                                    "0"
                                   )}
                                 </span>
                               )}
@@ -2505,7 +4544,9 @@ export default function AgendaPage() {
 
                             {tarefa.observacoes && (
                               <div className="mt-2 text-xs text-muted-foreground">
-                                Observações: {tarefa.observacoes}
+                                Observações: {
+                                  tarefa.observacoes
+                                }
                               </div>
                             )}
                           </div>
@@ -2722,7 +4763,9 @@ export default function AgendaPage() {
                               responsavel
                             }
                           >
-                            {responsavel}
+                            {
+                              responsavel
+                            }
                           </SelectItem>
                         )
                       )}
@@ -2770,12 +4813,13 @@ export default function AgendaPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="capitalize">
-                  {tituloPeriodo}
+                  {
+                    tituloPeriodo
+                  }
                 </CardTitle>
 
                 <CardDescription>
-                  Dias sublinhados possuem pendências operacionais, tarefas ou
-                  compromissos cadastrados.
+                  Dias sublinhados possuem pendências operacionais, tarefas ou compromissos cadastrados.
                 </CardDescription>
               </CardHeader>
 
@@ -2822,14 +4866,20 @@ export default function AgendaPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card
+              id="agenda-lista-principal"
+            >
               <CardHeader>
                 <CardTitle>
-                  Compromissos do período
+                  {
+                    tituloListaPrincipal
+                  }
                 </CardTitle>
 
                 <CardDescription>
-                  {tituloPeriodo}
+                  {
+                    descricaoListaPrincipal
+                  }
                 </CardDescription>
               </CardHeader>
 
@@ -2840,7 +4890,10 @@ export default function AgendaPage() {
                     <CheckCircle2 className="mb-3 h-10 w-10 text-emerald-600" />
 
                     <p className="font-medium">
-                      Nenhuma pendência datada neste período.
+                      {filtroRapido ===
+                      "todos"
+                        ? "Nenhuma pendência datada neste período."
+                        : "Nenhum item encontrado para este filtro rápido."}
                     </p>
                   </div>
                 ) : (
@@ -2855,7 +4908,9 @@ export default function AgendaPage() {
                               <div className="flex flex-wrap gap-2">
                                 {item.codigo && (
                                   <span className="font-mono text-sm font-semibold">
-                                    {item.codigo}
+                                    {
+                                      item.codigo
+                                    }
                                   </span>
                                 )}
 
@@ -2869,6 +4924,7 @@ export default function AgendaPage() {
                                       item.modulo
                                     }
                                   />
+
                                   {nomeModulo(
                                     item.modulo
                                   )}
@@ -2901,18 +4957,24 @@ export default function AgendaPage() {
                               </div>
 
                               <div className="mt-2 font-semibold">
-                                {item.titulo}
+                                {
+                                  item.titulo
+                                }
                               </div>
 
                               {item.relacionadoA && (
                                 <div className="mt-1 text-sm text-muted-foreground">
-                                  {item.relacionadoA}
+                                  {
+                                    item.relacionadoA
+                                  }
                                 </div>
                               )}
 
                               {item.descricao && (
                                 <div className="mt-2 whitespace-pre-wrap text-sm">
-                                  {item.descricao}
+                                  {
+                                    item.descricao
+                                  }
                                 </div>
                               )}
 
@@ -2926,7 +4988,9 @@ export default function AgendaPage() {
                                 {item.responsavel && (
                                   <span className="inline-flex items-center gap-1">
                                     <UserRound className="h-3.5 w-3.5" />
-                                    {item.responsavel}
+                                    {
+                                      item.responsavel
+                                    }
                                   </span>
                                 )}
                               </div>
@@ -2951,10 +5015,23 @@ export default function AgendaPage() {
                               }
                               className="block rounded-lg border p-4 transition hover:bg-muted/30"
                             >
-                              {conteudo}
+                              {
+                                conteudo
+                              }
                             </Link>
                           )
                         }
+
+                        const tarefaVinculada =
+                          item.tarefaId
+                            ? tarefas.find(
+                                (
+                                  tarefa
+                                ) =>
+                                  tarefa.id ===
+                                  item.tarefaId
+                              )
+                            : null
 
                         return (
                           <div
@@ -2963,13 +5040,45 @@ export default function AgendaPage() {
                             }
                             className="rounded-lg border border-indigo-200 p-4"
                           >
-                            {conteudo}
+                            {
+                              conteudo
+                            }
+
+                            {tarefaVinculada && (
+                              <div className="mt-4 flex justify-end">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    abrirEdicao(
+                                      tarefaVinculada
+                                    )
+                                  }
+                                >
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Editar
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         )
                       }
                     )}
                   </div>
                 )}
+
+                <div className="mt-5 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={
+                      voltarAoTopo
+                    }
+                  >
+                    <ChevronLeft className="mr-2 h-4 w-4 rotate-90" />
+                    Voltar ao topo
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -3010,7 +5119,9 @@ export default function AgendaPage() {
 
                             <div>
                               <div className="text-sm font-medium">
-                                {item.titulo}
+                                {
+                                  item.titulo
+                                }
                               </div>
 
                               <div className="mt-1 text-xs text-muted-foreground">
@@ -3035,7 +5146,9 @@ export default function AgendaPage() {
                               }
                               className="block border-b pb-4 last:border-0"
                             >
-                              {conteudo}
+                              {
+                                conteudo
+                              }
                             </Link>
                           )
                         }
@@ -3047,7 +5160,9 @@ export default function AgendaPage() {
                             }
                             className="border-b pb-4 last:border-0"
                           >
-                            {conteudo}
+                            {
+                              conteudo
+                            }
                           </div>
                         )
                       }
@@ -3092,13 +5207,16 @@ export default function AgendaPage() {
 
                               <div>
                                 <div className="text-sm font-medium">
-                                  {item.titulo}
+                                  {
+                                    item.titulo
+                                  }
                                 </div>
 
                                 <div className="mt-1 text-xs text-muted-foreground">
                                   {nomeModulo(
                                     item.modulo
                                   )}
+
                                   {item.relacionadoA
                                     ? ` • ${item.relacionadoA}`
                                     : ""}
@@ -3120,7 +5238,9 @@ export default function AgendaPage() {
                                 }
                                 className="block rounded-md border p-3"
                               >
-                                {conteudo}
+                                {
+                                  conteudo
+                                }
                               </Link>
                             )
                           }
@@ -3132,7 +5252,9 @@ export default function AgendaPage() {
                               }
                               className="rounded-md border border-indigo-200 p-3"
                             >
-                              {conteudo}
+                              {
+                                conteudo
+                              }
                             </div>
                           )
                         }

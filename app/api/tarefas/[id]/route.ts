@@ -653,6 +653,149 @@ export async function PATCH(
     }
 
     /*
+     * CLIENTE
+     *
+     * O vínculo continua opcional.
+     * Diretor e Administrativo podem
+     * selecionar qualquer Cliente do
+     * mesmo escritório.
+     *
+     * Preposto somente pode vincular
+     * Cliente pertencente à sua carteira.
+     *
+     * Valor vazio remove o vínculo.
+     */
+    if (
+      possuiCampo(
+        body,
+        "clienteId"
+      )
+    ) {
+      const clienteInformado =
+        textoOpcional(
+          body.clienteId
+        )
+
+      if (
+        !clienteInformado
+      ) {
+        dados.clienteId =
+          null
+      } else {
+        const cliente =
+          await prisma.cliente.findFirst({
+            where: {
+              id:
+                clienteInformado,
+
+              escritorioId:
+                sessao.escritorioId,
+
+              ...(sessao.perfil ===
+              "Preposto"
+                ? {
+                    OR: [
+                      {
+                        responsavelPrincipalId:
+                          sessao.usuarioId,
+                      },
+                      {
+                        participantes: {
+                          some: {
+                            usuarioId:
+                              sessao.usuarioId,
+                            ativa:
+                              true,
+                          },
+                        },
+                      },
+                    ],
+                  }
+                : {}),
+            },
+
+            select: {
+              id: true,
+            },
+          })
+
+        if (!cliente) {
+          return NextResponse.json(
+            {
+              message:
+                "Cliente não encontrado ou sem permissão de acesso.",
+            },
+            {
+              status: 403,
+            }
+          )
+        }
+
+        dados.clienteId =
+          cliente.id
+      }
+    }
+
+    /*
+     * REPRESENTADA
+     *
+     * O vínculo é opcional e sempre
+     * restrito ao mesmo escritório.
+     *
+     * Valor vazio remove o vínculo.
+     */
+    if (
+      possuiCampo(
+        body,
+        "representadaId"
+      )
+    ) {
+      const representadaInformada =
+        textoOpcional(
+          body.representadaId
+        )
+
+      if (
+        !representadaInformada
+      ) {
+        dados.representadaId =
+          null
+      } else {
+        const representada =
+          await prisma.representada.findFirst(
+            {
+              where: {
+                id:
+                  representadaInformada,
+
+                escritorioId:
+                  sessao.escritorioId,
+              },
+
+              select: {
+                id: true,
+              },
+            }
+          )
+
+        if (!representada) {
+          return NextResponse.json(
+            {
+              message:
+                "Representada não encontrada ou sem permissão de acesso.",
+            },
+            {
+              status: 403,
+            }
+          )
+        }
+
+        dados.representadaId =
+          representada.id
+      }
+    }
+
+    /*
      * Nenhuma alteração reconhecida.
      */
     if (

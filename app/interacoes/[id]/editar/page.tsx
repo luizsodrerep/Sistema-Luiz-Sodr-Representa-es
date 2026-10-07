@@ -47,21 +47,31 @@ import {
 
 import {
   AlertCircle,
+  Building2,
   Clock,
+  Factory,
   Loader2,
   Save,
+  Search,
   UserSearch,
+  X,
 } from "lucide-react"
 
 type Cliente = {
   id: string
+  codigo?: string | null
   razaoSocial: string
   nomeFantasia: string | null
+  cnpj?: string | null
+  status?: string
 }
 
 type Representada = {
   id: string
+  codigo?: string | null
   nome: string
+  cnpj?: string | null
+  status?: string
 }
 
 type Vinculo =
@@ -143,6 +153,15 @@ function formatarData(
   )
 }
 
+function rotuloCliente(
+  cliente: Cliente
+) {
+  return (
+    cliente.nomeFantasia ||
+    cliente.razaoSocial
+  )
+}
+
 export default function EditarInteracaoPage({
   params,
 }: {
@@ -157,20 +176,72 @@ export default function EditarInteracaoPage({
     useRouter()
 
   const [
-    clientes,
-    setClientes,
+    buscaCliente,
+    setBuscaCliente,
+  ] =
+    useState("")
+
+  const [
+    resultadosClientes,
+    setResultadosClientes,
   ] =
     useState<Cliente[]>(
       []
     )
 
   const [
-    representadas,
-    setRepresentadas,
+    clienteSelecionado,
+    setClienteSelecionado,
   ] =
-    useState<
-      Representada[]
-    >([])
+    useState<Cliente | null>(
+      null
+    )
+
+  const [
+    carregandoClientes,
+    setCarregandoClientes,
+  ] =
+    useState(false)
+
+  const [
+    listaClientesAberta,
+    setListaClientesAberta,
+  ] =
+    useState(false)
+
+  const [
+    buscaRepresentada,
+    setBuscaRepresentada,
+  ] =
+    useState("")
+
+  const [
+    resultadosRepresentadas,
+    setResultadosRepresentadas,
+  ] =
+    useState<Representada[]>(
+      []
+    )
+
+  const [
+    representadaSelecionada,
+    setRepresentadaSelecionada,
+  ] =
+    useState<Representada | null>(
+      null
+    )
+
+  const [
+    carregandoRepresentadas,
+    setCarregandoRepresentadas,
+  ] =
+    useState(false)
+
+  const [
+    listaRepresentadasAberta,
+    setListaRepresentadasAberta,
+  ] =
+    useState(false)
 
   const [
     vinculo,
@@ -235,6 +306,9 @@ export default function EditarInteracaoPage({
   })
 
   useEffect(() => {
+    const controller =
+      new AbortController()
+
     async function carregar() {
       try {
         setCarregando(
@@ -245,112 +319,55 @@ export default function EditarInteracaoPage({
           null
         )
 
-        const [
-          respostaClientes,
-          respostaRepresentadas,
-          respostaInteracao,
-        ] =
-          await Promise.all([
-            fetch(
-              "/api/clientes",
-              {
-                cache:
-                  "no-store",
-              }
-            ),
+        const resposta =
+          await fetch(
+            `/api/interacoes/${id}`,
+            {
+              cache:
+                "no-store",
 
-            fetch(
-              "/api/representadas",
-              {
-                cache:
-                  "no-store",
-              }
-            ),
+              signal:
+                controller.signal,
+            }
+          )
 
-            fetch(
-              `/api/interacoes/${id}`,
-              {
-                cache:
-                  "no-store",
-              }
-            ),
-          ])
-
-        const dadosInteracao =
-          await respostaInteracao
+        const dados =
+          await resposta
             .json()
             .catch(
               () => null
             )
 
         if (
-          !respostaInteracao.ok
+          !resposta.ok
         ) {
           throw new Error(
-            dadosInteracao
-              ?.message ||
+            dados?.message ||
               "Não foi possível carregar a interação."
           )
         }
 
-        if (
-          !respostaClientes.ok
-        ) {
+        if (!dados) {
           throw new Error(
-            "Não foi possível carregar os clientes."
+            "Resposta inválida ao carregar a interação."
           )
         }
-
-        if (
-          !respostaRepresentadas.ok
-        ) {
-          throw new Error(
-            "Não foi possível carregar as representadas."
-          )
-        }
-
-        const dadosClientes =
-          await respostaClientes.json()
-
-        const dadosRepresentadas =
-          await respostaRepresentadas.json()
-
-        setClientes(
-          Array.isArray(
-            dadosClientes
-          )
-            ? dadosClientes
-            : []
-        )
-
-        setRepresentadas(
-          Array.isArray(
-            dadosRepresentadas
-          )
-            ? dadosRepresentadas
-            : []
-        )
 
         const possuiCliente =
           Boolean(
-            dadosInteracao
-              .clienteId
+            dados.clienteId
           )
 
         const possuiRepresentada =
           Boolean(
-            dadosInteracao
-              .representadaId
+            dados.representadaId
           )
 
         const possuiProspeccao =
           Boolean(
-            dadosInteracao
-              .nomeProspect ||
-              dadosInteracao
-                .empresaProspect ||
-              dadosInteracao
-                .origemProspeccao
+            dados.nomeProspect ||
+              dados.empresaProspect ||
+              dados.origemProspeccao
           )
 
         if (
@@ -359,12 +376,40 @@ export default function EditarInteracaoPage({
           setVinculo(
             "cliente"
           )
+
+          if (
+            dados.cliente
+          ) {
+            setClienteSelecionado(
+              dados.cliente
+            )
+
+            setBuscaCliente(
+              dados.cliente
+                .nomeFantasia ||
+                dados.cliente
+                  .razaoSocial
+            )
+          }
         } else if (
           possuiRepresentada
         ) {
           setVinculo(
             "representada"
           )
+
+          if (
+            dados.representada
+          ) {
+            setRepresentadaSelecionada(
+              dados.representada
+            )
+
+            setBuscaRepresentada(
+              dados.representada
+                .nome
+            )
+          }
         } else if (
           possuiProspeccao
         ) {
@@ -378,78 +423,76 @@ export default function EditarInteracaoPage({
         }
 
         setDataOriginal(
-          dadosInteracao.data ||
+          dados.data ||
             ""
         )
 
         setAutorOriginal(
-          dadosInteracao.criadoPor
-            ? `${dadosInteracao.criadoPor.nome} — ${dadosInteracao.criadoPor.perfil}`
+          dados.criadoPor
+            ? `${dados.criadoPor.nome} — ${dados.criadoPor.perfil}`
             : "Usuário não identificado"
         )
 
         setForm({
           clienteId:
-            dadosInteracao
-              .clienteId ||
+            dados.clienteId ||
             "",
 
           representadaId:
-            dadosInteracao
-              .representadaId ||
+            dados.representadaId ||
             "",
 
           nomeProspect:
-            dadosInteracao
-              .nomeProspect ||
+            dados.nomeProspect ||
             "",
 
           empresaProspect:
-            dadosInteracao
-              .empresaProspect ||
+            dados.empresaProspect ||
             "",
 
           origemProspeccao:
-            dadosInteracao
-              .origemProspeccao ||
+            dados.origemProspeccao ||
             "",
 
           tipo:
-            dadosInteracao.tipo ||
+            dados.tipo ||
             "",
 
           assunto:
-            dadosInteracao
-              .assunto ||
+            dados.assunto ||
             "",
 
           descricao:
-            dadosInteracao
-              .descricao ||
+            dados.descricao ||
             "",
 
           resultado:
-            dadosInteracao
-              .resultado ||
+            dados.resultado ||
             "",
 
           proximosPasso:
-            dadosInteracao
-              .proximosPasso ||
+            dados.proximosPasso ||
             "",
 
           proximoContatoEm:
             converterParaDataLocal(
-              dadosInteracao
-                .proximoContatoEm
+              dados.proximoContatoEm
             ),
 
           statusFollowUp:
-            dadosInteracao
-              .statusFollowUp ||
+            dados.statusFollowUp ||
             "Sem acompanhamento",
         })
       } catch (error) {
+        if (
+          error instanceof
+            DOMException &&
+          error.name ===
+            "AbortError"
+        ) {
+          return
+        }
+
         setErro(
           error instanceof
             Error
@@ -457,14 +500,306 @@ export default function EditarInteracaoPage({
             : "Erro ao carregar a interação."
         )
       } finally {
-        setCarregando(
-          false
-        )
+        if (
+          !controller.signal
+            .aborted
+        ) {
+          setCarregando(
+            false
+          )
+        }
       }
     }
 
     carregar()
-  }, [id])
+
+    return () =>
+      controller.abort()
+  }, [
+    id,
+  ])
+
+  useEffect(() => {
+    if (
+      vinculo !==
+        "cliente" ||
+      clienteSelecionado
+    ) {
+      setResultadosClientes(
+        []
+      )
+
+      setCarregandoClientes(
+        false
+      )
+
+      return
+    }
+
+    const termo =
+      buscaCliente.trim()
+
+    if (
+      termo.length <
+      2
+    ) {
+      setResultadosClientes(
+        []
+      )
+
+      setCarregandoClientes(
+        false
+      )
+
+      return
+    }
+
+    const controller =
+      new AbortController()
+
+    const timer =
+      window.setTimeout(
+        async () => {
+          setCarregandoClientes(
+            true
+          )
+
+          try {
+            const query =
+              new URLSearchParams({
+                seletor:
+                  "1",
+
+                busca:
+                  termo,
+
+                limit:
+                  "10",
+
+                somenteAtivos:
+                  "1",
+              })
+
+            const resposta =
+              await fetch(
+                `/api/clientes?${query.toString()}`,
+                {
+                  cache:
+                    "no-store",
+
+                  signal:
+                    controller.signal,
+                }
+              )
+
+            const dados =
+              await resposta
+                .json()
+                .catch(
+                  () => []
+                )
+
+            if (
+              !resposta.ok
+            ) {
+              throw new Error(
+                dados?.message ||
+                  "Não foi possível pesquisar Clientes."
+              )
+            }
+
+            setResultadosClientes(
+              Array.isArray(
+                dados
+              )
+                ? dados
+                : []
+            )
+          } catch (error) {
+            if (
+              error instanceof
+                DOMException &&
+              error.name ===
+                "AbortError"
+            ) {
+              return
+            }
+
+            console.error(
+              "Erro ao pesquisar Clientes:",
+              error
+            )
+
+            setResultadosClientes(
+              []
+            )
+          } finally {
+            if (
+              !controller.signal
+                .aborted
+            ) {
+              setCarregandoClientes(
+                false
+              )
+            }
+          }
+        },
+        350
+      )
+
+    return () => {
+      window.clearTimeout(
+        timer
+      )
+
+      controller.abort()
+    }
+  }, [
+    vinculo,
+    buscaCliente,
+    clienteSelecionado,
+  ])
+
+  useEffect(() => {
+    if (
+      vinculo !==
+        "representada" ||
+      representadaSelecionada
+    ) {
+      setResultadosRepresentadas(
+        []
+      )
+
+      setCarregandoRepresentadas(
+        false
+      )
+
+      return
+    }
+
+    const termo =
+      buscaRepresentada.trim()
+
+    if (
+      termo.length <
+      2
+    ) {
+      setResultadosRepresentadas(
+        []
+      )
+
+      setCarregandoRepresentadas(
+        false
+      )
+
+      return
+    }
+
+    const controller =
+      new AbortController()
+
+    const timer =
+      window.setTimeout(
+        async () => {
+          setCarregandoRepresentadas(
+            true
+          )
+
+          try {
+            const query =
+              new URLSearchParams({
+                seletor:
+                  "1",
+
+                busca:
+                  termo,
+
+                limit:
+                  "10",
+
+                somenteAtivas:
+                  "1",
+              })
+
+            const resposta =
+              await fetch(
+                `/api/representadas?${query.toString()}`,
+                {
+                  cache:
+                    "no-store",
+
+                  signal:
+                    controller.signal,
+                }
+              )
+
+            const dados =
+              await resposta
+                .json()
+                .catch(
+                  () => []
+                )
+
+            if (
+              !resposta.ok
+            ) {
+              throw new Error(
+                dados?.message ||
+                  "Não foi possível pesquisar Representadas."
+              )
+            }
+
+            setResultadosRepresentadas(
+              Array.isArray(
+                dados
+              )
+                ? dados
+                : []
+            )
+          } catch (error) {
+            if (
+              error instanceof
+                DOMException &&
+              error.name ===
+                "AbortError"
+            ) {
+              return
+            }
+
+            console.error(
+              "Erro ao pesquisar Representadas:",
+              error
+            )
+
+            setResultadosRepresentadas(
+              []
+            )
+          } finally {
+            if (
+              !controller.signal
+                .aborted
+            ) {
+              setCarregandoRepresentadas(
+                false
+              )
+            }
+          }
+        },
+        350
+      )
+
+    return () => {
+      window.clearTimeout(
+        timer
+      )
+
+      controller.abort()
+    }
+  }, [
+    vinculo,
+    buscaRepresentada,
+    representadaSelecionada,
+  ])
 
   function alterarCampo(
     campo: keyof typeof form,
@@ -485,6 +820,129 @@ export default function EditarInteracaoPage({
         null
       )
     }
+  }
+
+  function limparCliente() {
+    setClienteSelecionado(
+      null
+    )
+
+    setBuscaCliente(
+      ""
+    )
+
+    setResultadosClientes(
+      []
+    )
+
+    setForm(
+      (
+        anterior
+      ) => ({
+        ...anterior,
+
+        clienteId:
+          "",
+      })
+    )
+  }
+
+  function limparRepresentada() {
+    setRepresentadaSelecionada(
+      null
+    )
+
+    setBuscaRepresentada(
+      ""
+    )
+
+    setResultadosRepresentadas(
+      []
+    )
+
+    setForm(
+      (
+        anterior
+      ) => ({
+        ...anterior,
+
+        representadaId:
+          "",
+      })
+    )
+  }
+
+  function selecionarCliente(
+    cliente: Cliente
+  ) {
+    setClienteSelecionado(
+      cliente
+    )
+
+    setBuscaCliente(
+      rotuloCliente(
+        cliente
+      )
+    )
+
+    setResultadosClientes(
+      []
+    )
+
+    setListaClientesAberta(
+      false
+    )
+
+    setForm(
+      (
+        anterior
+      ) => ({
+        ...anterior,
+
+        clienteId:
+          cliente.id,
+      })
+    )
+
+    setErro(
+      null
+    )
+  }
+
+  function selecionarRepresentada(
+    representada:
+      Representada
+  ) {
+    setRepresentadaSelecionada(
+      representada
+    )
+
+    setBuscaRepresentada(
+      representada.nome
+    )
+
+    setResultadosRepresentadas(
+      []
+    )
+
+    setListaRepresentadasAberta(
+      false
+    )
+
+    setForm(
+      (
+        anterior
+      ) => ({
+        ...anterior,
+
+        representadaId:
+          representada.id,
+      })
+    )
+
+    setErro(
+      null
+    )
   }
 
   function alterarVinculo(
@@ -531,6 +989,40 @@ export default function EditarInteracaoPage({
             : "",
       })
     )
+
+    if (
+      novoVinculo !==
+      "cliente"
+    ) {
+      setClienteSelecionado(
+        null
+      )
+
+      setBuscaCliente(
+        ""
+      )
+
+      setResultadosClientes(
+        []
+      )
+    }
+
+    if (
+      novoVinculo !==
+      "representada"
+    ) {
+      setRepresentadaSelecionada(
+        null
+      )
+
+      setBuscaRepresentada(
+        ""
+      )
+
+      setResultadosRepresentadas(
+        []
+      )
+    }
 
     setErro(
       null
@@ -604,7 +1096,7 @@ export default function EditarInteracaoPage({
       !form.proximoContatoEm
     ) {
       setErro(
-        "Informe a data do próximo acompanhamento."
+        "Informe a data do prÃ³ximo acompanhamento."
       )
 
       return
@@ -721,7 +1213,7 @@ export default function EditarInteracaoPage({
       router.refresh()
     } catch {
       setErro(
-        "Erro de conexão ao salvar as alterações."
+        "Erro de conexÃ£o ao salvar as alterações."
       )
     } finally {
       setSalvando(
@@ -758,7 +1250,7 @@ export default function EditarInteracaoPage({
           </CardTitle>
 
           <CardDescription>
-            Corrija ou atualize este registro. A data, a hora e o usuário que criou a interação permanecem preservados.
+            Corrija ou atualize este registro. A data, a hora e o usuÃ¡rio que criou a interação permanecem preservados.
           </CardDescription>
         </CardHeader>
 
@@ -846,46 +1338,164 @@ export default function EditarInteracaoPage({
                 Cliente *
               </Label>
 
-              <Select
-                value={
-                  form.clienteId
-                }
-                onValueChange={(
-                  valor
-                ) =>
-                  alterarCampo(
-                    "clienteId",
-                    valor
-                  )
-                }
-                disabled={
-                  salvando
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o cliente" />
-                </SelectTrigger>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 
-                <SelectContent>
-                  {clientes.map(
-                    (
-                      cliente
-                    ) => (
-                      <SelectItem
-                        key={
-                          cliente.id
-                        }
-                        value={
-                          cliente.id
-                        }
-                      >
-                        {cliente.nomeFantasia ||
-                          cliente.razaoSocial}
-                      </SelectItem>
+                <Input
+                  value={
+                    buscaCliente
+                  }
+                  onFocus={() =>
+                    setListaClientesAberta(
+                      true
                     )
-                  )}
-                </SelectContent>
-              </Select>
+                  }
+                  onBlur={() => {
+                    window.setTimeout(
+                      () =>
+                        setListaClientesAberta(
+                          false
+                        ),
+                      150
+                    )
+                  }}
+                  onChange={(
+                    evento
+                  ) => {
+                    setBuscaCliente(
+                      evento.target.value
+                    )
+
+                    setClienteSelecionado(
+                      null
+                    )
+
+                    alterarCampo(
+                      "clienteId",
+                      ""
+                    )
+
+                    setListaClientesAberta(
+                      true
+                    )
+                  }}
+                  disabled={
+                    salvando
+                  }
+                  placeholder="Digite nome, fantasia, código ou CNPJ..."
+                  className="pl-9 pr-10"
+                  autoComplete="off"
+                />
+
+                {(clienteSelecionado ||
+                  buscaCliente) && (
+                  <button
+                    type="button"
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                    onMouseDown={(
+                      evento
+                    ) => {
+                      evento.preventDefault()
+
+                      limparCliente()
+                    }}
+                    aria-label="Limpar Cliente"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+
+                {listaClientesAberta && (
+                  <div className="absolute z-40 mt-1 max-h-72 w-full overflow-y-auto rounded-md border bg-background shadow-lg">
+                    {clienteSelecionado ? (
+                      <div className="px-3 py-3 text-sm text-emerald-700">
+                        Cliente selecionado. Limpe o campo para pesquisar outro.
+                      </div>
+                    ) : buscaCliente.trim().length <
+                      2 ? (
+                      <div className="px-3 py-3 text-sm text-muted-foreground">
+                        Digite pelo menos 2 caracteres.
+                      </div>
+                    ) : carregandoClientes ? (
+                      <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+
+                        Pesquisando Clientes...
+                      </div>
+                    ) : resultadosClientes.length ===
+                      0 ? (
+                      <div className="px-3 py-3 text-sm text-muted-foreground">
+                        Nenhum Cliente ativo encontrado.
+                      </div>
+                    ) : (
+                      resultadosClientes.map(
+                        (
+                          cliente
+                        ) => (
+                          <button
+                            key={
+                              cliente.id
+                            }
+                            type="button"
+                            className="block w-full border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/60 focus:bg-muted/60 focus:outline-none"
+                            onMouseDown={(
+                              evento
+                            ) => {
+                              evento.preventDefault()
+
+                              selecionarCliente(
+                                cliente
+                              )
+                            }}
+                          >
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              <Building2 className="h-4 w-4 text-blue-600" />
+
+                              {rotuloCliente(
+                                cliente
+                              )}
+                            </div>
+
+                            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                              {cliente.codigo && (
+                                <span>
+                                  {
+                                    cliente.codigo
+                                  }
+                                </span>
+                              )}
+
+                              {cliente.nomeFantasia &&
+                                cliente.nomeFantasia !==
+                                  cliente.razaoSocial && (
+                                  <span>
+                                    Razão social:{" "}
+                                    {
+                                      cliente.razaoSocial
+                                    }
+                                  </span>
+                                )}
+
+                              {cliente.cnpj && (
+                                <span>
+                                  CNPJ:{" "}
+                                  {
+                                    cliente.cnpj
+                                  }
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                A pesquisa consulta o servidor e respeita o escopo de acesso do usuário.
+              </p>
             </div>
           )}
 
@@ -896,47 +1506,153 @@ export default function EditarInteracaoPage({
                 Representada *
               </Label>
 
-              <Select
-                value={
-                  form.representadaId
-                }
-                onValueChange={(
-                  valor
-                ) =>
-                  alterarCampo(
-                    "representadaId",
-                    valor
-                  )
-                }
-                disabled={
-                  salvando
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a representada" />
-                </SelectTrigger>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 
-                <SelectContent>
-                  {representadas.map(
-                    (
-                      representada
-                    ) => (
-                      <SelectItem
-                        key={
-                          representada.id
-                        }
-                        value={
-                          representada.id
-                        }
-                      >
-                        {
-                          representada.nome
-                        }
-                      </SelectItem>
+                <Input
+                  value={
+                    buscaRepresentada
+                  }
+                  onFocus={() =>
+                    setListaRepresentadasAberta(
+                      true
                     )
-                  )}
-                </SelectContent>
-              </Select>
+                  }
+                  onBlur={() => {
+                    window.setTimeout(
+                      () =>
+                        setListaRepresentadasAberta(
+                          false
+                        ),
+                      150
+                    )
+                  }}
+                  onChange={(
+                    evento
+                  ) => {
+                    setBuscaRepresentada(
+                      evento.target.value
+                    )
+
+                    setRepresentadaSelecionada(
+                      null
+                    )
+
+                    alterarCampo(
+                      "representadaId",
+                      ""
+                    )
+
+                    setListaRepresentadasAberta(
+                      true
+                    )
+                  }}
+                  disabled={
+                    salvando
+                  }
+                  placeholder="Digite nome, código ou CNPJ..."
+                  className="pl-9 pr-10"
+                  autoComplete="off"
+                />
+
+                {(representadaSelecionada ||
+                  buscaRepresentada) && (
+                  <button
+                    type="button"
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                    onMouseDown={(
+                      evento
+                    ) => {
+                      evento.preventDefault()
+
+                      limparRepresentada()
+                    }}
+                    aria-label="Limpar Representada"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+
+                {listaRepresentadasAberta && (
+                  <div className="absolute z-40 mt-1 max-h-72 w-full overflow-y-auto rounded-md border bg-background shadow-lg">
+                    {representadaSelecionada ? (
+                      <div className="px-3 py-3 text-sm text-emerald-700">
+                        Representada selecionada. Limpe o campo para pesquisar outra.
+                      </div>
+                    ) : buscaRepresentada.trim().length <
+                      2 ? (
+                      <div className="px-3 py-3 text-sm text-muted-foreground">
+                        Digite pelo menos 2 caracteres.
+                      </div>
+                    ) : carregandoRepresentadas ? (
+                      <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+
+                        Pesquisando Representadas...
+                      </div>
+                    ) : resultadosRepresentadas.length ===
+                      0 ? (
+                      <div className="px-3 py-3 text-sm text-muted-foreground">
+                        Nenhuma Representada ativa encontrada.
+                      </div>
+                    ) : (
+                      resultadosRepresentadas.map(
+                        (
+                          representada
+                        ) => (
+                          <button
+                            key={
+                              representada.id
+                            }
+                            type="button"
+                            className="block w-full border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/60 focus:bg-muted/60 focus:outline-none"
+                            onMouseDown={(
+                              evento
+                            ) => {
+                              evento.preventDefault()
+
+                              selecionarRepresentada(
+                                representada
+                              )
+                            }}
+                          >
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              <Factory className="h-4 w-4 text-orange-600" />
+
+                              {
+                                representada.nome
+                              }
+                            </div>
+
+                            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                              {representada.codigo && (
+                                <span>
+                                  {
+                                    representada.codigo
+                                  }
+                                </span>
+                              )}
+
+                              {representada.cnpj && (
+                                <span>
+                                  CNPJ:{" "}
+                                  {
+                                    representada.cnpj
+                                  }
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                A tela não carrega a relação completa de Representadas.
+              </p>
             </div>
           )}
 
@@ -960,7 +1676,7 @@ export default function EditarInteracaoPage({
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>
-                    Nome / Referência *
+                    Nome / ReferÃªncia *
                   </Label>
 
                   <Input
@@ -1305,7 +2021,7 @@ export default function EditarInteracaoPage({
                 <>
                   <Save className="mr-2 h-4 w-4" />
 
-                  Salvar Alterações
+                  Salvar AlteraÃ§Ãµes
                 </>
               )}
             </Button>

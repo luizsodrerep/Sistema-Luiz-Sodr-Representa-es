@@ -6,6 +6,8 @@ import {
   useState,
 } from "react"
 
+import Image from "next/image"
+
 import {
   useRouter,
 } from "next/navigation"
@@ -122,6 +124,7 @@ export default function LoginPage() {
       setErro(
         "Informe seu login ou e-mail."
       )
+
       return
     }
 
@@ -129,6 +132,7 @@ export default function LoginPage() {
       setErro(
         "Informe sua senha."
       )
+
       return
     }
 
@@ -209,23 +213,30 @@ export default function LoginPage() {
       <div className="relative mx-auto grid min-h-screen w-full max-w-[1500px] lg:grid-cols-[1.05fr_0.95fr]">
         <section className="hidden flex-col justify-between px-12 py-12 text-white lg:flex xl:px-16 xl:py-14">
           <div>
-            <div className="inline-flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-lg font-black tracking-tight text-[#0b315d] shadow-xl">
-                LS
+            <div className="inline-flex items-center gap-4">
+              <div className="flex h-[82px] w-[82px] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#06172a] p-1.5 shadow-xl">
+                <Image
+                  src="/branding/logo-lsr.png"
+                  alt="Luiz Sodré Representações"
+                  width={82}
+                  height={82}
+                  priority
+                  className="h-full w-full object-contain"
+                />
               </div>
 
               <div>
-                <p className="text-base font-bold tracking-wide text-white">
+                <p className="text-lg font-bold tracking-wide text-white">
                   LUIZ SODRÉ
                 </p>
 
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-400">
+                <p className="mt-0.5 text-[12px] font-semibold uppercase tracking-[0.2em] text-orange-400">
                   Representações
                 </p>
               </div>
             </div>
 
-            <div className="mt-20 max-w-xl">
+            <div className="mt-16 max-w-xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-200">
                 <ShieldCheck className="h-4 w-4 text-orange-400" />
 
@@ -259,8 +270,15 @@ export default function LoginPage() {
         <section className="flex min-h-screen items-center justify-center px-5 py-8 sm:px-8 lg:px-12">
           <div className="w-full max-w-[480px]">
             <div className="mb-8 flex items-center gap-3 lg:hidden">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-base font-black tracking-tight text-[#0b315d] shadow-lg">
-                LS
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-[#06172a] p-1 shadow-lg">
+                <Image
+                  src="/branding/logo-lsr.png"
+                  alt="Luiz Sodré Representações"
+                  width={64}
+                  height={64}
+                  priority
+                  className="h-full w-full object-contain"
+                />
               </div>
 
               <div>

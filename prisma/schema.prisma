@@ -27,18 +27,21 @@ model Escritorio {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  empresas        EmpresaEscritorio[]
-  usuarios        Usuario[]
-  clientes        Cliente[]
-  representadas   Representada[]
-  vendas          Venda[]
-  interacoes      Interacao[]
-  orcamentos      Orcamento[]
-  contasBancarias ContaBancaria[]
-  financeiros     Financeiro[]
-  obrigacoes      ObrigacaoOperacional[]
-  auditorias      Auditoria[]
-  tarefas         Tarefa[]
+  empresas          EmpresaEscritorio[]
+  usuarios          Usuario[]
+  clientes          Cliente[]
+  representadas     Representada[]
+  vendas            Venda[]
+  interacoes        Interacao[]
+  orcamentos        Orcamento[]
+  contasBancarias   ContaBancaria[]
+  financeiros       Financeiro[]
+  obrigacoes        ObrigacaoOperacional[]
+  auditorias        Auditoria[]
+  tarefas           Tarefa[]
+  catalogos         Catalogo[]
+  atencoesComerciais AtencaoComercialCliente[]
+  metasRepresentadas MetaRepresentada[]
 
   @@index([status])
 }
@@ -135,8 +138,8 @@ model Usuario {
   clientesResponsavel   Cliente[]             @relation("ClienteResponsavelPrincipal")
   participacoesClientes ClienteParticipacao[]
 
-  vendasCriadas     Venda[]       @relation("VendaCriadaPor")
-  vendasResponsavel Venda[]       @relation("VendaResponsavel")
+  vendasCriadas     Venda[] @relation("VendaCriadaPor")
+  vendasResponsavel Venda[] @relation("VendaResponsavel")
   vendaEventos      VendaEvento[]
 
   interacoesCriadas     Interacao[] @relation("InteracaoCriadaPor")
@@ -149,6 +152,12 @@ model Usuario {
 
   tarefasCriadas     Tarefa[] @relation("TarefaCriadaPor")
   tarefasResponsavel Tarefa[] @relation("TarefaResponsavel")
+
+  catalogosCriados Catalogo[] @relation("CatalogoCriadoPor")
+
+  atencoesComerciaisCriadas   AtencaoComercialCliente[] @relation("AtencaoComercialCriadaPor")
+  atencoesComerciaisResolvidas AtencaoComercialCliente[] @relation("AtencaoComercialResolvidaPor")
+  metasRepresentadasCriadas   MetaRepresentada[]         @relation("MetaRepresentadaCriadaPor")
 
   permissoes UsuarioPermissao[]
 
@@ -196,6 +205,8 @@ model Cliente {
 
   status String @default("Ativo")
 
+  termometroRelacionamento String?
+
   aceitaEmail Boolean @default(true)
 
   observacoes String?
@@ -216,17 +227,68 @@ model Cliente {
 
   participantes ClienteParticipacao[]
 
-  interacoes       Interacao[]
-  orcamentos       Orcamento[]
-  vendas           Venda[]
-  regrasComerciais RegraComercialRepresentada[]
-  financeiros      Financeiro[]
-  tarefas          Tarefa[]
+  interacoes          Interacao[]
+  orcamentos          Orcamento[]
+  vendas              Venda[]
+  regrasComerciais    RegraComercialRepresentada[]
+  financeiros         Financeiro[]
+  tarefas             Tarefa[]
+  atencoesComerciais  AtencaoComercialCliente[]
 
   @@index([escritorioId])
   @@index([originadoPorId])
   @@index([responsavelPrincipalId])
   @@index([status])
+}
+
+// ======================================================
+// ATENCOES COMERCIAIS DO CLIENTE
+// Memoria comercial manual, sem vinculo automatico
+// com cobranca, inadimplencia ou restricoes financeiras.
+// ======================================================
+
+model AtencaoComercialCliente {
+  id String @id @default(cuid())
+
+  escritorioId   String
+  clienteId      String
+  representadaId String?
+
+  criadoPorId    String?
+  resolvidoPorId String?
+
+  tipo String
+
+  titulo    String
+  descricao String
+
+  status String @default("Ativa")
+
+  resolucao String?
+
+  resolvidoEm DateTime?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  representada Representada? @relation(fields: [representadaId], references: [id], onDelete: SetNull)
+
+  criadoPor Usuario? @relation("AtencaoComercialCriadaPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  resolvidoPor Usuario? @relation("AtencaoComercialResolvidaPor", fields: [resolvidoPorId], references: [id], onDelete: SetNull)
+
+  @@index([escritorioId])
+  @@index([clienteId])
+  @@index([representadaId])
+  @@index([criadoPorId])
+  @@index([resolvidoPorId])
+  @@index([tipo])
+  @@index([status])
+  @@index([criadoEm])
 }
 
 // ======================================================
@@ -314,7 +376,7 @@ model Representada {
 
   exigeNFComissao Boolean @default(true)
 
-  status String @default("Ativa")
+  status String @default("Em configuração")
 
   observacoes String?
 
@@ -323,21 +385,139 @@ model Representada {
 
   escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
 
-  contratos         ContratoRepresentada[]
-  regrasComerciais  RegraComercialRepresentada[]
-  vendas            Venda[]
-  interacoes        Interacao[]
-  orcamentos        Orcamento[]
-  notasComissao     NFComissao[]
-  contasRecebimento RepresentadaContaRecebimento[]
-  financeiros       Financeiro[]
-  contatos          RepresentadaContato[]
-  tarefas           Tarefa[]
+  contratos          ContratoRepresentada[]
+  regrasComerciais   RegraComercialRepresentada[]
+  vendas             Venda[]
+  interacoes         Interacao[]
+  orcamentos         Orcamento[]
+  notasComissao      NFComissao[]
+  contasRecebimento  RepresentadaContaRecebimento[]
+  financeiros        Financeiro[]
+  contatos           RepresentadaContato[]
+  tarefas            Tarefa[]
+  catalogos          Catalogo[]
+  atencoesComerciais AtencaoComercialCliente[]
+  metas              MetaRepresentada[]
 
   @@index([escritorioId])
   @@index([codigo])
   @@index([cnpj])
   @@index([status])
+}
+
+// ======================================================
+// METAS MENSAIS DAS REPRESENTADAS
+// A meta comercial e informada pela Representada e
+// registrada pelo escritorio por competencia mensal.
+// O campo tipo permite usar a mesma estrutura para
+// Vendas e, futuramente, Faturamento sem nova migration.
+// ======================================================
+
+model MetaRepresentada {
+  id String @id @default(cuid())
+
+  escritorioId   String
+  representadaId String
+  criadoPorId    String?
+
+  // Ex.: "Vendas". Estrutura preparada para outros
+  // indicadores mensais, como "Faturamento".
+  tipo String @default("Vendas")
+
+  ano Int
+  mes Int
+
+  valorMeta Float
+
+  ativa Boolean @default(true)
+
+  // Ex.: Mercos, E-mail, WhatsApp, portal ou contato direto.
+  fonte String?
+
+  // Numero de campanha, nome do painel, protocolo ou
+  // outra referencia informada pela Representada.
+  referencia String?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+
+  representada Representada @relation(fields: [representadaId], references: [id], onDelete: Restrict)
+
+  criadoPor Usuario? @relation("MetaRepresentadaCriadaPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  @@unique([representadaId, tipo, ano, mes])
+  @@index([escritorioId])
+  @@index([representadaId])
+  @@index([criadoPorId])
+  @@index([tipo])
+  @@index([ano, mes])
+  @@index([ativa])
+}
+
+// ======================================================
+// CATALOGOS / BIBLIOTECA COMERCIAL
+// O banco guarda apenas metadados.
+// O arquivo fisico permanece em armazenamento protegido,
+// fora de /public e fora do Git.
+// ======================================================
+
+model Catalogo {
+  id String @id @default(cuid())
+
+  escritorioId   String
+  representadaId String
+  criadoPorId    String?
+
+  nome      String
+  descricao String?
+
+  nomeArquivoOriginal String
+  caminhoArquivo      String @unique
+  tipoMime            String
+  extensao            String?
+  tamanhoBytes        Int
+
+  // Permite identificar duplicidade e validar integridade
+  // do arquivo sem armazenar o conteudo no PostgreSQL.
+  hashSha256 String?
+
+  // Ex.: "2026", "3.1", "Setembro/2026".
+  versao String?
+
+  // Data comercial do material, quando a Representada
+  // informar uma referencia diferente da data de upload.
+  dataReferencia DateTime?
+
+  // Ex.: Upload manual, WhatsApp, E-mail, Site.
+  origem String?
+
+  status String @default("Ativo")
+
+  arquivadoEm DateTime?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  escritorio Escritorio @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+
+  representada Representada @relation(fields: [representadaId], references: [id], onDelete: Restrict)
+
+  criadoPor Usuario? @relation("CatalogoCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  @@index([escritorioId])
+  @@index([representadaId])
+  @@index([criadoPorId])
+  @@index([nome])
+  @@index([status])
+  @@index([dataReferencia])
+  @@index([criadoEm])
+  @@index([hashSha256])
 }
 
 // ======================================================
@@ -1003,7 +1183,7 @@ model Interacao {
   descricao String?
 
   // Dados opcionais utilizados quando a interacao for
-  // do tipo Prospecção e ainda nao existir Cliente cadastrado.
+  // do tipo ProspecÃ§Ã£o e ainda nao existir Cliente cadastrado.
   nomeProspect     String?
   empresaProspect  String?
   origemProspeccao String?

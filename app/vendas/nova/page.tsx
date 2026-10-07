@@ -1,17 +1,8 @@
 "use client"
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react"
-
+import { useEffect, useMemo, useState, type FormEvent } from "react"
 import Link from "next/link"
-
-import {
-  useRouter,
-} from "next/navigation"
-
+import { useRouter } from "next/navigation"
 import {
   AlertCircle,
   ArrowLeft,
@@ -27,15 +18,8 @@ import {
   Search,
   ShoppingCart,
 } from "lucide-react"
-
-import {
-  PageLayout,
-} from "@/components/page-layout"
-
-import {
-  Button,
-} from "@/components/ui/button"
-
+import { PageLayout } from "@/components/page-layout"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -43,26 +27,34 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
-import {
-  Input,
-} from "@/components/ui/input"
+type UsuarioResumo = {
+  id: string
+  nome: string
+}
 
-import {
-  Label,
-} from "@/components/ui/label"
+type RepresentadaResumo = {
+  id: string
+  codigo?: string | null
+  nome: string
+}
 
-import {
-  Textarea,
-} from "@/components/ui/textarea"
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+type AtencaoComercial = {
+  id: string
+  tipo: string
+  titulo: string
+  descricao: string
+  status: string
+  resolucao: string | null
+  criadoEm: string
+  resolvidoEm: string | null
+  representada: RepresentadaResumo | null
+  criadoPor: UsuarioResumo | null
+  resolvidoPor: UsuarioResumo | null
+}
 
 type Cliente = {
   id: string
@@ -71,6 +63,11 @@ type Cliente = {
   nomeFantasia: string | null
   cnpj: string | null
   status: string
+}
+
+type ClienteDetalhado = Cliente & {
+  termometroRelacionamento: string | null
+  atencoesComerciais?: AtencaoComercial[]
 }
 
 type Representada = {
@@ -85,637 +82,295 @@ type Representada = {
 type Orcamento = {
   id: string
   numeroSequencial: number
-
   clienteId: string
   representadaId: string
-
   valorTotal: number
   condicaoPagamento: string | null
-
   descricao: string | null
   observacoes: string | null
-
   status: string
-
   data: string
   validadeEm: string
-
   cliente: {
     id: string
     codigo: string | null
     razaoSocial: string
     nomeFantasia: string | null
     cnpj: string | null
-  }
-
+  } | null
   representada: {
     id: string
     nome: string
     cnpj: string | null
     comissao?: number | null
   }
-
-  vendaGerada?:
-    | {
-        id: string
-      }
-    | null
+  vendaGerada?: { id: string } | null
 }
 
-function formatarCodigoOrcamento(
-  numero: number
-) {
-  return `ORC-${String(
-    numero
-  ).padStart(6, "0")}`
+type RegraComercial = {
+  id: string
+  representadaId: string
+  clienteId: string | null
+  nome: string
+  tipoEscopo: string
+  vigenciaInicio: string
+  vigenciaFim: string | null
+  ativa: boolean
 }
 
-function formatarMoeda(
-  valor: number
-) {
-  return valor.toLocaleString(
-    "pt-BR",
-    {
-      style: "currency",
-      currency: "BRL",
-    }
-  )
+function formatarCodigoOrcamento(numero: number) {
+  return `ORC-${String(numero).padStart(6, "0")}`
 }
 
-function formatarData(
-  valor: string | null
-) {
-  if (!valor) {
-    return "—"
-  }
+function formatarMoeda(valor: number) {
+  return valor.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  })
+}
 
-  const data =
-    new Date(valor)
+function formatarData(valor: string | null) {
+  if (!valor) return "—"
 
-  if (
-    Number.isNaN(
-      data.getTime()
-    )
-  ) {
-    return "—"
-  }
+  const data = new Date(valor)
 
-  return data.toLocaleDateString(
-    "pt-BR"
-  )
+  return Number.isNaN(data.getTime())
+    ? "—"
+    : data.toLocaleDateString("pt-BR")
 }
 
 function dataHojeInput() {
-  const agora =
-    new Date()
-
-  const ano =
-    agora.getFullYear()
-
-  const mes =
-    String(
-      agora.getMonth() + 1
-    ).padStart(2, "0")
-
-  const dia =
-    String(
-      agora.getDate()
-    ).padStart(2, "0")
+  const agora = new Date()
+  const ano = agora.getFullYear()
+  const mes = String(agora.getMonth() + 1).padStart(2, "0")
+  const dia = String(agora.getDate()).padStart(2, "0")
 
   return `${ano}-${mes}-${dia}`
 }
 
-function converterValorBR(
-  valor: string
-) {
-  const limpo =
-    valor
-      .trim()
-      .replace(/\s/g, "")
+function converterValorBR(valor: string): number | null {
+  const limpo = valor.trim().replace(/\s/g, "")
 
-  if (!limpo) {
+  if (!limpo) return null
+
+  const normalizado = limpo.includes(",")
+    ? limpo.replace(/\./g, "").replace(",", ".")
+    : limpo
+
+  const numero = Number(normalizado)
+
+  return Number.isFinite(numero)
+    ? numero
+    : null
+}
+
+function numeroParaInputBR(valor: number) {
+  return valor.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+function rotuloCliente(cliente: Cliente) {
+  return cliente.nomeFantasia || cliente.razaoSocial
+}
+
+function descricaoTermometro(valor: string | null) {
+  switch (valor) {
+    case "Verde":
+      return {
+        emoji: "🟢",
+        titulo: "Relacionamento consolidado",
+        classe: "border-green-200 bg-green-50 text-green-900",
+      }
+
+    case "Azul":
+      return {
+        emoji: "🔵",
+        titulo: "Bom relacionamento / em desenvolvimento",
+        classe: "border-blue-200 bg-blue-50 text-blue-900",
+      }
+
+    case "Amarelo":
+      return {
+        emoji: "🟡",
+        titulo: "Atenção / relacionamento irregular",
+        classe: "border-yellow-200 bg-yellow-50 text-yellow-900",
+      }
+
+    case "Laranja":
+      return {
+        emoji: "🟠",
+        titulo: "Cautela comercial",
+        classe: "border-orange-200 bg-orange-50 text-orange-900",
+      }
+
+    case "Vermelho":
+      return {
+        emoji: "🔴",
+        titulo: "Relacionamento crítico",
+        classe: "border-red-200 bg-red-50 text-red-900",
+      }
+
+    default:
+      return {
+        emoji: "⚪",
+        titulo: "Não classificado",
+        classe: "border-slate-200 bg-slate-50 text-slate-700",
+      }
+  }
+}
+
+function classeTipoAtencao(tipo: string) {
+  switch (tipo) {
+    case "Restrição":
+      return "border-red-200 bg-red-50 text-red-800"
+
+    case "Atenção":
+      return "border-orange-200 bg-orange-50 text-orange-800"
+
+    case "Informação importante":
+      return "border-blue-200 bg-blue-50 text-blue-800"
+
+    default:
+      return "border-slate-200 bg-slate-50 text-slate-700"
+  }
+}
+
+function moedaValidaNaoNegativa(valor: string) {
+  if (valor.trim() === "") return 0
+
+  const numero = converterValorBR(valor)
+
+  if (
+    numero === null ||
+    numero < 0 ||
+    !Number.isSafeInteger(Math.round(numero * 100)) ||
+    Math.abs(numero * 100 - Math.round(numero * 100)) > 0.000001
+  ) {
     return null
   }
 
-  let normalizado =
-    limpo
-
-  if (
-    limpo.includes(",")
-  ) {
-    normalizado =
-      limpo
-        .replace(/\./g, "")
-        .replace(",", ".")
-  }
-
-  const numero =
-    Number(
-      normalizado
-    )
-
-  if (
-    !Number.isFinite(
-      numero
-    )
-  ) {
-    return null
-  }
-
-  return numero
+  return Math.round(numero * 100) / 100
 }
 
-function numeroParaInputBR(
-  valor: number
+function regraEstaVigente(
+  regra: RegraComercial,
+  dataVenda: string
 ) {
-  return valor.toLocaleString(
-    "pt-BR",
-    {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }
-  )
-}
-
-function normalizarBusca(
-  valor: string
-) {
-  return valor
-    .normalize("NFD")
-    .replace(
-      /[\u0300-\u036f]/g,
-      ""
-    )
-    .toLocaleLowerCase(
-      "pt-BR"
-    )
-    .replace(
-      /\s+/g,
-      " "
-    )
-    .trim()
-}
-
-function somenteDigitos(
-  valor: string | null
-) {
-  return (
-    valor || ""
-  ).replace(
-    /\D/g,
-    ""
-  )
-}
-
-function clienteCorrespondeBusca(
-  cliente: Cliente,
-  busca: string
-) {
-  const termo =
-    normalizarBusca(
-      busca
-    )
-
-  if (!termo) {
-    return true
-  }
-
-  const texto =
-    normalizarBusca(
-      [
-        cliente.razaoSocial,
-        cliente.nomeFantasia,
-        cliente.codigo,
-        cliente.cnpj,
-      ]
-        .filter(
-          Boolean
-        )
-        .join(" ")
-    )
-
-  if (
-    texto.includes(
-      termo
-    )
-  ) {
-    return true
-  }
-
-  const digitosBusca =
-    somenteDigitos(
-      busca
-    )
+  const inicio = regra.vigenciaInicio.slice(0, 10)
+  const fim = regra.vigenciaFim?.slice(0, 10) || null
 
   return (
-    digitosBusca.length >=
-      2 &&
-    somenteDigitos(
-      cliente.cnpj
-    ).includes(
-      digitosBusca
-    )
+    regra.ativa &&
+    /^\d{4}-\d{2}-\d{2}$/.test(dataVenda) &&
+    inicio <= dataVenda &&
+    (fim === null || dataVenda <= fim)
   )
-}
-
-function representadaCorrespondeBusca(
-  representada: Representada,
-  busca: string
-) {
-  const termo =
-    normalizarBusca(
-      busca
-    )
-
-  if (!termo) {
-    return true
-  }
-
-  const texto =
-    normalizarBusca(
-      [
-        representada.nome,
-        representada.codigo,
-        representada.cnpj,
-      ]
-        .filter(
-          Boolean
-        )
-        .join(" ")
-    )
-
-  if (
-    texto.includes(
-      termo
-    )
-  ) {
-    return true
-  }
-
-  const digitosBusca =
-    somenteDigitos(
-      busca
-    )
-
-  return (
-    digitosBusca.length >=
-      2 &&
-    somenteDigitos(
-      representada.cnpj
-    ).includes(
-      digitosBusca
-    )
-  )
-}
-
-function rotuloCliente(
-  cliente: Cliente
-) {
-  return (
-    cliente.nomeFantasia ||
-    cliente.razaoSocial
-  )
-}
-
-function rotuloRepresentada(
-  representada: Representada
-) {
-  return representada.nome
 }
 
 export default function NovaVendaPage() {
-  const router =
-    useRouter()
+  const router = useRouter()
 
-  const [
-    clientes,
-    setClientes,
-  ] =
-    useState<Cliente[]>(
-      []
-    )
-
-  const [
-    representadas,
-    setRepresentadas,
-  ] =
-    useState<
-      Representada[]
-    >([])
-
-  const [
-    orcamento,
-    setOrcamento,
-  ] =
-    useState<
-      Orcamento | null
-    >(null)
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [representadas, setRepresentadas] = useState<Representada[]>([])
+  const [orcamento, setOrcamento] = useState<Orcamento | null>(null)
 
   const [
     orcamentoOrigemId,
     setOrcamentoOrigemId,
-  ] =
-    useState<
-      string | null
-    >(null)
+  ] = useState<string | null>(null)
+
+  const [clienteId, setClienteId] = useState("")
+  const [buscaCliente, setBuscaCliente] = useState("")
+  const [listaClientesAberta, setListaClientesAberta] = useState(false)
+  const [carregandoClientes, setCarregandoClientes] = useState(false)
+
+  const [representadaId, setRepresentadaId] = useState("")
+  const [buscaRepresentada, setBuscaRepresentada] = useState("")
+  const [listaRepresentadasAberta, setListaRepresentadasAberta] = useState(false)
+  const [carregandoRepresentadas, setCarregandoRepresentadas] = useState(false)
+
+  const [dataVenda, setDataVenda] = useState(dataHojeInput())
+  const [valorTotal, setValorTotal] = useState("")
+  const [condicaoPagamento, setCondicaoPagamento] = useState("")
+  const [numeroPedido, setNumeroPedido] = useState("")
+  const [numeroPedidoRepresentada, setNumeroPedidoRepresentada] = useState("")
+  const [numeroOCCliente, setNumeroOCCliente] = useState("")
+  const [produto, setProduto] = useState("")
+  const [quantidade, setQuantidade] = useState("")
+  const [desconto, setDesconto] = useState("")
+  const [bonificacaoValor, setBonificacaoValor] = useState("")
+  const [previsaoFaturamento, setPrevisaoFaturamento] = useState("")
+  const [observacoes, setObservacoes] = useState("")
+
+  const [carregandoOrcamento, setCarregandoOrcamento] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [sucesso, setSucesso] = useState<string | null>(null)
 
   const [
-    clienteId,
-    setClienteId,
-  ] =
-    useState("")
+    clienteDetalhado,
+    setClienteDetalhado,
+  ] = useState<ClienteDetalhado | null>(null)
 
   const [
-    buscaCliente,
-    setBuscaCliente,
-  ] =
-    useState("")
+    carregandoClienteDetalhado,
+    setCarregandoClienteDetalhado,
+  ] = useState(false)
 
   const [
-    listaClientesAberta,
-    setListaClientesAberta,
-  ] =
-    useState(false)
+    erroClienteDetalhado,
+    setErroClienteDetalhado,
+  ] = useState<string | null>(null)
 
   const [
-    representadaId,
-    setRepresentadaId,
-  ] =
-    useState("")
+    regrasComerciais,
+    setRegrasComerciais,
+  ] = useState<RegraComercial[]>([])
 
-  const [
-    buscaRepresentada,
-    setBuscaRepresentada,
-  ] =
-    useState("")
+  const [regraComercialId, setRegraComercialId] = useState("")
+  const [carregandoRegras, setCarregandoRegras] = useState(false)
+  const [erroRegras, setErroRegras] = useState<string | null>(null)
 
-  const [
-    listaRepresentadasAberta,
-    setListaRepresentadasAberta,
-  ] =
-    useState(false)
-
-  const [
-    dataVenda,
-    setDataVenda,
-  ] =
-    useState(
-      dataHojeInput()
+  useEffect(() => {
+    const parametros = new URLSearchParams(
+      window.location.search
     )
 
-  const [
-    valorTotal,
-    setValorTotal,
-  ] =
-    useState("")
-
-  const [
-    condicaoPagamento,
-    setCondicaoPagamento,
-  ] =
-    useState("")
-
-  const [
-    numeroPedido,
-    setNumeroPedido,
-  ] =
-    useState("")
-
-  const [
-    numeroPedidoRepresentada,
-    setNumeroPedidoRepresentada,
-  ] =
-    useState("")
-
-  const [
-    numeroOCCliente,
-    setNumeroOCCliente,
-  ] =
-    useState("")
-
-  const [
-    produto,
-    setProduto,
-  ] =
-    useState("")
-
-  const [
-    quantidade,
-    setQuantidade,
-  ] =
-    useState("")
-
-  const [
-    desconto,
-    setDesconto,
-  ] =
-    useState("")
-
-  const [
-    bonificacaoValor,
-    setBonificacaoValor,
-  ] =
-    useState("")
-
-  const [
-    previsaoFaturamento,
-    setPrevisaoFaturamento,
-  ] =
-    useState("")
-
-  const [
-    status,
-    setStatus,
-  ] =
-    useState("Pendente")
-
-  const [
-    observacoes,
-    setObservacoes,
-  ] =
-    useState("")
-
-  const [
-    carregando,
-    setCarregando,
-  ] =
-    useState(true)
-
-  const [
-    carregandoOrcamento,
-    setCarregandoOrcamento,
-  ] =
-    useState(false)
-
-  const [
-    salvando,
-    setSalvando,
-  ] =
-    useState(false)
-
-  const [
-    erro,
-    setErro,
-  ] =
-    useState<
-      string | null
-    >(null)
-
-  const [
-    sucesso,
-    setSucesso,
-  ] =
-    useState<
-      string | null
-    >(null)
-
-  useEffect(() => {
-    const parametros =
-      new URLSearchParams(
-        window.location.search
-      )
-
-    const id =
-      parametros.get(
-        "orcamentoId"
-      )
+    const id = parametros.get("orcamentoId")
 
     if (id) {
-      setOrcamentoOrigemId(
-        id
+      setOrcamentoOrigemId(id)
+
+      router.replace(
+        `/orcamentos/${encodeURIComponent(id)}`
       )
     }
-  }, [])
+  }, [router])
 
   useEffect(() => {
-    async function carregarBase() {
-      try {
-        setCarregando(
-          true
-        )
+    if (!orcamentoOrigemId) return
 
-        setErro(null)
-
-        const [
-          respostaClientes,
-          respostaRepresentadas,
-        ] =
-          await Promise.all([
-            fetch(
-              "/api/clientes",
-              {
-                cache:
-                  "no-store",
-              }
-            ),
-
-            fetch(
-              "/api/representadas",
-              {
-                cache:
-                  "no-store",
-              }
-            ),
-          ])
-
-        const dadosClientes =
-          await respostaClientes
-            .json()
-            .catch(
-              () => []
-            )
-
-        const dadosRepresentadas =
-          await respostaRepresentadas
-            .json()
-            .catch(
-              () => []
-            )
-
-        if (
-          !respostaClientes.ok
-        ) {
-          throw new Error(
-            dadosClientes?.message ||
-              "Não foi possível carregar os clientes."
-          )
-        }
-
-        if (
-          !respostaRepresentadas.ok
-        ) {
-          throw new Error(
-            dadosRepresentadas?.message ||
-              "Não foi possível carregar as Representadas."
-          )
-        }
-
-        setClientes(
-          Array.isArray(
-            dadosClientes
-          )
-            ? dadosClientes
-            : []
-        )
-
-        setRepresentadas(
-          Array.isArray(
-            dadosRepresentadas
-          )
-            ? dadosRepresentadas
-            : []
-        )
-      } catch (error) {
-        setErro(
-          error instanceof
-            Error
-            ? error.message
-            : "Erro ao carregar dados da venda."
-        )
-      } finally {
-        setCarregando(
-          false
-        )
-      }
-    }
-
-    carregarBase()
-  }, [])
-
-  useEffect(() => {
-    if (
-      !orcamentoOrigemId
-    ) {
-      return
-    }
+    const id = orcamentoOrigemId
 
     async function carregarOrcamento() {
       try {
-        setCarregandoOrcamento(
-          true
-        )
-
+        setCarregandoOrcamento(true)
         setErro(null)
 
-        const response =
-          await fetch(
-            `/api/orcamentos/${orcamentoOrigemId}`,
-            {
-              cache:
-                "no-store",
-            }
-          )
+        const response = await fetch(
+          `/api/orcamentos/${encodeURIComponent(id)}`,
+          {
+            cache: "no-store",
+          }
+        )
 
-        const data =
-          await response
-            .json()
-            .catch(
-              () => null
-            )
+        const data = await response
+          .json()
+          .catch(() => null)
 
-        if (
-          !response.ok
-        ) {
+        if (!response.ok) {
           setErro(
             data?.message ||
               "Não foi possível carregar o orçamento de origem."
@@ -724,10 +379,7 @@ export default function NovaVendaPage() {
           return
         }
 
-        if (
-          data.status !==
-          "Aprovado"
-        ) {
+        if (data.status !== "Aprovado") {
           setErro(
             "Somente orçamento aprovado pode ser convertido em venda."
           )
@@ -735,9 +387,7 @@ export default function NovaVendaPage() {
           return
         }
 
-        if (
-          data.vendaGerada
-        ) {
+        if (data.vendaGerada) {
           setErro(
             "Este orçamento já possui uma venda vinculada."
           )
@@ -745,38 +395,50 @@ export default function NovaVendaPage() {
           return
         }
 
-        setOrcamento(
-          data
-        )
+        const origem = data as Orcamento
 
-        setClienteId(
-          data.clienteId
-        )
+        setOrcamento(origem)
 
-        setRepresentadaId(
-          data.representadaId
-        )
+        if (origem.cliente) {
+          setClientes([
+            {
+              ...origem.cliente,
+              status: "Ativo",
+            },
+          ])
+        }
+
+        if (origem.representada) {
+          setRepresentadas([
+            {
+              id: origem.representada.id,
+              codigo: null,
+              nome: origem.representada.nome,
+              cnpj: origem.representada.cnpj,
+              status: "Ativa",
+              comissao: origem.representada.comissao ?? null,
+            },
+          ])
+        }
+
+        setClienteId(origem.clienteId)
+        setRepresentadaId(origem.representadaId)
 
         setValorTotal(
           numeroParaInputBR(
-            Number(
-              data.valorTotal
-            )
+            Number(origem.valorTotal)
           )
         )
 
         setCondicaoPagamento(
-          data.condicaoPagamento ||
-            ""
+          origem.condicaoPagamento || ""
         )
 
-        if (
-          data.descricao
-        ) {
+        if (origem.descricao) {
           setObservacoes(
             `Origem ${formatarCodigoOrcamento(
-              data.numeroSequencial
-            )}: ${data.descricao}`
+              origem.numeroSequencial
+            )}: ${origem.descricao}`
           )
         }
       } catch {
@@ -784,201 +446,634 @@ export default function NovaVendaPage() {
           "Erro ao carregar o orçamento de origem."
         )
       } finally {
-        setCarregandoOrcamento(
-          false
-        )
+        setCarregandoOrcamento(false)
       }
     }
 
-    carregarOrcamento()
+    void carregarOrcamento()
+  }, [orcamentoOrigemId])
+
+  useEffect(() => {
+    if (orcamentoOrigemId || clienteId) {
+      setCarregandoClientes(false)
+      return
+    }
+
+    const termo = buscaCliente.trim()
+
+    if (termo.length < 2) {
+      setClientes([])
+      setCarregandoClientes(false)
+      return
+    }
+
+    const controller = new AbortController()
+
+    const timer = window.setTimeout(
+      async () => {
+        setCarregandoClientes(true)
+
+        try {
+          const params = new URLSearchParams({
+            seletor: "1",
+            busca: termo,
+            limit: "20",
+            somenteAtivos: "1",
+          })
+
+          const response = await fetch(
+            `/api/clientes?${params.toString()}`,
+            {
+              cache: "no-store",
+              signal: controller.signal,
+            }
+          )
+
+          const data = await response
+            .json()
+            .catch(() => [])
+
+          if (!response.ok) {
+            throw new Error(
+              data?.message ||
+                "Não foi possível pesquisar Clientes."
+            )
+          }
+
+          const resultados: Cliente[] =
+            Array.isArray(data)
+              ? data
+                  .filter(
+                    (cliente: Cliente) =>
+                      Boolean(
+                        cliente?.cnpj?.trim()
+                      )
+                  )
+                  .slice(0, 10)
+              : []
+
+          setClientes(resultados)
+        } catch (error) {
+          if (
+            error instanceof DOMException &&
+            error.name === "AbortError"
+          ) {
+            return
+          }
+
+          console.error(
+            "Erro ao pesquisar Clientes:",
+            error
+          )
+
+          setClientes([])
+        } finally {
+          if (!controller.signal.aborted) {
+            setCarregandoClientes(false)
+          }
+        }
+      },
+      350
+    )
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
   }, [
+    orcamentoOrigemId,
+    buscaCliente,
+    clienteId,
+  ])
+
+  /*
+   * Carrega o Termômetro e as Atenções Comerciais
+   * do Cliente selecionado.
+   *
+   * Esses dados são informativos e não alteram
+   * as regras de salvamento da Venda.
+   */
+  useEffect(() => {
+    if (!clienteId) {
+      setClienteDetalhado(null)
+      setCarregandoClienteDetalhado(false)
+      setErroClienteDetalhado(null)
+      return
+    }
+
+    const controller = new AbortController()
+
+    const carregarClienteDetalhado = async () => {
+      setCarregandoClienteDetalhado(true)
+      setErroClienteDetalhado(null)
+
+      try {
+        const response = await fetch(
+          `/api/clientes/${encodeURIComponent(
+            clienteId
+          )}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          }
+        )
+
+        const data = await response
+          .json()
+          .catch(() => null)
+
+        if (!response.ok) {
+          throw new Error(
+            data?.error ||
+              data?.message ||
+              "Não foi possível carregar as informações comerciais do Cliente."
+          )
+        }
+
+        if (!controller.signal.aborted) {
+          setClienteDetalhado(
+            data as ClienteDetalhado
+          )
+        }
+      } catch (error) {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return
+        }
+
+        console.error(
+          "Erro ao carregar informações comerciais do Cliente:",
+          error
+        )
+
+        setClienteDetalhado(null)
+
+        setErroClienteDetalhado(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar as informações comerciais do Cliente."
+        )
+      } finally {
+        if (!controller.signal.aborted) {
+          setCarregandoClienteDetalhado(false)
+        }
+      }
+    }
+
+    void carregarClienteDetalhado()
+
+    return () => controller.abort()
+  }, [clienteId])
+
+  useEffect(() => {
+    if (orcamentoOrigemId || representadaId) {
+      setCarregandoRepresentadas(false)
+      return
+    }
+
+    const termo = buscaRepresentada.trim()
+
+    if (termo.length < 2) {
+      setRepresentadas([])
+      setCarregandoRepresentadas(false)
+      return
+    }
+
+    const controller = new AbortController()
+
+    const timer = window.setTimeout(
+      async () => {
+        setCarregandoRepresentadas(true)
+
+        try {
+          const params = new URLSearchParams({
+            seletor: "1",
+            busca: termo,
+            limit: "10",
+            somenteAtivas: "1",
+          })
+
+          const response = await fetch(
+            `/api/representadas?${params.toString()}`,
+            {
+              cache: "no-store",
+              signal: controller.signal,
+            }
+          )
+
+          const data = await response
+            .json()
+            .catch(() => [])
+
+          if (!response.ok) {
+            throw new Error(
+              data?.message ||
+                "Não foi possível pesquisar Representadas."
+            )
+          }
+
+          setRepresentadas(
+            Array.isArray(data)
+              ? data
+              : []
+          )
+        } catch (error) {
+          if (
+            error instanceof DOMException &&
+            error.name === "AbortError"
+          ) {
+            return
+          }
+
+          console.error(
+            "Erro ao pesquisar Representadas:",
+            error
+          )
+
+          setRepresentadas([])
+        } finally {
+          if (!controller.signal.aborted) {
+            setCarregandoRepresentadas(false)
+          }
+        }
+      },
+      350
+    )
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [
+    orcamentoOrigemId,
+    buscaRepresentada,
+    representadaId,
+  ])
+
+  useEffect(() => {
+    setRegraComercialId("")
+    setRegrasComerciais([])
+    setErroRegras(null)
+
+    if (
+      !representadaId ||
+      orcamentoOrigemId
+    ) {
+      setCarregandoRegras(false)
+      return
+    }
+
+    const controller = new AbortController()
+
+    setCarregandoRegras(true)
+
+    const carregarRegras = async () => {
+      try {
+        const response = await fetch(
+          `/api/representadas/${encodeURIComponent(
+            representadaId
+          )}/regras-comerciais`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          }
+        )
+
+        const dados = await response
+          .json()
+          .catch(() => null)
+
+        if (
+          !response.ok ||
+          !Array.isArray(dados)
+        ) {
+          throw new Error(
+            dados?.message ||
+              "Não foi possível consultar as regras comerciais da Representada."
+          )
+        }
+
+        if (!controller.signal.aborted) {
+          setRegrasComerciais(
+            dados as RegraComercial[]
+          )
+        }
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setErroRegras(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível consultar as regras comerciais da Representada."
+        )
+      } finally {
+        if (!controller.signal.aborted) {
+          setCarregandoRegras(false)
+        }
+      }
+    }
+
+    void carregarRegras()
+
+    return () => controller.abort()
+  }, [
+    representadaId,
     orcamentoOrigemId,
   ])
 
-  const vendaViaOrcamento =
-    Boolean(
-      orcamentoOrigemId
-    )
+  const vendaViaOrcamento = Boolean(
+    orcamentoOrigemId
+  )
 
-  const clientesDisponiveis =
-    useMemo(
-      () =>
-        clientes.filter(
-          (cliente) =>
-            cliente.status ===
-              "Ativo" &&
-            Boolean(
-              cliente.cnpj?.trim()
-            )
-        ),
-      [clientes]
-    )
-
-  const representadasDisponiveis =
-    useMemo(
-      () =>
-        representadas.filter(
-          (representada) =>
-            representada.status ===
-            "Ativa"
-        ),
-      [representadas]
-    )
-
-  const clientesFiltrados =
-    useMemo(
-      () =>
-        clientesDisponiveis
-          .filter(
-            (
-              cliente
-            ) =>
-              clienteCorrespondeBusca(
-                cliente,
-                buscaCliente
-              )
+  const clientesDisponiveis = useMemo(
+    () =>
+      clientes.filter(
+        (cliente) =>
+          cliente.status === "Ativo" &&
+          Boolean(
+            cliente.cnpj?.trim()
           )
-          .slice(
-            0,
-            12
-          ),
-      [
-        clientesDisponiveis,
-        buscaCliente,
-      ]
-    )
+      ),
+    [clientes]
+  )
 
-  const representadasFiltradas =
-    useMemo(
-      () =>
-        representadasDisponiveis
-          .filter(
-            (
-              representada
-            ) =>
-              representadaCorrespondeBusca(
-                representada,
-                buscaRepresentada
-              )
-          )
-          .slice(
-            0,
-            12
-          ),
-      [
-        representadasDisponiveis,
-        buscaRepresentada,
-      ]
-    )
+  const representadasDisponiveis = useMemo(
+    () =>
+      representadas.filter(
+        (representada) =>
+          representada.status === "Ativa"
+      ),
+    [representadas]
+  )
 
-  const clienteSelecionado =
-    useMemo(
-      () =>
-        clientes.find(
-          (cliente) =>
-            cliente.id ===
-            clienteId
-        ) || null,
-      [
-        clientes,
-        clienteId,
-      ]
-    )
+  const clientesFiltrados = useMemo(
+    () =>
+      clientesDisponiveis.slice(
+        0,
+        10
+      ),
+    [clientesDisponiveis]
+  )
 
-  const representadaSelecionada =
-    useMemo(
-      () =>
-        representadas.find(
-          (representada) =>
-            representada.id ===
-            representadaId
-        ) || null,
-      [
-        representadas,
-        representadaId,
-      ]
-    )
+  const representadasFiltradas = useMemo(
+    () =>
+      representadasDisponiveis.slice(
+        0,
+        10
+      ),
+    [representadasDisponiveis]
+  )
 
-  const valorNumerico =
-    useMemo(
-      () =>
-        converterValorBR(
-          valorTotal
-        ),
-      [valorTotal]
-    )
+  const clienteSelecionado = useMemo(
+    () =>
+      clientes.find(
+        (cliente) =>
+          cliente.id === clienteId
+      ) || null,
+    [
+      clientes,
+      clienteId,
+    ]
+  )
 
-  const percentualMatriz =
-    representadaSelecionada
-      ?.comissao ?? null
+  const representadaSelecionada = useMemo(
+    () =>
+      representadas.find(
+        (representada) =>
+          representada.id ===
+          representadaId
+      ) || null,
+    [
+      representadas,
+      representadaId,
+    ]
+  )
 
-  const previsaoComissaoMatriz =
-    useMemo(() => {
-      if (
-        valorNumerico ===
-          null ||
-        percentualMatriz ===
-          null ||
-        !Number.isFinite(
-          Number(
-            percentualMatriz
-          )
-        )
-      ) {
-        return null
+  const atencoesAtivas = useMemo(
+    () =>
+      (
+        clienteDetalhado?.atencoesComerciais ||
+        []
+      ).filter(
+        (atencao) =>
+          atencao.status === "Ativa"
+      ),
+    [clienteDetalhado]
+  )
+
+  const atencoesAtivasOrdenadas = useMemo(
+    () => {
+      if (!representadaId) {
+        return atencoesAtivas
       }
 
-      const descontoNumero =
-        converterValorBR(
-          desconto
-        ) || 0
+      return [
+        ...atencoesAtivas,
+      ].sort(
+        (
+          a,
+          b
+        ) => {
+          const aEspecifica =
+            a.representada?.id ===
+            representadaId
 
-      const bonificacaoNumero =
-        converterValorBR(
-          bonificacaoValor
-        ) || 0
+          const bEspecifica =
+            b.representada?.id ===
+            representadaId
 
-      const base =
-        Math.max(
-          valorNumerico -
-            descontoNumero -
-            bonificacaoNumero,
-          0
+          if (
+            aEspecifica ===
+            bEspecifica
+          ) {
+            return 0
+          }
+
+          return aEspecifica
+            ? -1
+            : 1
+        }
+      )
+    },
+    [
+      atencoesAtivas,
+      representadaId,
+    ]
+  )
+
+  const termometro = descricaoTermometro(
+    clienteDetalhado
+      ?.termometroRelacionamento ||
+      null
+  )
+
+  const regrasElegiveis = useMemo(
+    () => {
+      const vigentes =
+        regrasComerciais.filter(
+          (regra) =>
+            regra.representadaId ===
+              representadaId &&
+            regraEstaVigente(
+              regra,
+              dataVenda
+            )
         )
 
-      return (
-        base *
-        Number(
-          percentualMatriz
+      const especificas =
+        vigentes.filter(
+          (regra) =>
+            regra.clienteId ===
+              clienteId &&
+            regra.tipoEscopo !==
+              "Padrao"
         )
-      ) / 100
-    }, [
-      valorNumerico,
-      percentualMatriz,
-      desconto,
-      bonificacaoValor,
-    ])
 
-  const podeSalvar =
-    Boolean(
-      clienteId &&
-        representadaId &&
-        dataVenda &&
-        valorNumerico !==
-          null &&
-        valorNumerico >
-          0 &&
-        !salvando &&
-        (!vendaViaOrcamento ||
-          orcamento?.status ===
-            "Aprovado")
+      return especificas.length > 0
+        ? especificas
+        : vigentes.filter(
+            (regra) =>
+              regra.clienteId ===
+                null &&
+              regra.tipoEscopo ===
+                "Padrao"
+          )
+    },
+    [
+      regrasComerciais,
+      representadaId,
+      clienteId,
+      dataVenda,
+    ]
+  )
+
+  const regraSelecionadaValida =
+    !regraComercialId ||
+    regrasElegiveis.some(
+      (regra) =>
+        regra.id ===
+        regraComercialId
     )
+
+  /*
+   * Políticas de Cliente também exigem
+   * confirmação explícita: podem ser
+   * condições excepcionais, não necessariamente
+   * aplicáveis a toda compra.
+   */
+  const exigeEscolhaRegra =
+    regrasElegiveis.length > 1 ||
+    (
+      regrasElegiveis.length === 1 &&
+      regrasElegiveis[0].tipoEscopo !==
+        "Padrao"
+    )
+
+  const regraPrecisaSelecao =
+    exigeEscolhaRegra &&
+    !regraComercialId
+
+  const valorNumerico = useMemo(
+    () =>
+      converterValorBR(
+        valorTotal
+      ),
+    [valorTotal]
+  )
+
+  const descontoNumerico = useMemo(
+    () =>
+      moedaValidaNaoNegativa(
+        desconto
+      ),
+    [desconto]
+  )
+
+  const bonificacaoNumerica = useMemo(
+    () =>
+      moedaValidaNaoNegativa(
+        bonificacaoValor
+      ),
+    [bonificacaoValor]
+  )
+
+  const valorTotalValido =
+    valorNumerico !== null &&
+    valorNumerico > 0 &&
+    Number.isSafeInteger(
+      Math.round(
+        valorNumerico * 100
+      )
+    ) &&
+    Math.abs(
+      valorNumerico * 100 -
+        Math.round(
+          valorNumerico * 100
+        )
+    ) <= 0.000001
+
+  const valorOriginal =
+    valorTotalValido &&
+    descontoNumerico !== null &&
+    valorNumerico !== null
+      ? (
+          Math.round(
+            valorNumerico * 100
+          ) +
+          Math.round(
+            descontoNumerico * 100
+          )
+        ) /
+        100
+      : null
+
+  const percentualDesconto =
+    valorOriginal !== null &&
+    valorOriginal > 0 &&
+    descontoNumerico !== null
+      ? (
+          descontoNumerico /
+          valorOriginal
+        ) *
+        100
+      : null
+
+  const podeSalvar = Boolean(
+    !vendaViaOrcamento &&
+      clienteId &&
+      representadaId &&
+      dataVenda &&
+      valorTotalValido &&
+      descontoNumerico !== null &&
+      bonificacaoNumerica !== null &&
+      !carregandoRegras &&
+      !erroRegras &&
+      regraSelecionadaValida &&
+      !regraPrecisaSelecao &&
+      !salvando
+  )
 
   function selecionarCliente(
     cliente: Cliente
   ) {
     setClienteId(
       cliente.id
+    )
+
+    setClientes([
+      cliente,
+    ])
+
+    setClienteDetalhado(
+      null
+    )
+
+    setErroClienteDetalhado(
+      null
     )
 
     setBuscaCliente(
@@ -989,6 +1084,10 @@ export default function NovaVendaPage() {
 
     setListaClientesAberta(
       false
+    )
+
+    setRegraComercialId(
+      ""
     )
 
     setErro(
@@ -1003,14 +1102,20 @@ export default function NovaVendaPage() {
       representada.id
     )
 
+    setRepresentadas([
+      representada,
+    ])
+
     setBuscaRepresentada(
-      rotuloRepresentada(
-        representada
-      )
+      representada.nome
     )
 
     setListaRepresentadasAberta(
       false
+    )
+
+    setRegraComercialId(
+      ""
     )
 
     setErro(
@@ -1019,16 +1124,35 @@ export default function NovaVendaPage() {
   }
 
   async function salvarVenda(
-    event: React.FormEvent
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault()
 
-    setErro(null)
-    setSucesso(null)
+    setErro(
+      null
+    )
 
-    if (!clienteId) {
+    setSucesso(
+      null
+    )
+
+    if (orcamentoOrigemId) {
+      router.replace(
+        `/orcamentos/${encodeURIComponent(
+          orcamentoOrigemId
+        )}`
+      )
+
+      return
+    }
+
+    if (
+      !clienteId ||
+      !clienteSelecionado
+    ) {
       setErro(
-        "Selecione o cliente."
+        "Selecione o Cliente."
       )
 
       return
@@ -1036,27 +1160,20 @@ export default function NovaVendaPage() {
 
     if (
       !clienteSelecionado
+        .cnpj
+        ?.trim()
     ) {
       setErro(
-        "Cliente selecionado não encontrado."
+        "O Cliente precisa possuir CNPJ cadastrado para registrar Venda."
       )
 
       return
     }
 
     if (
-      !clienteSelecionado.cnpj ||
-      clienteSelecionado.cnpj.trim() ===
-        ""
+      !representadaId ||
+      !representadaSelecionada
     ) {
-      setErro(
-        "O cliente precisa possuir CNPJ cadastrado para registrar venda."
-      )
-
-      return
-    }
-
-    if (!representadaId) {
       setErro(
         "Selecione a Representada."
       )
@@ -1066,134 +1183,142 @@ export default function NovaVendaPage() {
 
     if (!dataVenda) {
       setErro(
-        "Informe a data da venda."
+        "Informe a data da Venda."
       )
 
       return
     }
 
     if (
-      valorNumerico ===
-        null ||
-      valorNumerico <=
-        0
+      !valorTotalValido ||
+      valorNumerico === null
     ) {
       setErro(
-        "Informe um valor de venda válido e maior que zero."
+        "Informe o valor final da Venda maior que zero, em reais e com até duas casas decimais."
       )
 
       return
     }
 
     if (
-      vendaViaOrcamento &&
-      !orcamento
+      descontoNumerico === null ||
+      bonificacaoNumerica === null
     ) {
       setErro(
-        "O orçamento de origem não foi carregado corretamente."
+        "Desconto e bonificação devem ser valores não negativos, com até duas casas decimais."
       )
 
       return
     }
+
+    if (
+      carregandoRegras ||
+      erroRegras
+    ) {
+      setErro(
+        erroRegras ||
+          "Aguarde a consulta das regras comerciais da Representada."
+      )
+
+      return
+    }
+
+    if (
+      !regraSelecionadaValida ||
+      regraPrecisaSelecao
+    ) {
+      setErro(
+        "Selecione uma regra comercial válida para a Representada, Cliente e data da Venda."
+      )
+
+      return
+    }
+
+    const quantidadeNumero =
+      quantidade.trim() !== ""
+        ? Number(
+            quantidade
+          )
+        : null
 
     try {
       setSalvando(
         true
       )
 
-      const descontoNumero =
-        converterValorBR(
-          desconto
+      const response = await fetch(
+        "/api/vendas",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body:
+            JSON.stringify({
+              orcamentoOrigemId:
+                null,
+
+              clienteId,
+
+              representadaId,
+
+              regraComercialId:
+                regraComercialId ||
+                null,
+
+              data:
+                dataVenda,
+
+              valorTotal:
+                valorNumerico,
+
+              condicaoPagamento,
+
+              numeroPedido,
+
+              numeroPedidoRepresentada,
+
+              numeroOCCliente,
+
+              produto,
+
+              quantidade:
+                quantidadeNumero,
+
+              desconto:
+                descontoNumerico,
+
+              bonificacaoValor:
+                bonificacaoNumerica,
+
+              previsaoFaturamento:
+                previsaoFaturamento ||
+                null,
+
+              status:
+                "Pendente",
+
+              observacoes,
+            }),
+        }
+      )
+
+      const data = await response
+        .json()
+        .catch(
+          () => null
         )
 
-      const bonificacaoNumero =
-        converterValorBR(
-          bonificacaoValor
-        )
-
-      const quantidadeNumero =
-        quantidade.trim() !==
-        ""
-          ? Number(
-              quantidade
-            )
-          : null
-
-      const response =
-        await fetch(
-          "/api/vendas",
-          {
-            method:
-              "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body:
-              JSON.stringify({
-                orcamentoOrigemId:
-                  orcamentoOrigemId ||
-                  null,
-
-                clienteId,
-
-                representadaId,
-
-                data:
-                  dataVenda,
-
-                valorTotal:
-                  valorNumerico,
-
-                condicaoPagamento,
-
-                numeroPedido,
-
-                numeroPedidoRepresentada,
-
-                numeroOCCliente,
-
-                produto,
-
-                quantidade:
-                  quantidadeNumero,
-
-                desconto:
-                  descontoNumero,
-
-                bonificacaoValor:
-                  bonificacaoNumero,
-
-                previsaoFaturamento:
-                  previsaoFaturamento ||
-                  null,
-
-                status,
-
-                observacoes,
-              }),
-          }
-        )
-
-      const data =
-        await response
-          .json()
-          .catch(
-            () => null
-          )
-
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         if (
-          response.status ===
-            409 &&
+          response.status === 409 &&
           data?.vendaId
         ) {
           setErro(
-            "Este orçamento já foi convertido em venda."
+            "Este Orçamento já foi convertido em Venda."
           )
 
           return
@@ -1201,7 +1326,7 @@ export default function NovaVendaPage() {
 
         setErro(
           data?.message ||
-            "Não foi possível registrar a venda."
+            "Não foi possível registrar a Venda."
         )
 
         return
@@ -1211,9 +1336,7 @@ export default function NovaVendaPage() {
         "Venda registrada com sucesso."
       )
 
-      if (
-        data?.id
-      ) {
+      if (data?.id) {
         router.push(
           `/vendas/${data.id}`
         )
@@ -1228,27 +1351,13 @@ export default function NovaVendaPage() {
       )
     } catch {
       setErro(
-        "Erro de comunicação ao registrar a venda."
+        "Erro de comunicação ao registrar a Venda."
       )
     } finally {
       setSalvando(
         false
       )
     }
-  }
-
-  if (
-    carregando
-  ) {
-    return (
-      <PageLayout title="Nova Venda">
-        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-
-          Carregando dados comerciais...
-        </div>
-      </PageLayout>
-    )
   }
 
   return (
@@ -1263,7 +1372,6 @@ export default function NovaVendaPage() {
             }
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-
             Voltar
           </Button>
 
@@ -1273,7 +1381,6 @@ export default function NovaVendaPage() {
               variant="outline"
             >
               <ShoppingCart className="mr-2 h-4 w-4" />
-
               Vendas
             </Button>
           </Link>
@@ -1287,7 +1394,7 @@ export default function NovaVendaPage() {
           }`}
         >
           {vendaViaOrcamento
-            ? "Venda originada de Orçamento"
+            ? "Conversão pelo Orçamento"
             : "Venda direta / retroativa"}
         </div>
       </div>
@@ -1310,11 +1417,30 @@ export default function NovaVendaPage() {
         </div>
       )}
 
+      {vendaViaOrcamento &&
+        orcamentoOrigemId && (
+          <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            Para preservar o aceite e o
+            vínculo com o Orçamento,
+            conclua a conversão na página
+            do próprio Orçamento.{" "}
+
+            <Link
+              href={`/orcamentos/${encodeURIComponent(
+                orcamentoOrigemId
+              )}`}
+              className="font-semibold underline"
+            >
+              Abrir Orçamento
+            </Link>
+          </div>
+        )}
+
       {carregandoOrcamento && (
         <div className="mb-4 flex items-center gap-2 rounded-md border p-3 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
 
-          Carregando orçamento aprovado...
+          Carregando Orçamento aprovado...
         </div>
       )}
 
@@ -1328,7 +1454,10 @@ export default function NovaVendaPage() {
             </CardTitle>
 
             <CardDescription>
-              Esta venda está sendo criada a partir de um orçamento aprovado.
+              A conversão deve ser feita
+              na página do Orçamento,
+              com verificação do aceite
+              registrado.
             </CardDescription>
           </CardHeader>
 
@@ -1389,17 +1518,17 @@ export default function NovaVendaPage() {
             </div>
 
             <div className="mt-3 rounded-md border bg-white p-3 text-xs text-muted-foreground">
-              Cliente, Representada, valor e condição de pagamento são preservados pelo servidor conforme o orçamento aprovado.
+              Cliente, Representada, valor
+              e condição de pagamento são
+              preservados pelo servidor
+              conforme o Orçamento
+              aprovado.
             </div>
           </CardContent>
         </Card>
       )}
 
-      <form
-        onSubmit={
-          salvarVenda
-        }
-      >
+      <form onSubmit={salvarVenda}>
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
             <Card>
@@ -1409,7 +1538,10 @@ export default function NovaVendaPage() {
                 </CardTitle>
 
                 <CardDescription>
-                  Registre pedidos atuais ou retroativos. A data informada representa a data real da venda.
+                  Registre pedidos atuais
+                  ou retroativos. A data
+                  informada representa a
+                  data real da Venda.
                 </CardDescription>
               </CardHeader>
 
@@ -1427,7 +1559,7 @@ export default function NovaVendaPage() {
                         {orcamento?.cliente
                           ? orcamento.cliente.nomeFantasia ||
                             orcamento.cliente.razaoSocial
-                          : "Carregando cliente..."}
+                          : "Carregando Cliente..."}
                       </div>
 
                       {orcamento?.cliente && (
@@ -1435,6 +1567,7 @@ export default function NovaVendaPage() {
                           {orcamento.cliente.codigo
                             ? `${orcamento.cliente.codigo} — `
                             : ""}
+
                           CNPJ:{" "}
                           {orcamento.cliente.cnpj ||
                             "não informado"}
@@ -1442,7 +1575,8 @@ export default function NovaVendaPage() {
                       )}
 
                       <p className="mt-2 text-xs text-green-700">
-                        Definido pelo orçamento aprovado.
+                        Definido pelo Orçamento
+                        aprovado.
                       </p>
                     </div>
                   ) : (
@@ -1458,7 +1592,7 @@ export default function NovaVendaPage() {
                             true
                           )
                         }
-                        onBlur={() => {
+                        onBlur={() =>
                           window.setTimeout(
                             () =>
                               setListaClientesAberta(
@@ -1466,7 +1600,7 @@ export default function NovaVendaPage() {
                               ),
                             150
                           )
-                        }}
+                        }
                         onChange={(
                           event
                         ) => {
@@ -1475,6 +1609,22 @@ export default function NovaVendaPage() {
                           )
 
                           setClienteId(
+                            ""
+                          )
+
+                          setClientes(
+                            []
+                          )
+
+                          setClienteDetalhado(
+                            null
+                          )
+
+                          setErroClienteDetalhado(
+                            null
+                          )
+
+                          setRegraComercialId(
                             ""
                           )
 
@@ -1489,8 +1639,21 @@ export default function NovaVendaPage() {
 
                       {listaClientesAberta && (
                         <div className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-md border bg-background shadow-lg">
-                          {clientesFiltrados.length >
-                          0 ? (
+                          {buscaCliente
+                            .trim()
+                            .length < 2 ? (
+                            <div className="px-3 py-4 text-sm text-muted-foreground">
+                              Digite pelo menos 2
+                              caracteres.
+                            </div>
+                          ) : carregandoClientes ? (
+                            <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+
+                              Pesquisando Clientes...
+                            </div>
+                          ) : clientesFiltrados.length >
+                            0 ? (
                             clientesFiltrados.map(
                               (
                                 cliente
@@ -1551,31 +1714,239 @@ export default function NovaVendaPage() {
                             )
                           ) : (
                             <div className="px-3 py-4 text-sm text-muted-foreground">
-                              Nenhum cliente ativo com CNPJ encontrado para esta busca.
+                              Nenhum Cliente ativo
+                              com CNPJ encontrado para
+                              esta busca.
                             </div>
                           )}
-
-                          {clientesDisponiveis.length >
-                            clientesFiltrados.length &&
-                            clientesFiltrados.length ===
-                              12 && (
-                              <div className="border-t bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                                Há mais resultados. Continue digitando para refinar a busca.
-                              </div>
-                            )}
                         </div>
                       )}
                     </div>
                   )}
+                </div>
 
-                  {!vendaViaOrcamento &&
-                    clientesDisponiveis.length ===
-                      0 && (
-                      <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                        Nenhum cliente ativo com CNPJ está disponível para venda.
+                {clienteId && (
+                  <div className="space-y-3">
+                    {carregandoClienteDetalhado && (
+                      <div className="flex items-center gap-2 rounded-md border bg-slate-50 p-3 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+
+                        Carregando Termômetro e
+                        Atenções Comerciais do
+                        Cliente...
                       </div>
                     )}
-                </div>
+
+                    {erroClienteDetalhado && (
+                      <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+
+                        <div>
+                          <p className="font-medium">
+                            Não foi possível carregar
+                            o resumo comercial do
+                            Cliente.
+                          </p>
+
+                          <p className="mt-1">
+                            {
+                              erroClienteDetalhado
+                            }
+                          </p>
+
+                          <p className="mt-1 text-xs">
+                            A Venda não está
+                            bloqueada por este aviso.
+                            Consulte a ficha do
+                            Cliente se precisar dessas
+                            informações antes de
+                            continuar.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {clienteDetalhado && (
+                      <>
+                        <div
+                          className={`rounded-md border p-3 ${termometro.classe}`}
+                        >
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <p className="text-xs font-medium uppercase tracking-wide opacity-70">
+                                Termômetro de
+                                relacionamento
+                              </p>
+
+                              <p className="mt-1 font-semibold">
+                                {
+                                  termometro.emoji
+                                }{" "}
+                                {
+                                  termometro.titulo
+                                }
+                              </p>
+                            </div>
+
+                            <Link
+                              href={`/clientes/${clienteId}`}
+                              className="text-sm font-medium underline underline-offset-4"
+                            >
+                              Ver ficha do Cliente
+                            </Link>
+                          </div>
+                        </div>
+
+                        {atencoesAtivas.length >
+                        0 ? (
+                          <div className="rounded-lg border border-orange-300 bg-orange-50 p-4">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-orange-700" />
+
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-orange-950">
+                                  Este Cliente possui{" "}
+                                  {
+                                    atencoesAtivas.length
+                                  }{" "}
+                                  {atencoesAtivas.length ===
+                                  1
+                                    ? "Atenção Comercial ativa"
+                                    : "Atenções Comerciais ativas"}
+                                  .
+                                </p>
+
+                                <p className="mt-1 text-sm text-orange-900">
+                                  Leia as informações
+                                  antes de registrar o
+                                  pedido. Elas são
+                                  alertas comerciais e
+                                  não bloqueiam
+                                  automaticamente a
+                                  Venda.
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="mt-3 space-y-2">
+                              {atencoesAtivasOrdenadas
+                                .slice(
+                                  0,
+                                  5
+                                )
+                                .map(
+                                  (
+                                    atencao
+                                  ) => {
+                                    const atencaoDaRepresentada =
+                                      Boolean(
+                                        representadaId &&
+                                          atencao
+                                            .representada
+                                            ?.id ===
+                                            representadaId
+                                      )
+
+                                    return (
+                                      <div
+                                        key={
+                                          atencao.id
+                                        }
+                                        className={`rounded-md border p-3 ${
+                                          atencaoDaRepresentada
+                                            ? "border-orange-400 bg-orange-100"
+                                            : "border-orange-200 bg-white/80"
+                                        }`}
+                                      >
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span
+                                            className={`rounded-full border px-2 py-0.5 text-xs font-medium ${classeTipoAtencao(
+                                              atencao.tipo
+                                            )}`}
+                                          >
+                                            {
+                                              atencao.tipo
+                                            }
+                                          </span>
+
+                                          {atencao.representada ? (
+                                            <span className="rounded-full border bg-slate-50 px-2 py-0.5 text-xs text-slate-700">
+                                              Representada:{" "}
+                                              {
+                                                atencao
+                                                  .representada
+                                                  .nome
+                                              }
+                                            </span>
+                                          ) : (
+                                            <span className="rounded-full border bg-slate-50 px-2 py-0.5 text-xs text-slate-700">
+                                              Geral do
+                                              Cliente
+                                            </span>
+                                          )}
+
+                                          {atencaoDaRepresentada && (
+                                            <span className="rounded-full border border-orange-400 bg-orange-200 px-2 py-0.5 text-xs font-semibold text-orange-950">
+                                              Relacionada à
+                                              Representada
+                                              desta Venda
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        <p className="mt-2 font-medium text-slate-900">
+                                          {
+                                            atencao.titulo
+                                          }
+                                        </p>
+
+                                        <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+                                          {
+                                            atencao.descricao
+                                          }
+                                        </p>
+                                      </div>
+                                    )
+                                  }
+                                )}
+
+                              {atencoesAtivas.length >
+                                5 && (
+                                <p className="text-sm font-medium text-orange-900">
+                                  Existem mais{" "}
+                                  {atencoesAtivas.length -
+                                    5}{" "}
+                                  {atencoesAtivas.length -
+                                    5 ===
+                                  1
+                                    ? "Atenção ativa"
+                                    : "Atenções ativas"}{" "}
+                                  na ficha do Cliente.
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="mt-3">
+                              <Link
+                                href={`/clientes/${clienteId}`}
+                                className="text-sm font-semibold text-orange-950 underline underline-offset-4"
+                              >
+                                Ver todas as Atenções
+                                do Cliente
+                              </Link>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+                            Nenhuma Atenção Comercial
+                            ativa registrada para este
+                            Cliente.
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>
@@ -1587,13 +1958,15 @@ export default function NovaVendaPage() {
                       <div className="flex items-center gap-2 font-medium">
                         <Factory className="h-4 w-4 text-orange-600" />
 
-                        {orcamento?.representada
+                        {orcamento
+                          ?.representada
                           ?.nome ||
                           "Carregando Representada..."}
                       </div>
 
                       <p className="mt-2 text-xs text-green-700">
-                        Definida pelo orçamento aprovado.
+                        Definida pelo Orçamento
+                        aprovado.
                       </p>
                     </div>
                   ) : (
@@ -1609,7 +1982,7 @@ export default function NovaVendaPage() {
                             true
                           )
                         }
-                        onBlur={() => {
+                        onBlur={() =>
                           window.setTimeout(
                             () =>
                               setListaRepresentadasAberta(
@@ -1617,7 +1990,7 @@ export default function NovaVendaPage() {
                               ),
                             150
                           )
-                        }}
+                        }
                         onChange={(
                           event
                         ) => {
@@ -1626,6 +1999,14 @@ export default function NovaVendaPage() {
                           )
 
                           setRepresentadaId(
+                            ""
+                          )
+
+                          setRepresentadas(
+                            []
+                          )
+
+                          setRegraComercialId(
                             ""
                           )
 
@@ -1640,8 +2021,22 @@ export default function NovaVendaPage() {
 
                       {listaRepresentadasAberta && (
                         <div className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-md border bg-background shadow-lg">
-                          {representadasFiltradas.length >
-                          0 ? (
+                          {buscaRepresentada
+                            .trim()
+                            .length < 2 ? (
+                            <div className="px-3 py-4 text-sm text-muted-foreground">
+                              Digite pelo menos 2
+                              caracteres.
+                            </div>
+                          ) : carregandoRepresentadas ? (
+                            <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+
+                              Pesquisando
+                              Representadas...
+                            </div>
+                          ) : representadasFiltradas.length >
+                            0 ? (
                             representadasFiltradas.map(
                               (
                                 representada
@@ -1663,9 +2058,9 @@ export default function NovaVendaPage() {
                                   }}
                                 >
                                   <div className="text-sm font-medium">
-                                    {rotuloRepresentada(
-                                      representada
-                                    )}
+                                    {
+                                      representada.nome
+                                    }
                                   </div>
 
                                   <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
@@ -1691,18 +2086,11 @@ export default function NovaVendaPage() {
                             )
                           ) : (
                             <div className="px-3 py-4 text-sm text-muted-foreground">
-                              Nenhuma Representada ativa encontrada para esta busca.
+                              Nenhuma Representada
+                              ativa encontrada para
+                              esta busca.
                             </div>
                           )}
-
-                          {representadasDisponiveis.length >
-                            representadasFiltradas.length &&
-                            representadasFiltradas.length ===
-                              12 && (
-                              <div className="border-t bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                                Há mais resultados. Continue digitando para refinar a busca.
-                              </div>
-                            )}
                         </div>
                       )}
                     </div>
@@ -1723,21 +2111,26 @@ export default function NovaVendaPage() {
                       }
                       onChange={(
                         event
-                      ) =>
+                      ) => {
                         setDataVenda(
                           event.target.value
                         )
-                      }
+
+                        setRegraComercialId(
+                          ""
+                        )
+                      }}
                     />
 
                     <p className="text-xs text-muted-foreground">
-                      Aceita datas anteriores para lançamento retroativo.
+                      Aceita datas anteriores para
+                      lançamento retroativo.
                     </p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="valorTotal">
-                      Valor total *
+                      Valor final do pedido (R$) *
                     </Label>
 
                     <Input
@@ -1758,6 +2151,11 @@ export default function NovaVendaPage() {
                         vendaViaOrcamento
                       }
                     />
+
+                    <p className="text-xs text-muted-foreground">
+                      Informe o valor já com os
+                      descontos negociados.
+                    </p>
                   </div>
                 </div>
 
@@ -1786,7 +2184,8 @@ export default function NovaVendaPage() {
 
                   {vendaViaOrcamento && (
                     <p className="text-xs text-green-700">
-                      Condição preservada do orçamento aprovado.
+                      Condição preservada do
+                      Orçamento aprovado.
                     </p>
                   )}
                 </div>
@@ -1800,7 +2199,9 @@ export default function NovaVendaPage() {
                 </CardTitle>
 
                 <CardDescription>
-                  Informações utilizadas para rastrear o pedido junto ao Cliente e à Representada.
+                  Informações utilizadas para
+                  rastrear o pedido junto ao
+                  Cliente e à Representada.
                 </CardDescription>
               </CardHeader>
 
@@ -1921,7 +2322,12 @@ export default function NovaVendaPage() {
                 </CardTitle>
 
                 <CardDescription>
-                  Desconto e bonificação reduzem a base prevista de comissão.
+                  O valor final da Venda já
+                  contém o desconto. A
+                  bonificação é registrada
+                  para o histórico do Cliente,
+                  sem reduzir automaticamente
+                  a base de comissão.
                 </CardDescription>
               </CardHeader>
 
@@ -1929,7 +2335,7 @@ export default function NovaVendaPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="desconto">
-                      Desconto (R$)
+                      Desconto já concedido (R$)
                     </Label>
 
                     <Input
@@ -1947,11 +2353,19 @@ export default function NovaVendaPage() {
                       inputMode="decimal"
                       placeholder="0,00"
                     />
+
+                    <p className="text-xs text-muted-foreground">
+                      Não será subtraído
+                      novamente. É usado para
+                      identificar a faixa de
+                      comissão e o valor original
+                      do pedido.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="bonificacaoValor">
-                      Bonificação sem comissão (R$)
+                      Bonificação concedida (R$)
                     </Label>
 
                     <Input
@@ -1969,8 +2383,76 @@ export default function NovaVendaPage() {
                       inputMode="decimal"
                       placeholder="0,00"
                     />
+
+                    <p className="text-xs text-muted-foreground">
+                      Registre apenas o valor
+                      conhecido. A bonificação não
+                      diminui automaticamente a
+                      base da comissão.
+                    </p>
                   </div>
                 </div>
+
+                {(descontoNumerico === null ||
+                  bonificacaoNumerica === null) && (
+                  <p className="text-sm text-red-700">
+                    Informe desconto e
+                    bonificação válidos, sem
+                    valores negativos e com até
+                    duas casas decimais.
+                  </p>
+                )}
+
+                {valorOriginal !== null && (
+                  <div className="rounded-md border bg-slate-50 p-3 text-sm">
+                    <p>
+                      Valor original reconstruído:{" "}
+                      <strong>
+                        {formatarMoeda(
+                          valorOriginal
+                        )}
+                      </strong>
+                    </p>
+
+                    <p>
+                      Valor final para comissão:{" "}
+                      <strong>
+                        {formatarMoeda(
+                          valorNumerico!
+                        )}
+                      </strong>
+                    </p>
+
+                    <p>
+                      Desconto registrado:{" "}
+                      <strong>
+                        {formatarMoeda(
+                          descontoNumerico!
+                        )}
+                      </strong>
+
+                      {percentualDesconto !==
+                        null &&
+                        ` (${percentualDesconto.toLocaleString(
+                          "pt-BR",
+                          {
+                            maximumFractionDigits:
+                              4,
+                          }
+                        )}%)`}
+                    </p>
+
+                    <p>
+                      Bonificação informada:{" "}
+                      <strong>
+                        {formatarMoeda(
+                          bonificacaoNumerica ??
+                            0
+                        )}
+                      </strong>
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="previsaoFaturamento">
@@ -2014,8 +2496,10 @@ export default function NovaVendaPage() {
                       event.target.value
                     )
                   }
-                  rows={5}
-                  placeholder="Informações comerciais, histórico, faturamento já realizado ou observações da venda..."
+                  rows={
+                    5
+                  }
+                  placeholder="Informações comerciais, histórico, faturamento já realizado ou detalhes de desconto/bonificação..."
                 />
               </CardContent>
             </Card>
@@ -2034,35 +2518,16 @@ export default function NovaVendaPage() {
                   Status
                 </Label>
 
-                <Select
-                  value={
-                    status
-                  }
-                  onValueChange={
-                    setStatus
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    <SelectItem value="Pendente">
-                      Pendente
-                    </SelectItem>
-
-                    <SelectItem value="Confirmado">
-                      Confirmado
-                    </SelectItem>
-
-                    <SelectItem value="Faturado">
-                      Faturado
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="rounded-md border bg-slate-50 p-3 text-sm font-medium">
+                  Pendente
+                </div>
 
                 <div className="rounded-md border bg-slate-50 p-3 text-xs text-muted-foreground">
-                  Para vendas retroativas já entregues/faturadas, o status poderá refletir a situação real informada.
+                  Toda nova Venda manual começa
+                  como Pendente. Registre os
+                  eventos e a situação real após
+                  salvar, conforme o fluxo da
+                  Venda.
                 </div>
               </CardContent>
             </Card>
@@ -2074,59 +2539,146 @@ export default function NovaVendaPage() {
                 </CardTitle>
 
                 <CardDescription>
-                  A API define a regra oficial no momento do salvamento.
+                  A API determina e registra a
+                  comissão oficial ao salvar.
                 </CardDescription>
               </CardHeader>
 
               <CardContent className="space-y-3">
-                {percentualMatriz !==
-                null ? (
-                  <>
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        Percentual da matriz
-                      </p>
+                {!representadaId ? (
+                  <div className="text-sm text-muted-foreground">
+                    Selecione uma Representada
+                    para consultar a política.
+                  </div>
+                ) : carregandoRegras ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
 
-                      <p className="text-lg font-bold">
-                        {Number(
-                          percentualMatriz
-                        ).toLocaleString(
-                          "pt-BR",
-                          {
-                            maximumFractionDigits: 4,
-                          }
-                        )}
-                        %
-                      </p>
-                    </div>
+                    Consultando regras
+                    comerciais...
+                  </div>
+                ) : erroRegras ? (
+                  <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
 
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        Prévia pela matriz
-                      </p>
-
-                      <p className="text-lg font-bold">
-                        {previsaoComissaoMatriz !==
-                        null
-                          ? formatarMoeda(
-                              previsaoComissaoMatriz
-                            )
-                          : "—"}
-                      </p>
-                    </div>
-                  </>
+                    {
+                      erroRegras
+                    }
+                  </div>
                 ) : (
-                  <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="space-y-2">
+                    <Label htmlFor="regraComercialId">
+                      Regra comercial aplicável
+                    </Label>
 
-                    <span>
-                      Nenhum percentual padrão está disponível na matriz da Representada.
-                    </span>
+                    {exigeEscolhaRegra ? (
+                      <>
+                        <select
+                          id="regraComercialId"
+                          value={
+                            regraSelecionadaValida
+                              ? regraComercialId
+                              : ""
+                          }
+                          onChange={(
+                            event
+                          ) =>
+                            setRegraComercialId(
+                              event.target.value
+                            )
+                          }
+                          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                          <option value="">
+                            Confirme a regra desta
+                            negociação *
+                          </option>
+
+                          {regrasElegiveis.map(
+                            (
+                              regra
+                            ) => (
+                              <option
+                                key={
+                                  regra.id
+                                }
+                                value={
+                                  regra.id
+                                }
+                              >
+                                {
+                                  regra.nome
+                                }{" "}
+                                —{" "}
+                                {regra.tipoEscopo ===
+                                "Padrao"
+                                  ? "Padrão"
+                                  : "Cliente específico"}
+                              </option>
+                            )
+                          )}
+                        </select>
+
+                        <p className="text-xs text-amber-700">
+                          Confirme a política
+                          aplicável a esta
+                          negociação. Regras
+                          específicas do Cliente
+                          podem ser excepcionais.
+                        </p>
+                      </>
+                    ) : regrasElegiveis.length ===
+                      1 ? (
+                      <div className="rounded-md border bg-slate-50 p-3 text-sm">
+                        {
+                          regrasElegiveis[0]
+                            .nome
+                        }
+
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Única regra vigente para
+                          este Cliente e data.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-md border bg-slate-50 p-3 text-sm">
+                        Nenhuma regra versionada
+                        vigente para esta
+                        negociação.
+
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          O servidor verificará a
+                          política do cadastro
+                          principal da
+                          Representada. Caso não
+                          haja comissão válida, a
+                          Venda não será
+                          registrada.
+                        </p>
+                      </div>
+                    )}
+
+                    {!regraSelecionadaValida && (
+                      <p className="text-sm text-red-700">
+                        A regra escolhida não é
+                        válida para o Cliente e a
+                        data atuais. Selecione
+                        outra.
+                      </p>
+                    )}
                   </div>
                 )}
 
                 <div className="rounded-md border bg-blue-50 p-3 text-xs text-blue-800">
-                  Se existir regra comercial específica ou padrão vigente, o servidor dará prioridade a ela. A comissão exibida aqui é apenas uma prévia.
+                  <Info className="mb-1 inline h-4 w-4" />{" "}
+                  A comissão não é estimada pelo
+                  percentual fixo do cadastro: o
+                  servidor consulta a política
+                  vigente, identifica a faixa pelo
+                  desconto já concedido e calcula
+                  sobre o valor final da Venda. O
+                  percentual e o valor oficiais
+                  aparecerão após salvar.
                 </div>
               </CardContent>
             </Card>
@@ -2141,8 +2693,9 @@ export default function NovaVendaPage() {
 
                 <CardContent>
                   <p className="font-medium">
-                    {clienteSelecionado.nomeFantasia ||
-                      clienteSelecionado.razaoSocial}
+                    {rotuloCliente(
+                      clienteSelecionado
+                    )}
                   </p>
 
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -2193,7 +2746,7 @@ export default function NovaVendaPage() {
                   <div className="flex items-center gap-2">
                     <CalendarDays className="h-4 w-4 text-blue-600" />
 
-                    Data real da venda
+                    Data real da Venda
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -2207,7 +2760,8 @@ export default function NovaVendaPage() {
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
 
-                    Auditoria registrada no servidor
+                    Auditoria registrada no
+                    servidor
                   </div>
                 </div>
               </CardContent>

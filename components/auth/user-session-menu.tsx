@@ -1,3 +1,4 @@
+
 "use client"
 
 import type {
@@ -27,6 +28,7 @@ import {
   CircleDollarSign,
   FileBarChart,
   FileText,
+  FolderOpen,
   Home,
   Instagram,
   Landmark,
@@ -117,9 +119,9 @@ const GRUPO_COMERCIAL: GrupoMenu = {
     },
 
     {
-      label: "Interações — Análise",
-      href: "/interacoes-ai",
-      icon: BarChart3,
+      label: "Catálogos",
+      href: "/catalogos",
+      icon: FolderOpen,
     },
 
     {
@@ -138,6 +140,12 @@ const GRUPO_COMERCIAL: GrupoMenu = {
       label: "Faturamentos",
       href: "/faturamentos",
       icon: WalletCards,
+    },
+
+    {
+      label: "Interações — Análise",
+      href: "/interacoes-ai",
+      icon: BarChart3,
     },
   ],
 }
@@ -848,22 +856,16 @@ export function UserSessionMenu({
                   Comercial
                 </p>
 
-                <div className="space-y-1">
-                  {renderizarItemMenu(
-                    paginaInicial
-                  )}
-                </div>
-
-                <div className="my-3">
+                <div className="mb-3">
                   <Link
                     href={
                       ASSISTENTE_PESSOAL.href
                     }
                     className={[
-                      "group relative flex min-h-[74px] items-center gap-3 overflow-hidden rounded-xl border px-4 py-3 transition-all",
+                      "group relative flex min-h-[70px] items-center gap-3 overflow-hidden rounded-xl border px-3.5 py-3 transition-all",
                       assistenteAtivo
                         ? "border-blue-400 bg-blue-600 text-white shadow-lg"
-                        : "border-blue-400/30 bg-gradient-to-r from-blue-600/25 to-slate-900/40 text-white hover:border-blue-400/60 hover:from-blue-600/35 hover:to-slate-900/50",
+                        : "border-blue-400/30 bg-gradient-to-r from-blue-600/25 to-slate-900/40 text-white shadow-sm hover:border-blue-400/60 hover:from-blue-600/35 hover:to-slate-900/50",
                     ].join(
                       " "
                     )}
@@ -897,13 +899,37 @@ export function UserSessionMenu({
                       <p className="text-sm font-bold leading-tight">
                         Pessoal
                       </p>
-                      <p className="mt-1 truncate text-[10px] text-slate-400">
+                      <p
+                        className={[
+                          "mt-1 truncate text-[10px]",
+                          assistenteAtivo
+                            ? "text-blue-100"
+                            : "text-slate-400",
+                        ].join(
+                          " "
+                        )}
+                      >
                         Pendências e compromissos
                       </p>
                     </div>
 
-                    <ChevronRight className="h-5 w-5 shrink-0 text-blue-300" />
+                    <ChevronRight
+                      className={[
+                        "h-5 w-5 shrink-0",
+                        assistenteAtivo
+                          ? "text-white"
+                          : "text-blue-300",
+                      ].join(
+                        " "
+                      )}
+                    />
                   </Link>
+                </div>
+
+                <div className="mb-2 space-y-1">
+                  {renderizarItemMenu(
+                    paginaInicial
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -942,9 +968,9 @@ export function UserSessionMenu({
             </nav>
 
             <div className="border-t border-white/10 p-4">
-              <div className="rounded-xl bg-white/[0.06] p-3">
+              <div className="rounded-xl border border-blue-400/25 bg-gradient-to-r from-blue-600/20 to-slate-800/65 p-3 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/20 ring-1 ring-blue-400/20">
                     {usuario.perfil ===
                     "Diretor" ? (
                       <ShieldCheck className="h-5 w-5 text-orange-400" />
@@ -1040,25 +1066,17 @@ export function UserSessionMenu({
               Comercial
             </p>
 
-            <div className="space-y-1">
-
-              {renderizarItemMenu(
-                paginaInicial
-              )}
-
-            </div>
-
-            <div className="my-3">
+            <div className="mb-3">
 
               <Link
                 href={
                   ASSISTENTE_PESSOAL.href
                 }
                 className={[
-                  "group relative flex min-h-[74px] items-center gap-3 overflow-hidden rounded-xl border px-4 py-3 transition-all",
+                  "group relative flex min-h-[70px] items-center gap-3 overflow-hidden rounded-xl border px-3.5 py-3 transition-all",
                   assistenteAtivo
                     ? "border-blue-400 bg-blue-600 text-white shadow-lg"
-                    : "border-blue-400/30 bg-gradient-to-r from-blue-600/25 to-slate-900/40 text-white hover:border-blue-400/60 hover:from-blue-600/35 hover:to-slate-900/50",
+                    : "border-blue-400/30 bg-gradient-to-r from-blue-600/25 to-slate-900/40 text-white shadow-sm hover:border-blue-400/60 hover:from-blue-600/35 hover:to-slate-900/50",
                 ].join(
                   " "
                 )}
@@ -1126,6 +1144,14 @@ export function UserSessionMenu({
 
             </div>
 
+            <div className="mb-2 space-y-1">
+
+              {renderizarItemMenu(
+                paginaInicial
+              )}
+
+            </div>
+
             <div className="space-y-1">
 
               {demaisItensComerciais.map(
@@ -1172,11 +1198,11 @@ export function UserSessionMenu({
 
         <div className="border-t border-white/10 p-4">
 
-          <div className="rounded-xl bg-white/[0.06] p-3">
+          <div className="rounded-xl border border-blue-400/25 bg-gradient-to-r from-blue-600/20 to-slate-800/65 p-3 shadow-sm">
 
             <div className="flex items-center gap-3">
 
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/20 ring-1 ring-blue-400/20">
 
                 {usuario.perfil ===
                 "Diretor" ? (

@@ -891,6 +891,7 @@ export async function PUT(
 
     const statusPermitidos =
       [
+        "Em configuração",
         "Ativa",
         "Inativa",
         "Suspensa",
@@ -912,6 +913,76 @@ export async function PUT(
           status: 400,
         }
       )
+    }
+
+    /*
+     * Uma Representada somente pode entrar em operação
+     * comercial quando possuir ao menos uma regra padrão,
+     * ativa e vigente.
+     *
+     * Representadas antigas que já estão Ativas não são
+     * alteradas automaticamente por esta regra. A validação
+     * acontece somente quando há uma transição para Ativa.
+     */
+    if (
+      body.status === "Ativa" &&
+      existe.status !== "Ativa"
+    ) {
+      const agora =
+        new Date()
+
+      const regraPadraoVigente =
+        await prisma.regraComercialRepresentada.findFirst({
+          where: {
+            representadaId:
+              id,
+
+            clienteId:
+              null,
+
+            tipoEscopo:
+              "Padrao",
+
+            ativa:
+              true,
+
+            vigenciaInicio: {
+              lte:
+                agora,
+            },
+
+            OR: [
+              {
+                vigenciaFim:
+                  null,
+              },
+              {
+                vigenciaFim: {
+                  gte:
+                    agora,
+                },
+              },
+            ],
+          },
+
+          select: {
+            id: true,
+          },
+        })
+
+      if (
+        !regraPadraoVigente
+      ) {
+        return NextResponse.json(
+          {
+            message:
+              "Esta Representada não pode ser ativada comercialmente enquanto não possuir uma regra comercial padrão, ativa e vigente.",
+          },
+          {
+            status: 409,
+          }
+        )
+      }
     }
 
     // ==================================================

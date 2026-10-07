@@ -187,7 +187,7 @@ const FORM_INICIAL: FormRegra = {
   frete: "",
   regiao: "",
 
-  tipoComissao: "fixa",
+  tipoComissao: "",
   percentualComissao: "",
 
   reconhecimentoComissao: "",
@@ -337,6 +337,93 @@ function parseFaixas(
   ]
 }
 
+function percentualFormulario(
+  valor: string
+): number | null {
+  const texto =
+    valor
+      .trim()
+      .replace(
+        ",",
+        "."
+      )
+
+  if (
+    !/^\d+(?:\.\d{1,2})?$/.test(
+      texto
+    )
+  ) {
+    return null
+  }
+
+  const numero =
+    Number(
+      texto
+    )
+
+  return (
+    Number.isFinite(
+      numero
+    ) &&
+    numero >= 0 &&
+    numero <= 100
+  )
+    ? numero
+    : null
+}
+
+function validarFaixasFormulario(
+  valores: Faixa[]
+): string | null {
+  if (
+    valores.length ===
+    0
+  ) {
+    return "Cadastre ao menos uma faixa de comissão."
+  }
+
+  const descontosVistos =
+    new Set<number>()
+
+  for (
+    const faixa of
+      valores
+  ) {
+    const desconto =
+      percentualFormulario(
+        faixa.desconto
+      )
+
+    const comissao =
+      percentualFormulario(
+        faixa.comissao
+      )
+
+    if (
+      desconto === null ||
+      comissao === null ||
+      comissao <= 0
+    ) {
+      return "Cada faixa deve ter desconto entre 0% e 100% e comissão maior que 0% e até 100%, com no máximo duas casas decimais."
+    }
+
+    if (
+      descontosVistos.has(
+        desconto
+      )
+    ) {
+      return `O desconto de ${desconto}% está repetido. Cada percentual de desconto deve possuir uma única comissão.`
+    }
+
+    descontosVistos.add(
+      desconto
+    )
+  }
+
+  return null
+}
+
+
 function montarFormularioDoCadastro(
   representada: Representada
 ): FormRegra {
@@ -396,10 +483,8 @@ function montarFormularioDoCadastro(
       "",
 
     tipoComissao:
-      representada.tipoComissao ===
-      "variada"
-        ? "variada"
-        : "fixa",
+      representada.tipoComissao ||
+      "",
 
     percentualComissao:
       representada.comissao ===
@@ -510,6 +595,14 @@ export default function RegrasComerciaisPage() {
     setDadosReaproveitados,
   ] =
     useState(false)
+
+  const [
+    novaVersaoOrigem,
+    setNovaVersaoOrigem,
+  ] =
+    useState<string | null>(
+      null
+    )
 
   const [
     carregando,
@@ -769,6 +862,10 @@ export default function RegrasComerciaisPage() {
       true
     )
 
+    setNovaVersaoOrigem(
+      null
+    )
+
     setErro(
       null
     )
@@ -794,6 +891,10 @@ export default function RegrasComerciaisPage() {
       false
     )
 
+    setNovaVersaoOrigem(
+      null
+    )
+
     setErro(
       null
     )
@@ -803,12 +904,27 @@ export default function RegrasComerciaisPage() {
     regra:
       RegraComercial
   ) {
+    if (
+      regra._count.vendas >
+        0
+    ) {
+      setErro(
+        "Esta regra já foi utilizada em Venda e está congelada. Utilize Nova versão para preservar o histórico."
+      )
+
+      return
+    }
+
     setRegraEditandoId(
       regra.id
     )
 
     setDadosReaproveitados(
       false
+    )
+
+    setNovaVersaoOrigem(
+      null
     )
 
     setForm({
@@ -870,7 +986,7 @@ export default function RegrasComerciaisPage() {
 
       tipoComissao:
         regra.tipoComissao ||
-        "fixa",
+        "",
 
       percentualComissao:
         numeroParaInput(
@@ -902,6 +1018,124 @@ export default function RegrasComerciaisPage() {
 
     window.scrollTo({
       top: 0,
+      behavior:
+        "smooth",
+    })
+  }
+
+  function novaVersaoRegra(
+    regra:
+      RegraComercial
+  ) {
+    setRegraEditandoId(
+      null
+    )
+
+    setDadosReaproveitados(
+      false
+    )
+
+    setNovaVersaoOrigem(
+      regra.nome
+    )
+
+    setForm({
+      nome:
+        regra.nome,
+
+      tipoEscopo:
+        regra.tipoEscopo ||
+        "Padrao",
+
+      clienteId:
+        regra.clienteId ||
+        "",
+
+      contratoId:
+        regra.contratoId ||
+        "",
+
+      /*
+       * Nova versão nunca herda datas de vigência.
+       * O usuário informa conscientemente quando
+       * a nova política comercial passa a valer.
+       */
+      vigenciaInicio:
+        "",
+
+      vigenciaFim:
+        "",
+
+      ativa:
+        true,
+
+      pedidoMinimo:
+        numeroParaInput(
+          regra.pedidoMinimo
+        ),
+
+      minimoParcela:
+        numeroParaInput(
+          regra.minimoParcela
+        ),
+
+      prazoEntregaDias:
+        numeroParaInput(
+          regra.prazoEntregaDias
+        ),
+
+      prazoFaturamentoDias:
+        numeroParaInput(
+          regra.prazoFaturamentoDias
+        ),
+
+      frete:
+        regra.frete ||
+        "",
+
+      regiao:
+        regra.regiao ||
+        "",
+
+      tipoComissao:
+        regra.tipoComissao ||
+        "",
+
+      percentualComissao:
+        numeroParaInput(
+          regra.percentualComissao
+        ),
+
+      reconhecimentoComissao:
+        regra.reconhecimentoComissao ||
+        "",
+
+      fechamentoComissao:
+        regra.fechamentoComissao ||
+        "",
+
+      pagamentoComissao:
+        regra.pagamentoComissao ||
+        "",
+
+      observacoes:
+        regra.observacoes ||
+        "",
+    })
+
+    setFaixas(
+      parseFaixas(
+        regra.faixasComissao
+      )
+    )
+
+    setErro(
+      null
+    )
+
+    window.scrollTo({
+      top:
+        0,
       behavior:
         "smooth",
     })
@@ -1058,6 +1292,19 @@ export default function RegrasComerciaisPage() {
     }
 
     if (
+      form.tipoEscopo !==
+        "Padrao" &&
+      form.tipoEscopo !==
+        "Cliente"
+    ) {
+      setErro(
+        "Tipo de regra comercial inválido."
+      )
+
+      return
+    }
+
+    if (
       form.tipoEscopo ===
         "Padrao" &&
       form.clienteId
@@ -1070,8 +1317,8 @@ export default function RegrasComerciaisPage() {
     }
 
     if (
-      form.tipoEscopo !==
-        "Padrao" &&
+      form.tipoEscopo ===
+        "Cliente" &&
       !form.clienteId
     ) {
       setErro(
@@ -1083,45 +1330,58 @@ export default function RegrasComerciaisPage() {
 
     if (
       form.tipoComissao ===
-        "fixa" &&
-      (
-        !form.percentualComissao ||
-        Number(
+        "fixa"
+    ) {
+      const percentual =
+        percentualFormulario(
           form.percentualComissao
-        ) <= 0
-      )
-    ) {
-      setErro(
-        "Informe o percentual da comissão fixa."
-      )
-
-      return
-    }
-
-    if (
-      form.tipoComissao ===
-      "variada"
-    ) {
-      const faixasValidas =
-        faixas.every(
-          (
-            faixa
-          ) =>
-            faixa.desconto.trim() !==
-              "" &&
-            faixa.comissao.trim() !==
-              ""
         )
 
       if (
-        !faixasValidas
+        percentual === null ||
+        percentual <= 0
       ) {
         setErro(
-          "Preencha desconto e comissão em todas as faixas."
+          "Informe comissão fixa maior que 0% e até 100%, com no máximo duas casas decimais."
         )
 
         return
       }
+    }
+
+    if (
+      form.tipoComissao ===
+        "variada"
+    ) {
+      const erroFaixas =
+        validarFaixasFormulario(
+          faixas
+        )
+
+      if (
+        erroFaixas
+      ) {
+        setErro(
+          erroFaixas
+        )
+
+        return
+      }
+    }
+
+    if (
+      form.tipoComissao !==
+        "" &&
+      form.tipoComissao !==
+        "fixa" &&
+      form.tipoComissao !==
+        "variada"
+    ) {
+      setErro(
+        "Tipo de comissão inválido."
+      )
+
+      return
     }
 
     try {
@@ -1458,10 +1718,13 @@ export default function RegrasComerciaisPage() {
               <CardTitle>
                 {regraEditandoId
                   ? "Editar regra comercial"
-                  : "Nova regra comercial"}
+                  : novaVersaoOrigem
+                    ? "Nova versão da regra comercial"
+                    : "Nova regra comercial"}
               </CardTitle>
 
-              {regraEditandoId && (
+              {(regraEditandoId ||
+                novaVersaoOrigem) && (
                 <Button
                   type="button"
                   variant="outline"
@@ -1475,7 +1738,9 @@ export default function RegrasComerciaisPage() {
                 >
                   <X className="mr-1 h-4 w-4" />
 
-                  Cancelar edição
+                  {regraEditandoId
+                    ? "Cancelar edição"
+                    : "Cancelar nova versão"}
                 </Button>
               )}
             </div>
@@ -1501,6 +1766,18 @@ export default function RegrasComerciaisPage() {
 
                   <p className="mt-1 text-sm font-medium text-emerald-900">
                     Confira os dados e informe principalmente a data real de início da vigência antes de salvar.
+                  </p>
+                </div>
+              )}
+
+              {novaVersaoOrigem && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <p className="font-semibold text-blue-900">
+                    Nova versão baseada em “{novaVersaoOrigem}”
+                  </p>
+
+                  <p className="mt-1 text-sm text-blue-800">
+                    Os dados comerciais foram copiados, mas nenhuma regra histórica será alterada. Informe obrigatoriamente a data real em que esta nova versão começa a valer e revise todos os campos antes de salvar.
                   </p>
                 </div>
               )}
@@ -2025,6 +2302,10 @@ export default function RegrasComerciaisPage() {
                       }
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                     >
+                      <option value="">
+                        Usar política principal da Representada
+                      </option>
+
                       <option value="fixa">
                         Fixa
                       </option>
@@ -2033,6 +2314,13 @@ export default function RegrasComerciaisPage() {
                         Variada
                       </option>
                     </select>
+
+                    {form.tipoComissao ===
+                      "" && (
+                      <p className="text-xs text-muted-foreground">
+                        Esta regra não substituirá a comissão principal cadastrada na Representada.
+                      </p>
+                    )}
                   </div>
 
                   {form.tipoComissao ===
@@ -2045,7 +2333,7 @@ export default function RegrasComerciaisPage() {
                       <Input
                         id="percentualComissao"
                         type="number"
-                        min="0"
+                        min="0.01"
                         max="100"
                         step="0.01"
                         value={
@@ -2116,7 +2404,7 @@ export default function RegrasComerciaisPage() {
 
                             <Input
                               type="number"
-                              min="0"
+                              min="0.01"
                               max="100"
                               step="0.01"
                               value={
@@ -2176,21 +2464,114 @@ export default function RegrasComerciaisPage() {
                 )}
               </div>
 
+              <div className="space-y-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <div>
+                  <p className="font-semibold text-blue-900">
+                    Política desta regra comercial
+                  </p>
+
+                  <p className="mt-1 text-sm text-blue-800">
+                    Estes campos pertencem à versão da regra que será salva. Use-os quando esta regra possuir política própria de reconhecimento, fechamento ou pagamento.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="reconhecimentoComissao">
+                      Reconhecimento da comissão
+                    </Label>
+
+                    <Input
+                      id="reconhecimentoComissao"
+                      value={
+                        form.reconhecimentoComissao
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        atualizarCampo(
+                          "reconhecimentoComissao",
+                          event.target.value
+                        )
+                      }
+                      placeholder="Ex.: Faturamento ou Liquidez"
+                      disabled={
+                        salvando
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="fechamentoComissao">
+                      Regra de fechamento
+                    </Label>
+
+                    <Input
+                      id="fechamentoComissao"
+                      value={
+                        form.fechamentoComissao
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        atualizarCampo(
+                          "fechamentoComissao",
+                          event.target.value
+                        )
+                      }
+                      placeholder="Ex.: apuração de 01 a 30"
+                      disabled={
+                        salvando
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="pagamentoComissao">
+                      Regra de pagamento
+                    </Label>
+
+                    <Input
+                      id="pagamentoComissao"
+                      value={
+                        form.pagamentoComissao
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        atualizarCampo(
+                          "pagamentoComissao",
+                          event.target.value
+                        )
+                      }
+                      placeholder="Ex.: pagamento dia 10 do mês seguinte"
+                      disabled={
+                        salvando
+                      }
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-blue-800">
+                  Quando estes campos estiverem vazios, a regra não cria uma informação própria para esse item. A comissão fixa/variada acima também pode ser deixada como “Usar política principal da Representada”.
+                </p>
+              </div>
+
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <div className="mb-3">
                   <p className="font-semibold text-slate-900">
-                    Política de comissão da Representada
+                    Referência do cadastro principal da Representada
                   </p>
 
                   <p className="mt-1 text-sm text-slate-600">
-                    Estas informações vêm do cadastro principal e são preservadas na nova regra versionada.
+                    Use esta referência para conferir a política principal. Os campos acima mostram o que será efetivamente salvo nesta versão da regra.
                   </p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
                   <div>
                     <p className="text-sm text-slate-500">
-                      Comissão calculada sobre
+                      Reconhecimento da comissão
                     </p>
 
                     <p className="font-medium text-slate-900">
@@ -2201,25 +2582,23 @@ export default function RegrasComerciaisPage() {
 
                   <div>
                     <p className="text-sm text-slate-500">
-                      Fechamento da comissão
+                      Regra de fechamento
                     </p>
 
                     <p className="font-medium text-slate-900">
-                      {representada?.fechamentoComissao
-                        ? `Dia ${representada.fechamentoComissao}`
-                        : "Não informado"}
+                      {representada?.fechamentoComissao ||
+                        "Não informado"}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-sm text-slate-500">
-                      Pagamento da comissão
+                      Regra de pagamento
                     </p>
 
                     <p className="font-medium text-slate-900">
-                      {representada?.pagamentoComissao
-                        ? `Dia ${representada.pagamentoComissao}`
-                        : "Não informado"}
+                      {representada?.pagamentoComissao ||
+                        "Não informado"}
                     </p>
                   </div>
                 </div>
@@ -2344,6 +2723,13 @@ export default function RegrasComerciaisPage() {
                                 ? ""
                                 : "s"}
                             </span>
+
+                            {regra._count.vendas >
+                              0 && (
+                              <span className="rounded-full bg-violet-100 px-2 py-1 text-xs text-violet-700">
+                                Histórica — congelada
+                              </span>
+                            )}
                           </div>
 
                           <div className="grid gap-1 text-sm md:grid-cols-2 md:gap-x-8">
@@ -2423,7 +2809,13 @@ export default function RegrasComerciaisPage() {
                                 : regra.tipoComissao ===
                                     "variada"
                                   ? "Variada"
-                                  : "-"}
+                                  : "Política principal da Representada"}
+                            </p>
+
+                            <p>
+                              Reconhecimento:{" "}
+                              {regra.reconhecimentoComissao ||
+                                "Sem regra própria"}
                             </p>
 
                             <p>
@@ -2433,6 +2825,29 @@ export default function RegrasComerciaisPage() {
                                 "-"}
                             </p>
                           </div>
+
+                          {regra.tipoComissao ===
+                            "variada" &&
+                            regra.faixasComissao && (
+                            <div className="mt-2 rounded-md border bg-blue-50 p-3 text-sm text-blue-900">
+                              <span className="font-medium">
+                                Faixas de comissão:{" "}
+                              </span>
+
+                              {parseFaixas(
+                                regra.faixasComissao
+                              )
+                                .map(
+                                  (
+                                    faixa
+                                  ) =>
+                                    `${faixa.desconto}% desconto → ${faixa.comissao}% comissão`
+                                )
+                                .join(
+                                  " • "
+                                )}
+                            </div>
+                          )}
 
                           {regra.observacoes && (
                             <div className="mt-2 rounded-md bg-muted/40 p-3 text-sm">
@@ -2447,19 +2862,36 @@ export default function RegrasComerciaisPage() {
                           )}
                         </div>
 
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              editarRegra(
-                                regra
-                              )
-                            }
-                          >
-                            Editar
-                          </Button>
+                        <div className="flex flex-wrap gap-2">
+                          {regra._count.vendas >
+                          0 ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                novaVersaoRegra(
+                                  regra
+                                )
+                              }
+                            >
+                              <Plus className="mr-1 h-4 w-4" />
+                              Nova versão
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                editarRegra(
+                                  regra
+                                )
+                              }
+                            >
+                              Editar
+                            </Button>
+                          )}
 
                           <Button
                             type="button"
@@ -2468,6 +2900,12 @@ export default function RegrasComerciaisPage() {
                             disabled={
                               regra._count.vendas >
                               0
+                            }
+                            title={
+                              regra._count.vendas >
+                              0
+                                ? "Regra utilizada em Venda: exclusão bloqueada para preservar o histórico."
+                                : "Excluir regra comercial"
                             }
                             onClick={() =>
                               excluirRegra(

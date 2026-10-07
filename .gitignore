@@ -29,3 +29,8 @@ next-env.d.ts
 
 # backups locais do banco
 /backups/
+
+# arquivos operacionais locais do CRM
+# Conteudo persistente enviado pelo sistema (catalogos, documentos etc.)
+# deve permanecer fora do Git e entrar na rotina de backup.
+/storage/

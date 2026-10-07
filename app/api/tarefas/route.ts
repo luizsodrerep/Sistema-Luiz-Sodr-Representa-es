@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
@@ -79,7 +80,72 @@ function mensagemCampoData(
   }
 }
 
-export async function GET() {
+function inteiroPositivo(
+  valor: string | null,
+  padrao: number,
+  maximo: number
+) {
+  if (!valor) {
+    return padrao
+  }
+
+  const numero =
+    Number.parseInt(
+      valor,
+      10
+    )
+
+  if (
+    !Number.isInteger(numero) ||
+    numero <= 0
+  ) {
+    return padrao
+  }
+
+  return Math.min(
+    numero,
+    maximo
+  )
+}
+
+function dataFiltro(
+  valor: string | null,
+  fimDoDia = false
+) {
+  if (!valor) {
+    return null
+  }
+
+  const somenteData =
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      valor
+    )
+
+  const data =
+    somenteData
+      ? new Date(
+          `${valor}T${
+            fimDoDia
+              ? "23:59:59.999"
+              : "00:00:00.000"
+          }Z`
+        )
+      : new Date(valor)
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return null
+  }
+
+  return data
+}
+
+export async function GET(
+  request: Request
+) {
   try {
     const sessao =
       await exigirSessao()
@@ -102,94 +168,465 @@ export async function GET() {
       )
     }
 
+    const { searchParams } =
+      new URL(request.url)
+
+    const clienteId =
+      searchParams
+        .get("clienteId")
+        ?.trim() || null
+
+    const representadaId =
+      searchParams
+        .get("representadaId")
+        ?.trim() || null
+
+    const responsavelId =
+      searchParams
+        .get("responsavelId")
+        ?.trim() || null
+
+    const tipo =
+      searchParams
+        .get("tipo")
+        ?.trim() || null
+
+    const prioridade =
+      searchParams
+        .get("prioridade")
+        ?.trim() || null
+
+    const status =
+      searchParams
+        .get("status")
+        ?.trim() || null
+
+    const busca =
+      searchParams
+        .get("busca")
+        ?.trim() || null
+
+    const dataInicioTexto =
+      searchParams
+        .get("dataInicio")
+        ?.trim() || null
+
+    const dataFimTexto =
+      searchParams
+        .get("dataFim")
+        ?.trim() || null
+
+    const dataInicio =
+      dataFiltro(
+        dataInicioTexto
+      )
+
+    const dataFim =
+      dataFiltro(
+        dataFimTexto,
+        true
+      )
+
+    if (
+      dataInicioTexto &&
+      !dataInicio
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Data inicial inválida.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    if (
+      dataFimTexto &&
+      !dataFim
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Data final inválida.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    if (
+      dataInicio &&
+      dataFim &&
+      dataInicio.getTime() >
+        dataFim.getTime()
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "A data inicial não pode ser posterior à data final.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    const pagina =
+      inteiroPositivo(
+        searchParams.get(
+          "page"
+        ),
+        1,
+        1000000
+      )
+
+    const limite =
+      inteiroPositivo(
+        searchParams.get(
+          "limit"
+        ),
+        10,
+        50
+      )
+
+    const paginado =
+      searchParams.get(
+        "paginado"
+      ) === "1" ||
+      searchParams.has(
+        "page"
+      ) ||
+      searchParams.has(
+        "limit"
+      )
+
     const escopo =
       escopoDoRecurso(
         sessao.perfil,
         "agenda"
       )
 
-    const tarefas =
-      await prisma.tarefa.findMany({
-        where: {
-          escritorioId:
-            sessao.escritorioId,
+    const filtrosAnd:
+      Prisma.TarefaWhereInput[] =
+      []
 
-          ...(escopo === "proprios"
-            ? {
-                OR: [
-                  {
-                    criadoPorId:
-                      sessao.usuarioId,
-                  },
-                  {
-                    responsavelId:
-                      sessao.usuarioId,
-                  },
-                ],
-              }
-            : {}),
-        },
-
-        include: {
-          criadoPor: {
-            select: {
-              id: true,
-              nome: true,
-              perfil: true,
-            },
-          },
-
-          responsavel: {
-            select: {
-              id: true,
-              nome: true,
-              perfil: true,
-            },
-          },
-
-          cliente: {
-            select: {
-              id: true,
-              codigo: true,
-              razaoSocial: true,
-              nomeFantasia: true,
-            },
-          },
-
-          representada: {
-            select: {
-              id: true,
-              codigo: true,
-              nome: true,
-            },
-          },
-
-          interacao: {
-            select: {
-              id: true,
-              numeroSequencial: true,
-              tipo: true,
-              assunto: true,
-            },
-          },
-        },
-
-        orderBy: [
+    /*
+     * Mantém exatamente o escopo já
+     * definido para a Agenda.
+     */
+    if (
+      escopo ===
+      "proprios"
+    ) {
+      filtrosAnd.push({
+        OR: [
           {
-            vencimentoEm: "asc",
+            criadoPorId:
+              sessao.usuarioId,
           },
           {
-            inicioEm: "asc",
-          },
-          {
-            criadoEm: "desc",
+            responsavelId:
+              sessao.usuarioId,
           },
         ],
       })
+    }
 
-    return NextResponse.json(
-      tarefas
-    )
+    if (busca) {
+      filtrosAnd.push({
+        OR: [
+          {
+            titulo: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+          {
+            descricao: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+          {
+            observacoes: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+          {
+            cliente: {
+              is: {
+                OR: [
+                  {
+                    razaoSocial: {
+                      contains:
+                        busca,
+                      mode:
+                        "insensitive",
+                    },
+                  },
+                  {
+                    nomeFantasia: {
+                      contains:
+                        busca,
+                      mode:
+                        "insensitive",
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          {
+            representada: {
+              is: {
+                nome: {
+                  contains:
+                    busca,
+                  mode:
+                    "insensitive",
+                },
+              },
+            },
+          },
+          {
+            responsavel: {
+              is: {
+                nome: {
+                  contains:
+                    busca,
+                  mode:
+                    "insensitive",
+                },
+              },
+            },
+          },
+        ],
+      })
+    }
+
+    if (
+      dataInicio ||
+      dataFim
+    ) {
+      const intervalo = {
+        ...(dataInicio
+          ? {
+              gte:
+                dataInicio,
+            }
+          : {}),
+
+        ...(dataFim
+          ? {
+              lte:
+                dataFim,
+            }
+          : {}),
+      }
+
+      filtrosAnd.push({
+        OR: [
+          {
+            inicioEm:
+              intervalo,
+          },
+          {
+            vencimentoEm:
+              intervalo,
+          },
+        ],
+      })
+    }
+
+    const where:
+      Prisma.TarefaWhereInput =
+      {
+        escritorioId:
+          sessao.escritorioId,
+
+        ...(clienteId
+          ? {
+              clienteId,
+            }
+          : {}),
+
+        ...(representadaId
+          ? {
+              representadaId,
+            }
+          : {}),
+
+        ...(responsavelId
+          ? {
+              responsavelId,
+            }
+          : {}),
+
+        ...(tipo &&
+        tipo.toLocaleLowerCase(
+          "pt-BR"
+        ) !== "todos"
+          ? {
+              tipo,
+            }
+          : {}),
+
+        ...(prioridade &&
+        prioridade.toLocaleLowerCase(
+          "pt-BR"
+        ) !== "todas"
+          ? {
+              prioridade,
+            }
+          : {}),
+
+        ...(status &&
+        status.toLocaleLowerCase(
+          "pt-BR"
+        ) !== "todos"
+          ? {
+              status,
+            }
+          : {}),
+
+        ...(filtrosAnd.length >
+        0
+          ? {
+              AND:
+                filtrosAnd,
+            }
+          : {}),
+      }
+
+    const include:
+      Prisma.TarefaInclude =
+      {
+        criadoPor: {
+          select: {
+            id: true,
+            nome: true,
+            perfil: true,
+          },
+        },
+
+        responsavel: {
+          select: {
+            id: true,
+            nome: true,
+            perfil: true,
+          },
+        },
+
+        cliente: {
+          select: {
+            id: true,
+            codigo: true,
+            razaoSocial: true,
+            nomeFantasia: true,
+          },
+        },
+
+        representada: {
+          select: {
+            id: true,
+            codigo: true,
+            nome: true,
+          },
+        },
+
+        interacao: {
+          select: {
+            id: true,
+            numeroSequencial: true,
+            tipo: true,
+            assunto: true,
+          },
+        },
+      }
+
+    const orderBy:
+      Prisma.TarefaOrderByWithRelationInput[] =
+      [
+        {
+          vencimentoEm:
+            "asc",
+        },
+        {
+          inicioEm:
+            "asc",
+        },
+        {
+          criadoEm:
+            "desc",
+        },
+      ]
+
+    if (!paginado) {
+      const tarefas =
+        await prisma.tarefa.findMany({
+          where,
+          include,
+          orderBy,
+        })
+
+      return NextResponse.json(
+        tarefas
+      )
+    }
+
+    const [
+      total,
+      tarefas,
+    ] =
+      await prisma.$transaction([
+        prisma.tarefa.count({
+          where,
+        }),
+
+        prisma.tarefa.findMany({
+          where,
+          include,
+          orderBy,
+
+          skip:
+            (pagina - 1) *
+            limite,
+
+          take:
+            limite,
+        }),
+      ])
+
+    const totalPaginas =
+      Math.max(
+        1,
+        Math.ceil(
+          total /
+            limite
+        )
+      )
+
+    return NextResponse.json({
+      dados:
+        tarefas,
+
+      paginacao: {
+        pagina,
+        limite,
+        total,
+        totalPaginas,
+      },
+    })
   } catch (error) {
     if (
       error instanceof Error &&

@@ -1,7 +1,9 @@
 import bcrypt from "bcryptjs"
+
 import {
   Prisma,
 } from "@prisma/client"
+
 import {
   NextRequest,
   NextResponse,
@@ -10,10 +12,14 @@ import {
 import {
   exigirSessao,
 } from "@/lib/auth/server"
+
 import {
   podeExecutarAcao,
 } from "@/lib/auth/permissions"
-import { prisma } from "@/lib/prisma"
+
+import {
+  prisma,
+} from "@/lib/prisma"
 
 type PerfilNovoUsuario =
   | "Diretor"
@@ -48,6 +54,36 @@ function textoOpcional(
   return texto === ""
     ? null
     : texto
+}
+
+function inteiroPositivo(
+  valor: string | null,
+  padrao: number,
+  maximo: number
+) {
+  if (!valor) {
+    return padrao
+  }
+
+  const numero =
+    Number.parseInt(
+      valor,
+      10
+    )
+
+  if (
+    !Number.isInteger(
+      numero
+    ) ||
+    numero <= 0
+  ) {
+    return padrao
+  }
+
+  return Math.min(
+    numero,
+    maximo
+  )
 }
 
 function emailValido(
@@ -102,11 +138,150 @@ function respostaNaoAutenticado() {
   )
 }
 
-export async function GET() {
+export async function GET(
+  request: NextRequest
+) {
   try {
     const sessao =
       await exigirSessao()
 
+    const {
+      searchParams,
+    } =
+      request.nextUrl
+
+    /*
+     * SELETOR DA AGENDA
+     *
+     * É deliberadamente separado da
+     * listagem administrativa de usuários.
+     *
+     * Diretor e Administrativo podem
+     * localizar usuários ativos do mesmo
+     * escritório para atribuir tarefas.
+     *
+     * Preposto recebe somente o próprio
+     * usuário, coerente com a regra da
+     * API de Tarefas que impede atribuição
+     * para terceiros.
+     */
+    const seletorAgenda =
+      searchParams.get(
+        "seletor"
+      ) === "agenda"
+
+    if (seletorAgenda) {
+      if (
+        !podeExecutarAcao(
+          sessao.perfil,
+          "agenda",
+          "ver"
+        )
+      ) {
+        return NextResponse.json(
+          {
+            message:
+              "Seu perfil não possui permissão para visualizar a Agenda.",
+          },
+          {
+            status: 403,
+          }
+        )
+      }
+
+      const busca =
+        searchParams
+          .get("busca")
+          ?.trim() || ""
+
+      const limite =
+        inteiroPositivo(
+          searchParams.get(
+            "limit"
+          ),
+          10,
+          20
+        )
+
+      const usuarios =
+        await prisma.usuario.findMany({
+          where: {
+            escritorioId:
+              sessao.escritorioId,
+
+            ativo: true,
+
+            ...(sessao.perfil ===
+            "Preposto"
+              ? {
+                  id:
+                    sessao.usuarioId,
+                }
+              : {}),
+
+            ...(busca.length >=
+            2
+              ? {
+                  OR: [
+                    {
+                      nome: {
+                        contains:
+                          busca,
+                        mode:
+                          "insensitive",
+                      },
+                    },
+                    {
+                      login: {
+                        contains:
+                          busca,
+                        mode:
+                          "insensitive",
+                      },
+                    },
+                    {
+                      email: {
+                        contains:
+                          busca,
+                        mode:
+                          "insensitive",
+                      },
+                    },
+                  ],
+                }
+              : {}),
+          },
+
+          orderBy: {
+            nome:
+              "asc",
+          },
+
+          take:
+            limite,
+
+          select: {
+            id: true,
+            nome: true,
+            perfil: true,
+            ativo: true,
+          },
+        })
+
+      return NextResponse.json(
+        usuarios,
+        {
+          status: 200,
+        }
+      )
+    }
+
+    /*
+     * COMPORTAMENTO ADMINISTRATIVO LEGADO
+     *
+     * Mantido exatamente separado do
+     * seletor operacional da Agenda.
+     */
     if (
       !podeExecutarAcao(
         sessao.perfil,

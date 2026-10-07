@@ -344,6 +344,90 @@ function tratarErro(
   )
 }
 
+function inteiroPositivo(
+  valor: string | null,
+  padrao: number,
+  maximo: number
+) {
+  if (!valor) {
+    return padrao
+  }
+
+  const numero =
+    Number.parseInt(
+      valor,
+      10
+    )
+
+  if (
+    !Number.isInteger(numero) ||
+    numero <= 0
+  ) {
+    return padrao
+  }
+
+  return Math.min(
+    numero,
+    maximo
+  )
+}
+
+function dataFiltro(
+  valor: string | null,
+  fimDoDia = false
+) {
+  if (!valor) {
+    return null
+  }
+
+  const somenteData =
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      valor
+    )
+
+  const data =
+    somenteData
+      ? new Date(
+          `${valor}T${
+            fimDoDia
+              ? "23:59:59.999"
+              : "00:00:00.000"
+          }Z`
+        )
+      : new Date(valor)
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return null
+  }
+
+  return data
+}
+
+function numeroDaBusca(
+  busca: string
+) {
+  const correspondencia =
+    busca.match(/\d+/)
+
+  if (!correspondencia) {
+    return null
+  }
+
+  const numero =
+    Number.parseInt(
+      correspondencia[0],
+      10
+    )
+
+  return Number.isInteger(numero)
+    ? numero
+    : null
+}
+
 export async function GET(
   request: NextRequest
 ) {
@@ -369,85 +453,436 @@ export async function GET(
       )
     }
 
-    const vendaId =
+    const searchParams =
       request.nextUrl.searchParams
+
+    const vendaId =
+      searchParams
         .get("vendaId")
         ?.trim() || null
 
-    const faturamentos =
-      await prisma.faturamento.findMany({
-        where: {
-          venda: {
-            escritorioId:
-              sessao.escritorioId,
+    const clienteId =
+      searchParams
+        .get("clienteId")
+        ?.trim() || null
 
-            ...(vendaId
-              ? {
-                  id:
-                    vendaId,
-                }
-              : {}),
-          },
+    const representadaId =
+      searchParams
+        .get("representadaId")
+        ?.trim() || null
+
+    const status =
+      searchParams
+        .get("status")
+        ?.trim() || null
+
+    const busca =
+      searchParams
+        .get("busca")
+        ?.trim() || null
+
+    const dataInicioTexto =
+      searchParams
+        .get("dataInicio")
+        ?.trim() || null
+
+    const dataFimTexto =
+      searchParams
+        .get("dataFim")
+        ?.trim() || null
+
+    const dataInicio =
+      dataFiltro(
+        dataInicioTexto
+      )
+
+    const dataFim =
+      dataFiltro(
+        dataFimTexto,
+        true
+      )
+
+    if (
+      dataInicioTexto &&
+      !dataInicio
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Data inicial inválida.",
         },
+        {
+          status: 400,
+        }
+      )
+    }
 
-        include: {
-          venda: {
-            select: {
-              id: true,
-              numeroSequencial: true,
-              data: true,
-              valorTotal: true,
-              status: true,
-              condicaoPagamento: true,
+    if (
+      dataFimTexto &&
+      !dataFim
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Data final inválida.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
 
+    if (
+      dataInicio &&
+      dataFim &&
+      dataInicio.getTime() >
+        dataFim.getTime()
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "A data inicial não pode ser posterior à data final.",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+    const pagina =
+      inteiroPositivo(
+        searchParams.get(
+          "page"
+        ),
+        1,
+        1000000
+      )
+
+    const limite =
+      inteiroPositivo(
+        searchParams.get(
+          "limit"
+        ),
+        10,
+        50
+      )
+
+    const paginado =
+      searchParams.get(
+        "paginado"
+      ) === "1" ||
+      searchParams.has(
+        "page"
+      ) ||
+      searchParams.has(
+        "limit"
+      )
+
+    const filtrosAnd:
+      Prisma.FaturamentoWhereInput[] =
+      []
+
+    if (busca) {
+      const numeroSequencialVenda =
+        numeroDaBusca(
+          busca
+        )
+
+      const filtrosBusca:
+        Prisma.FaturamentoWhereInput[] =
+        [
+          {
+            numeroNF: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+          {
+            observacoes: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+          {
+            motivoCorte: {
+              contains:
+                busca,
+              mode:
+                "insensitive",
+            },
+          },
+          {
+            venda: {
               cliente: {
-                select: {
-                  id: true,
-                  codigo: true,
-                  razaoSocial: true,
-                  nomeFantasia: true,
-                },
-              },
-
-              representada: {
-                select: {
-                  id: true,
-                  codigo: true,
-                  nome: true,
+                razaoSocial: {
+                  contains:
+                    busca,
+                  mode:
+                    "insensitive",
                 },
               },
             },
           },
+          {
+            venda: {
+              cliente: {
+                nomeFantasia: {
+                  contains:
+                    busca,
+                  mode:
+                    "insensitive",
+                },
+              },
+            },
+          },
+          {
+            venda: {
+              representada: {
+                nome: {
+                  contains:
+                    busca,
+                  mode:
+                    "insensitive",
+                },
+              },
+            },
+          },
+          {
+            venda: {
+              numeroPedido: {
+                contains:
+                  busca,
+                mode:
+                  "insensitive",
+              },
+            },
+          },
+          {
+            venda: {
+              numeroPedidoRepresentada: {
+                contains:
+                  busca,
+                mode:
+                  "insensitive",
+              },
+            },
+          },
+          {
+            venda: {
+              numeroOCCliente: {
+                contains:
+                  busca,
+                mode:
+                  "insensitive",
+              },
+            },
+          },
+        ]
 
-          titulos: {
-            orderBy: [
-              {
-                vencimento:
-                  "asc",
+      if (
+        numeroSequencialVenda !==
+        null
+      ) {
+        filtrosBusca.unshift({
+          venda: {
+            numeroSequencial:
+              numeroSequencialVenda,
+          },
+        })
+      }
+
+      filtrosAnd.push({
+        OR:
+          filtrosBusca,
+      })
+    }
+
+    if (
+      dataInicio ||
+      dataFim
+    ) {
+      filtrosAnd.push({
+        dataFaturamento: {
+          ...(dataInicio
+            ? {
+                gte:
+                  dataInicio,
+              }
+            : {}),
+
+          ...(dataFim
+            ? {
+                lte:
+                  dataFim,
+              }
+            : {}),
+        },
+      })
+    }
+
+    const where:
+      Prisma.FaturamentoWhereInput =
+      {
+        venda: {
+          escritorioId:
+            sessao.escritorioId,
+
+          ...(vendaId
+            ? {
+                id:
+                  vendaId,
+              }
+            : {}),
+
+          ...(clienteId
+            ? {
+                clienteId,
+              }
+            : {}),
+
+          ...(representadaId
+            ? {
+                representadaId,
+              }
+            : {}),
+        },
+
+        ...(status &&
+        status.toLocaleLowerCase(
+          "pt-BR"
+        ) !== "todos"
+          ? {
+              status,
+            }
+          : {}),
+
+        ...(filtrosAnd.length >
+        0
+          ? {
+              AND:
+                filtrosAnd,
+            }
+          : {}),
+      }
+
+    const include:
+      Prisma.FaturamentoInclude =
+      {
+        venda: {
+          select: {
+            id: true,
+            numeroSequencial: true,
+            data: true,
+            valorTotal: true,
+            status: true,
+            condicaoPagamento: true,
+
+            cliente: {
+              select: {
+                id: true,
+                codigo: true,
+                razaoSocial: true,
+                nomeFantasia: true,
               },
-              {
-                numeroParcela:
-                  "asc",
+            },
+
+            representada: {
+              select: {
+                id: true,
+                codigo: true,
+                nome: true,
               },
-            ],
+            },
           },
         },
 
-        orderBy: [
-          {
-            dataFaturamento:
-              "desc",
-          },
-          {
-            criadoEm:
-              "desc",
-          },
-        ],
-      })
+        titulos: {
+          orderBy: [
+            {
+              vencimento:
+                "asc",
+            },
+            {
+              numeroParcela:
+                "asc",
+            },
+          ],
+        },
+      }
 
-    return NextResponse.json(
-      faturamentos
-    )
+    const orderBy:
+      Prisma.FaturamentoOrderByWithRelationInput[] =
+      [
+        {
+          dataFaturamento:
+            "desc",
+        },
+        {
+          criadoEm:
+            "desc",
+        },
+      ]
+
+    if (!paginado) {
+      const faturamentos =
+        await prisma.faturamento.findMany({
+          where,
+          include,
+          orderBy,
+        })
+
+      return NextResponse.json(
+        faturamentos
+      )
+    }
+
+    const [
+      total,
+      faturamentos,
+    ] =
+      await prisma.$transaction([
+        prisma.faturamento.count({
+          where,
+        }),
+
+        prisma.faturamento.findMany({
+          where,
+          include,
+          orderBy,
+
+          skip:
+            (pagina - 1) *
+            limite,
+
+          take:
+            limite,
+        }),
+      ])
+
+    const totalPaginas =
+      Math.max(
+        1,
+        Math.ceil(
+          total /
+            limite
+        )
+      )
+
+    return NextResponse.json({
+      dados:
+        faturamentos,
+
+      paginacao: {
+        pagina,
+        limite,
+        total,
+        totalPaginas,
+      },
+    })
   } catch (error) {
     return tratarErro(
       error,
