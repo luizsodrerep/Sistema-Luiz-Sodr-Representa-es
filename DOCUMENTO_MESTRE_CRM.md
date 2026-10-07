@@ -5895,3 +5895,445 @@ Não propor restauração, migration, geração do Prisma Client, build, reinici
 O objetivo é recuperar a confiança no CRM por meio de resultados verificáveis, e não por afirmações genéricas de que o sistema está correto.
 
 ---
+
+------------------------------------------------------------------------
+
+## 68. REGRA UNIVERSAL DE CONTINUIDADE E SEGURANCA — 07/10/2026
+
+Este capitulo registra as regras universais determinadas por Luiz e o estado
+oficial mais recente do projeto apos a consolidacao operacional realizada em
+outubro de 2026.
+
+Quando houver conflito com orientacoes anteriores, ESTE CAPITULO PREVALECE.
+
+Os capitulos anteriores permanecem preservados integralmente como historico
+tecnico e funcional do projeto.
+
+### 68.1 REGRA UNIVERSAL NUMERO 1 — CONSULTAR O DOCUMENTO MESTRE ANTES DE ALTERACAO IMPORTANTE
+
+Antes de QUALQUER alteracao importante no CRM, e obrigatorio:
+
+1. consultar o `DOCUMENTO_MESTRE_CRM.md`;
+2. considerar principalmente o capitulo mais recente;
+3. conferir o estado atual do Git/GitHub;
+4. distinguir claramente:
+   - codigo versionado no GitHub;
+   - codigo LOCAL;
+   - working tree com ou sem alteracoes;
+   - aplicacao efetivamente em execucao;
+   - estrutura e dados reais do PostgreSQL;
+5. somente depois diagnosticar, propor e executar qualquer alteracao.
+
+Esta e a PRIMEIRA regra operacional do projeto.
+
+Nao iniciar alteracao estrutural, correcao ampla, refatoracao relevante,
+mudanca de regra de negocio, alteracao de Prisma, migration, banco ou
+integracao entre modulos sem antes consultar este Documento Mestre.
+
+### 68.2 REGRA UNIVERSAL NUMERO 2 — NAO CRIAR NOVOS ARQUIVOS DE BACKUP
+
+Nao criar novos arquivos, copias ou estruturas paralelas como mecanismo de
+seguranca rotineira.
+
+Isso inclui:
+
+- arquivos `.bak`;
+- arquivos `.backup`;
+- arquivos `.old`;
+- arquivos temporarios de transporte;
+- arquivos `.txt` contendo copia de codigo;
+- duplicatas de arquivos de codigo;
+- segunda copia do `schema.prisma`;
+- segunda pasta do CRM;
+- segundo projeto;
+- clone paralelo;
+- branch criada apenas como backup.
+
+A protecao oficial do CODIGO e:
+
+`GIT LOCAL -> GITHUB -> HISTORICO DE COMMITS`
+
+Nao criar um novo arquivo apenas para "guardar antes de alterar".
+
+A regra atual tambem e NAO iniciar backup/restore do PostgreSQL por iniciativa
+do assistente.
+
+Qualquer excecao futura exige:
+
+1. consulta ao Documento Mestre;
+2. necessidade tecnica comprovada;
+3. explicacao clara do risco;
+4. aprovacao explicita de Luiz.
+
+### 68.3 REGRA UNIVERSAL NUMERO 3 — PRESERVAR TUDO O QUE JA FOI CRIADO
+
+Nenhuma alteracao futura pode descartar, regredir ou reconstruir de forma
+simplificada funcionalidades ja existentes sem diagnostico e autorizacao.
+
+Preservar sempre:
+
+- historico;
+- rastreabilidade;
+- dados reais;
+- auditoria;
+- permissoes;
+- isolamento por escritorio e usuario;
+- regras comerciais;
+- Clientes;
+- Representadas;
+- Interacoes;
+- Agenda;
+- Tarefas;
+- Orcamentos;
+- Vendas;
+- Faturamentos;
+- Titulos;
+- Comissoes;
+- Financeiro;
+- Catalogos;
+- Metas;
+- Dashboard;
+- Relatorios;
+- Assistente Pessoal;
+- componentes e telas ja validados;
+- migrations ja existentes;
+- historico Git/GitHub.
+
+Nao restaurar arquivo antigo do GitHub sobre arquivo local atual apenas para
+"voltar ao seguro".
+
+Nao eliminar codigo por parecer antigo antes de compreender qual funcao
+operacional ele atende.
+
+### 68.4 REGRA UNIVERSAL NUMERO 4 — UM ARQUIVO POR VEZ
+
+Para alteracao manual de arquivo existente:
+
+- trabalhar um arquivo por vez;
+- abrir o arquivo ORIGINAL existente;
+- nao criar arquivo substituto;
+- usar Bloco de Notas quando Luiz estiver realizando a edicao;
+- fornecer o conteudo COMPLETO, FINAL e REVISADO quando houver substituicao;
+- nao orientar alteracoes parciais por blocos ou linhas soltas, salvo
+  impossibilidade tecnica explicitamente justificada;
+- validar antes de avancar para o proximo arquivo.
+
+Em caminhos contendo `[id]`, usar PowerShell com `-LiteralPath` quando
+aplicavel.
+
+### 68.5 COMANDOS E ACOES PROIBIDOS COMO ROTINA
+
+Nao executar por conveniencia ou tentativa rapida de correcao:
+
+- `git restore`;
+- `git reset`;
+- `git checkout` para descartar alteracoes;
+- restauracao automatica do GitHub sobre estado local;
+- `prisma migrate reset`;
+- `prisma db push`;
+- `prisma db seed`;
+- `node fix-schema.js`;
+- `npm audit fix`;
+- `npm audit fix --force`;
+- procedimentos destrutivos no PostgreSQL;
+- recomputacao historica massiva;
+- scripts de correcao em lote sem diagnostico;
+- duplicacao artificial de registros.
+
+Qualquer excecao exige consulta ao Documento Mestre, necessidade comprovada,
+explicacao de impacto, aprovacao explicita de Luiz e validacao controlada.
+
+### 68.6 CHECKPOINT GIT/GITHUB OFICIAL DE 07/10/2026
+
+Repositorio:
+
+`luizsodrerep/Sistema-Luiz-Sodr-Representa-es`
+
+Branch:
+
+`main`
+
+Checkpoint funcional consolidado:
+
+`7e956cf6be881a0371d9b592e3003d8d89175a18`
+
+Forma curta:
+
+`7e956cf`
+
+Mensagem:
+
+`feat: consolida evolucao operacional do CRM`
+
+O push para `origin/main` foi concluido com sucesso.
+
+Na validacao final:
+
+- `git diff --cached --check` sem erro;
+- nenhum arquivo fora do staging antes do commit;
+- 58 arquivos incluidos;
+- 43.631 insercoes;
+- 12.877 exclusoes;
+- `git status --short` vazio apos o push;
+- SHA local igual ao SHA remoto da `main`;
+- TypeScript geral: `TYPESCRIPT OK`.
+
+Esse resultado representa validacao estatica do lote e nao substitui
+validacao funcional de cada fluxo.
+
+### 68.7 GITHUB E DOCUMENTO MESTRE AO FINAL DE LOTES IMPORTANTES
+
+Ao finalizar um lote relevante:
+
+1. consultar este Documento Mestre;
+2. conferir `git status --short`;
+3. validar o necessario;
+4. revisar explicitamente os arquivos;
+5. evitar `git add .`;
+6. adicionar somente arquivos aprovados;
+7. revisar staging;
+8. fazer commit;
+9. fazer push para `origin/main`;
+10. confirmar SHA local e remoto;
+11. atualizar este Documento Mestre quando houver nova regra, decisao
+    importante, alteracao estrutural ou novo checkpoint.
+
+### 68.8 MODELO COMERCIAL SIMPLIFICADO ATUAL — SEM VIP
+
+Modelo atual:
+
+- uma politica comercial padrao por versao/data para cada Representada;
+- comissao fixa OU variavel por faixas;
+- nao existe VIP no modelo operacional atual;
+- nao existe autorizacao VIP por Cliente;
+- valor alto de pedido nao concede desconto automaticamente;
+- desconto e o percentual efetivamente negociado;
+- faixa variavel deve corresponder exatamente ao desconto negociado;
+- faixa pode possuir pedido minimo proprio;
+- pedido minimo geral da politica pode continuar existindo;
+- comissao deve vir da politica versionada;
+- nao usar silenciosamente campos antigos da Representada como fallback;
+- snapshots historicos de Venda devem ser preservados.
+
+### 68.9 VIGENCIA DA PRIMEIRA POLITICA
+
+Para a PRIMEIRA politica comercial padrao:
+
+`Representada.criadoEm`
+
+e a origem da data inicial.
+
+Para novas versoes posteriores:
+
+`vigenciaInicio`
+
+deve ser informada especificamente.
+
+Nao criar politica automaticamente apenas porque a Representada existe.
+
+### 68.10 REGULARIZACAO DAS REPRESENTADAS ATIVAS
+
+Foi identificado que varias Representadas Ativas possuíam dados comerciais no
+cadastro principal antigo, mas nao possuíam politica versionada.
+
+A regularizacao foi realizada de forma controlada:
+
+- primeiro a Representada do ORC-000025;
+- depois 13 Representadas Ativas restantes;
+- uma unica transacao controlada para o lote;
+- dados copiados dos cadastros comerciais existentes;
+- primeira vigencia baseada em `Representada.criadoEm`;
+- comissoes fixas e variaveis preservadas;
+- Vendas historicas nao recalculadas;
+- Orcamentos historicos nao alterados;
+- auditoria registrada.
+
+Resultado final:
+
+`REPRESENTADAS ATIVAS AINDA SEM POLITICA — TOTAL: 0`
+
+Essas politicas sao registros reais do PostgreSQL.
+
+Nao recriar ou duplicar essas politicas em conversa futura sem consulta
+somente-leitura e necessidade comprovada.
+
+### 68.11 DUAS STRAWPLAST SAO CADASTROS LEGITIMOS
+
+Existem duas Representadas STRAWPLAST.
+
+Elas correspondem a estabelecimentos/regioes diferentes.
+
+Devem permanecer separadas.
+
+Nao considerar duplicidade apenas porque o nome empresarial e igual.
+
+Nao mesclar.
+
+Nao excluir.
+
+Cada `Representada.id` e um registro comercial independente.
+
+Regra:
+
+`NOME IGUAL NAO E CRITERIO SUFICIENTE PARA EXCLUIR OU MESCLAR REPRESENTADAS`
+
+### 68.12 ORC-000025
+
+O ORC-000025 revelou a ausencia de politica versionada.
+
+Foi confirmado:
+
+- Orcamento Pendente;
+- Cliente formalizado;
+- Representada Ativa;
+- nenhuma Venda gerada;
+- dados comerciais existentes no cadastro principal;
+- nenhuma politica versionada antes da regularizacao.
+
+Depois da regularizacao, a Representada passou a possuir politica padrao ativa
+com:
+
+- comissao fixa de 5%;
+- pedido minimo de R$ 1.500;
+- vigencia anterior a data do Orcamento.
+
+Nao gerar Venda manualmente nem alterar historico para contornar eventual erro.
+
+### 68.13 ARQUIVOS CENTRAIS DO LOTE RECENTE
+
+Entre os arquivos relevantes consolidados no checkpoint atual:
+
+- `app/api/orcamentos/[id]/route.ts`;
+- `app/api/orcamentos/route.ts`;
+- `app/api/representadas/[id]/regras-comerciais/route.ts`;
+- `app/api/representadas/[id]/regras-comerciais/[regraId]/route.ts`;
+- `app/api/representadas/[id]/route.ts`;
+- `app/api/representadas/route.ts`;
+- `app/api/vendas/route.ts`;
+- `app/api/vendas/[id]/route.ts`;
+- telas de Orcamentos;
+- telas de Representadas;
+- telas de Vendas;
+- `prisma/schema.prisma`;
+- migrations existentes no lote.
+
+Nao refazer esses arquivos a partir de versoes antigas ou trechos historicos.
+
+Se houver nova alteracao local, usar como base o arquivo LOCAL atual.
+
+### 68.14 PENDENCIA TECNICA A PRESERVAR
+
+Apesar do lote consolidado e do TypeScript aprovado, nao considerar todos os
+fluxos comerciais definitivamente encerrados.
+
+Quando necessario, revisar:
+
+- Venda direta;
+- resolucao de politica aplicavel;
+- faixas variaveis;
+- pedido minimo geral e por faixa;
+- ausencia de fallback silencioso;
+- conflitos de politicas vigentes;
+- politicas historicas especificas por Cliente;
+- snapshots imutaveis da Venda;
+- integracao entre Orcamento, Venda, Faturamento, Titulos e Comissoes.
+
+Nao realizar refatoracao preventiva sem necessidade funcional concreta.
+
+### 68.15 preparar-modelo-orcamento.ps1
+
+O arquivo:
+
+`preparar-modelo-orcamento.ps1`
+
+esta versionado no GitHub no checkpoint `7e956cf`.
+
+Sua existencia no repositorio NAO autoriza execucao automatica.
+
+Antes de qualquer execucao:
+
+1. consultar este Documento Mestre;
+2. inspecionar o estado atual;
+3. demonstrar necessidade;
+4. obter aprovacao explicita de Luiz.
+
+### 68.16 FOTO DA AREA DA PAULA
+
+Orientacoes antigas que mandavam manter:
+
+`public/foto sistema minha area paula.jpeg`
+
+fora do Git estao superadas.
+
+No checkpoint `7e956cf`, esse arquivo foi explicitamente versionado.
+
+Nao remove-lo apenas para reproduzir regra historica antiga.
+
+### 68.17 PRISMA E BANCO
+
+Prisma permanece em:
+
+`5.22.0`
+
+Nao atualizar Prisma, Node ou dependencias estruturais sem necessidade tecnica
+comprovada e aprovacao.
+
+Nao executar automaticamente:
+
+- generate;
+- migration;
+- db push;
+- reset;
+- seed;
+- alteracao de schema;
+- script estrutural.
+
+Antes de qualquer operacao estrutural:
+
+1. consultar Documento Mestre;
+2. identificar necessidade concreta;
+3. verificar GitHub e estado local;
+4. avaliar impacto;
+5. preservar dados e historico;
+6. obter aprovacao explicita.
+
+### 68.18 NOVAS CONVERSAS NESTE MESMO PROJETO
+
+Em TODA nova conversa que envolva alteracao importante:
+
+PRIMEIRO:
+
+`LER DOCUMENTO_MESTRE_CRM.md`
+
+DEPOIS:
+
+`CONFIRMAR ESTADO ATUAL DO GIT/GITHUB`
+
+SOMENTE ENTAO:
+
+`DIAGNOSTICAR -> PROPOR -> ALTERAR -> VALIDAR -> SALVAR NO GITHUB -> ATUALIZAR DOCUMENTO MESTRE`
+
+Nao pedir novamente dezenas de arquivos ja validados.
+
+Nao presumir que um resumo de conversa substitui o Documento Mestre.
+
+### 68.19 PROXIMO PONTO OFICIAL DE CONTINUIDADE
+
+Checkpoint funcional anterior a este capitulo:
+
+`7e956cf6be881a0371d9b592e3003d8d89175a18`
+
+Na proxima conversa:
+
+1. ler o Documento Mestre, principalmente o capitulo 68;
+2. confirmar a `main`;
+3. nao criar novos arquivos de backup;
+4. nao criar copia paralela do CRM;
+5. nao alterar Prisma ou banco por suposicao;
+6. preservar politicas comerciais regularizadas;
+7. preservar as duas STRAWPLAST;
+8. continuar do estado real atual;
+9. trabalhar um arquivo por vez;
+10. atualizar GitHub e Documento Mestre ao final de cada lote relevante.
+
+------------------------------------------------------------------------
