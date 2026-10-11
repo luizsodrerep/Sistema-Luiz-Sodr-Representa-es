@@ -10,6 +10,7 @@ import {
   useParams,
   useRouter,
 } from "next/navigation"
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib"
 
 import {
   Button,
@@ -111,6 +112,28 @@ type AbaCliente =
   | "faturamentos"
   | "agenda"
   | "representadas"
+  | "pedidos-oficiais"
+
+interface PedidoOficialCliente {
+  id: string
+  nomeArquivo: string
+  numeroPedidoExterno: string | null
+  status: string
+  valorTotalDocumento: string | null
+  valorTotalConferido: string | null
+  condicaoPagamento: string | null
+  dataPedido: string | null
+  importadoEm: string
+  possuiPdf: boolean
+  vendaId: string | null
+  representada: { id: string; nome: string } | null
+}
+
+interface RespostaPedidosOficiaisCliente {
+  documentos: PedidoOficialCliente[]
+  total: number
+  proximoCursor: string | null
+}
 
 interface RepresentadaCompra {
   id: string
@@ -1450,6 +1473,14 @@ export default function ClientePage() {
       null
     )
 
+  const [mensagemCompartilhamento, setMensagemCompartilhamento] = useState<string | null>(null)
+  const [compartilhandoId, setCompartilhandoId] = useState<string | null>(null)
+  const [pedidosOficiais, setPedidosOficiais] = useState<PedidoOficialCliente[]>([])
+  const [totalPedidosOficiais, setTotalPedidosOficiais] = useState(0)
+  const [cursorPedidosOficiais, setCursorPedidosOficiais] = useState<string | null>(null)
+  const [loadingPedidosOficiais, setLoadingPedidosOficiais] = useState(false)
+  const [erroPedidosOficiais, setErroPedidosOficiais] = useState<string | null>(null)
+
   const [
     paginaInteracoes,
     setPaginaInteracoes,
@@ -1782,6 +1813,243 @@ export default function ClientePage() {
       controller.abort()
     }
   }, [])
+
+  useEffect(() => {
+    if (!id) {
+      setPedidosOficiais([])
+      setTotalPedidosOficiais(0)
+      setCursorPedidosOficiais(null)
+      return
+    }
+
+    const controller = new AbortController()
+    const carregar = async () => {
+      setLoadingPedidosOficiais(true)
+      setErroPedidosOficiais(null)
+      try {
+        const response = await fetch(
+          `/api/vendas/pedidos-oficiais?clienteId=${encodeURIComponent(id)}`,
+          { cache: "no-store", signal: controller.signal }
+        )
+        const corpo = await response.json().catch(() => null)
+        if (!response.ok || !corpo || !Array.isArray(corpo.documentos)) {
+          throw new Error(corpo?.message || "Não foi possível carregar os pedidos oficiais.")
+        }
+        if (!controller.signal.aborted) {
+          const dados = corpo as RespostaPedidosOficiaisCliente
+          setPedidosOficiais(dados.documentos)
+          setTotalPedidosOficiais(dados.total)
+          setCursorPedidosOficiais(dados.proximoCursor)
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return
+        setPedidosOficiais([])
+        setTotalPedidosOficiais(0)
+        setCursorPedidosOficiais(null)
+        setErroPedidosOficiais(error instanceof Error ? error.message : "Falha ao consultar pedidos oficiais.")
+      } finally {
+        if (!controller.signal.aborted) setLoadingPedidosOficiais(false)
+      }
+    }
+
+    void carregar()
+    return () => controller.abort()
+  }, [id, refreshHistorico])
+
+  const carregarMaisPedidosOficiais = async () => {
+    if (!id || !cursorPedidosOficiais || loadingPedidosOficiais) return
+    setLoadingPedidosOficiais(true)
+    setErroPedidosOficiais(null)
+    try {
+      const response = await fetch(
+        `/api/vendas/pedidos-oficiais?clienteId=${encodeURIComponent(id)}&cursor=${encodeURIComponent(cursorPedidosOficiais)}`,
+        { cache: "no-store" }
+      )
+      const corpo = await response.json().catch(() => null)
+      if (!response.ok || !corpo || !Array.isArray(corpo.documentos)) {
+        throw new Error(corpo?.message || "Não foi possível carregar mais pedidos.")
+      }
+      const dados = corpo as RespostaPedidosOficiaisCliente
+      setPedidosOficiais((anteriores) => {
+        const existentes = new Set(anteriores.map((item) => item.id))
+        return [...anteriores, ...dados.documentos.filter((item) => !existentes.has(item.id))]
+      })
+      setTotalPedidosOficiais(dados.total)
+      setCursorPedidosOficiais(dados.proximoCursor)
+    } catch (error) {
+      setErroPedidosOficiais(error instanceof Error ? error.message : "Falha ao carregar mais pedidos.")
+    } finally {
+      setLoadingPedidosOficiais(false)
+    }
+  }
+
+  // A capa é criada somente na cópia para compartilhamento. O PDF original não é modificado.
+  const gerarCopiaApresentacao = async (pedido: PedidoOficialCliente, original: ArrayBuffer) => {
+    const pdfOriginal = await PDFDocument.load(original)
+    if (pdfOriginal.getPageCount() < 1) throw new Error("O pedido não possui páginas válidas.")
+
+    const pdf = await PDFDocument.create()
+    // A5: apresentação compacta; as páginas originais preservam seu tamanho de origem.
+    const largura = 419.53
+    const altura = 510
+    const pagina = pdf.addPage([largura, altura])
+    const fonte = await pdf.embedFont(StandardFonts.Helvetica)
+    const negrito = await pdf.embedFont(StandardFonts.HelveticaBold)
+    const azul = rgb(0.08, 0.22, 0.39)
+    const cinza = rgb(0.31, 0.37, 0.44)
+    const laranja = rgb(0.97, 0.44, 0.09)
+    const margem = 32
+    const limite = largura - 2 * margem
+
+    const respostaLogo = await fetch("/branding/logo-lsr.png", { cache: "force-cache" })
+    if (!respostaLogo.ok) throw new Error("Não foi possível carregar o logotipo original da empresa.")
+    const logo = await pdf.embedPng(await respostaLogo.arrayBuffer())
+    const escalaLogo = Math.min(74 / logo.width, 72 / logo.height)
+    const larguraLogo = logo.width * escalaLogo
+    const alturaLogo = logo.height * escalaLogo
+    pagina.drawImage(logo, {
+      x: margem, y: altura - 32 - alturaLogo,
+      width: larguraLogo, height: alturaLogo,
+    })
+    const inicioTitulo = margem + larguraLogo + 13
+    pagina.drawText("LUIZ SODRÉ", {
+      x: inicioTitulo, y: altura - 59, size: 16, font: negrito, color: azul,
+    })
+    pagina.drawText("REPRESENTAÇÕES", {
+      x: inicioTitulo, y: altura - 77, size: 12, font: negrito, color: laranja,
+    })
+    pagina.drawLine({
+      start: { x: margem, y: altura - 118 }, end: { x: largura - margem, y: altura - 118 },
+      thickness: 1.6, color: laranja,
+    })
+
+    // Quebra automática para nomes extensos de representadas.
+    const escreverLinhas = (texto: string, x: number, inicio: number, tamanho: number, passo: number, maximo: number, cor = cinza, tipoFonte = fonte) => {
+      let y = inicio
+      let linha = ""
+      for (const palavra of texto.split(/\s+/).filter(Boolean)) {
+        const tentativa = linha ? `${linha} ${palavra}` : palavra
+        if (linha && tipoFonte.widthOfTextAtSize(tentativa, tamanho) > maximo) {
+          pagina.drawText(linha, { x, y, size: tamanho, font: tipoFonte, color: cor })
+          y -= passo
+          linha = palavra
+        } else {
+          linha = tentativa
+        }
+      }
+      if (linha) {
+        pagina.drawText(linha, { x, y, size: tamanho, font: tipoFonte, color: cor })
+        y -= passo
+      }
+      return y
+    }
+
+    pagina.drawText("CÓPIA PARA ACOMPANHAMENTO", {
+      x: margem, y: altura - 146, size: 9, font: negrito, color: laranja,
+    })
+    const numero = pedido.numeroPedidoExterno || "não informado"
+    let y = escreverLinhas(`Pedido Oficial nº ${numero}`, margem, altura - 171, 17, 21, limite, azul, negrito)
+    if (pedido.representada?.nome) {
+      y = escreverLinhas(`Representada: ${pedido.representada.nome}`, margem, y - 6, 9.5, 14, limite)
+    }
+    y -= 21
+    y = escreverLinhas("Olá!", margem, y, 10.5, 15, limite)
+    y -= 6
+    y = escreverLinhas(
+      "Encaminhamos uma cópia do seu pedido oficial para acompanhamento e futuras consultas.",
+      margem, y, 10.5, 16, limite,
+    )
+    y -= 9
+    y = escreverLinhas("Agradecemos pela confiança e permanecemos à disposição.", margem, y, 10.5, 16, limite)
+    y -= 12
+    y = escreverLinhas("Luiz Sodré Representações", margem, y, 10.5, 16, limite, azul, negrito)
+
+    // Contatos imediatamente após a assinatura: sem faixa vazia no meio da capa.
+    const linhaContato = y - 7
+    pagina.drawLine({
+      start: { x: margem, y: linhaContato }, end: { x: largura - margem, y: linhaContato },
+      thickness: 0.8, color: rgb(0.82, 0.86, 0.91),
+    })
+    pagina.drawText("CONTATOS", { x: margem, y: linhaContato - 16, size: 8, font: negrito, color: azul })
+    pagina.drawText("WhatsApp: (11) 9 6631-2112", { x: margem, y: linhaContato - 31, size: 8.5, font: fonte, color: cinza })
+    pagina.drawText("E-mail: comercial@luizsodre.com.br", { x: margem, y: linhaContato - 44, size: 8.5, font: fonte, color: cinza })
+    pagina.drawText("www.luizsodre.com.br", { x: margem, y: linhaContato - 57, size: 8.5, font: fonte, color: cinza })
+    pagina.drawText("O pedido original da representada segue nas próximas páginas.", {
+      x: margem, y: linhaContato - 77, size: 7.3, font: fonte, color: cinza,
+    })
+
+    const paginasOriginais = await pdf.copyPages(pdfOriginal, pdfOriginal.getPageIndices())
+    for (const paginaOriginal of paginasOriginais) pdf.addPage(paginaOriginal)
+    return pdf.save()
+  }
+
+  // No celular o compartilhamento precisa ocorrer em um segundo toque direto,
+  // para preservar a ativação do usuário exigida por Web Share API.
+  const [arquivoCompartilhamentoPronto, setArquivoCompartilhamentoPronto] = useState<{ id: string; arquivo: File } | null>(null)
+
+  const enviarArquivoPreparado = async () => {
+    if (!arquivoCompartilhamentoPronto) return
+    if (typeof navigator.share !== "function" || !navigator.canShare?.({ files: [arquivoCompartilhamentoPronto.arquivo] })) {
+      setMensagemCompartilhamento("O compartilhamento de PDF não é compatível com este navegador. Baixe a cópia com capa e anexe no WhatsApp.")
+      return
+    }
+    try {
+      await navigator.share({
+        files: [arquivoCompartilhamentoPronto.arquivo],
+        title: "Pedido Oficial — Luiz Sodré Representações",
+      })
+      setMensagemCompartilhamento(null)
+      setArquivoCompartilhamentoPronto(null)
+    } catch (erro) {
+      if (!(erro instanceof Error && erro.name === "AbortError")) {
+        setMensagemCompartilhamento(erro instanceof Error ? erro.message : "Falha ao compartilhar o PDF.")
+      }
+    }
+  }
+
+  const baixarArquivoPreparado = (arquivo: File) => {
+    const urlTemporaria = URL.createObjectURL(arquivo)
+    const link = document.createElement("a")
+    link.href = urlTemporaria
+    link.download = arquivo.name
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(urlTemporaria), 60000)
+  }
+
+  const compartilharPedidoOficial = async (pedido: PedidoOficialCliente) => {
+    if (compartilhandoId) return
+    setArquivoCompartilhamentoPronto(null)
+    setMensagemCompartilhamento(null)
+    setCompartilhandoId(pedido.id)
+    try {
+      const endereco = `/api/vendas/pedidos-oficiais/${encodeURIComponent(pedido.id)}/arquivo`
+      const resposta = await fetch(endereco, { credentials: "same-origin", cache: "no-store" })
+      if (!resposta.ok) throw new Error("Não foi possível obter o PDF oficial original.")
+      const tipo = resposta.headers.get("content-type") || ""
+      if (!tipo.includes("application/pdf")) throw new Error("O servidor não retornou um PDF válido.")
+      const original = await resposta.arrayBuffer()
+      if (original.byteLength < 30 || original.byteLength > 12 * 1024 * 1024) {
+        throw new Error("O arquivo original está fora do tamanho permitido.")
+      }
+      const copia = await gerarCopiaApresentacao(pedido, original)
+      const nome = `Pedido_${(pedido.numeroPedidoExterno || pedido.id).replace(/[^a-zA-Z0-9_-]/g, "_")}_Luiz_Sodre.pdf`
+      const arquivo = new File([new Uint8Array(copia)], nome, { type: "application/pdf" })
+      const dispositivoMovel = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+      if (dispositivoMovel && typeof navigator.share === "function" && navigator.canShare?.({ files: [arquivo] })) {
+        setArquivoCompartilhamentoPronto({ id: pedido.id, arquivo })
+        setMensagemCompartilhamento(null)
+      } else {
+        baixarArquivoPreparado(arquivo)
+        setMensagemCompartilhamento("Cópia compacta com capa e contatos baixada. Anexe esse PDF no WhatsApp Web. O pedido original foi preservado.")
+      }
+    } catch (erro) {
+      setMensagemCompartilhamento(erro instanceof Error ? erro.message : "Não foi possível preparar o documento para compartilhar.")
+    } finally {
+      setCompartilhandoId(null)
+    }
+  }
 
   const historicoInteracoes =
     useHistoricoPaginado<Interacao>({
@@ -2462,6 +2730,7 @@ export default function ClientePage() {
               ["interacoes", `Interações (${historicoInteracoes.paginacao.total})`],
               ["orcamentos", `Orçamentos (${historicoOrcamentos.paginacao.total})`],
               ["vendas", `Vendas (${historicoVendas.paginacao.total})`],
+              ["pedidos-oficiais", `Pedidos Oficiais (${totalPedidosOficiais})`],
               ["faturamentos", `Faturamentos (${historicoFaturamentos.paginacao.total})`],
               ["agenda", `Agenda (${historicoTarefas.paginacao.total})`],
               ["representadas", `Representadas (${representadasCompras.totalRepresentadas})`],
@@ -3153,6 +3422,113 @@ export default function ClientePage() {
           </Card>
         </div>
       )}
+
+      <Card
+        id="pedidos-oficiais-cliente"
+        className={abaAtiva === "pedidos-oficiais" ? "scroll-mt-6" : "hidden"}
+      >
+        <CardHeader>
+          <CardTitle>Pedidos Oficiais</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Documentos recebidos e vinculados a este cliente. Não são somados às vendas até a liberação comercial.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {erroPedidosOficiais && <ErroSecao mensagem={erroPedidosOficiais} />}
+          {loadingPedidosOficiais && pedidosOficiais.length === 0 && <LoadingSecao />}
+          {!loadingPedidosOficiais && !erroPedidosOficiais && pedidosOficiais.length === 0 && (
+            <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+              Nenhum pedido oficial armazenado para este cliente.
+            </p>
+          )}
+          {pedidosOficiais.map((pedido) => (
+            <div key={pedido.id} className="flex flex-col justify-between gap-3 rounded-lg border p-4 lg:flex-row lg:items-center">
+              <div className="min-w-0 space-y-1">
+                <p className="font-semibold">Pedido {pedido.numeroPedidoExterno || "sem número informado"}</p>
+                <p className="text-sm">Representada: {pedido.representada?.nome || "Não vinculada"}</p>
+                <p className="text-sm font-semibold">
+                  Valor: {formatarMoeda(
+                    pedido.valorTotalConferido !== null
+                      ? Number(pedido.valorTotalConferido)
+                      : pedido.valorTotalDocumento !== null
+                        ? Number(pedido.valorTotalDocumento)
+                        : null
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Importado em {formatarData(pedido.importadoEm)} · {pedido.nomeArquivo}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {pedido.possuiPdf
+                    ? "PDF original disponível somente para usuários autorizados."
+                    : "Arquivo original não disponível."}
+                </p>
+              </div>
+              <div className="flex min-w-0 flex-col gap-2 lg:items-end">
+                <span className={`self-start rounded-full px-2 py-1 text-xs font-semibold lg:self-end ${pedido.status === "PendenteRevisao" ? "bg-amber-100 text-amber-900" : "bg-slate-100 text-slate-800"}`}>
+                  {pedido.status === "PendenteRevisao" ? "Pendente de revisão" : pedido.status}
+                </span>
+                {pedido.possuiPdf && (
+                  <div className="flex items-center gap-2 self-start lg:self-end">
+                    <img src="/branding/logo-lsr.png" alt="Logotipo Luiz Sodré Representações" className="h-9 w-9 shrink-0 object-contain" />
+                    <span className="text-xs font-medium text-slate-600">Documento oficial</span>
+                  </div>
+                )}
+                <div className="flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto pb-1">
+                  {pedido.possuiPdf && (
+                    <>
+                      <a
+                        className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-md border px-2 text-xs font-medium hover:bg-muted"
+                        href={`/api/vendas/pedidos-oficiais/${encodeURIComponent(pedido.id)}/arquivo`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >Abrir PDF</a>
+                      <a
+                        className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-md border px-2 text-xs font-medium hover:bg-muted"
+                        href={`/api/vendas/pedidos-oficiais/${encodeURIComponent(pedido.id)}/arquivo?download=1`}
+                      >Baixar PDF</a>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 whitespace-nowrap px-2 text-xs"
+                        disabled={compartilhandoId !== null}
+                        onClick={() => arquivoCompartilhamentoPronto?.id === pedido.id
+                          ? void enviarArquivoPreparado()
+                          : void compartilharPedidoOficial(pedido)}
+                      >
+                        {compartilhandoId === pedido.id
+                          ? "Preparando..."
+                          : arquivoCompartilhamentoPronto?.id === pedido.id
+                            ? "Enviar PDF com capa"
+                            : "Compartilhar"}
+                      </Button>
+                    </>
+                  )}
+                  {pedido.vendaId && (
+                    <Button type="button" size="sm" variant="outline" onClick={() => router.push(`/vendas/${pedido.vendaId}`)}>
+                      Ver venda
+                    </Button>
+                  )}
+                </div>
+                {arquivoCompartilhamentoPronto?.id === pedido.id && (
+                  <p className="max-w-sm text-xs text-blue-700" role="status">
+                    PDF com capa pronto. Toque em <strong>Enviar PDF com capa</strong> para escolher o WhatsApp.
+                  </p>
+                )}
+                {mensagemCompartilhamento && !arquivoCompartilhamentoPronto && (
+                  <p className="max-w-sm text-xs text-slate-600" role="status">{mensagemCompartilhamento}</p>
+                )}
+              </div>
+            </div>
+          ))}
+          {cursorPedidosOficiais && (
+            <Button type="button" variant="outline" disabled={loadingPedidosOficiais} onClick={() => void carregarMaisPedidosOficiais()}>
+              {loadingPedidosOficiais ? "Carregando..." : "Carregar mais pedidos oficiais"}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       <Card
         id="historico-representadas"

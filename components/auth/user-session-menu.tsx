@@ -591,10 +591,8 @@ export function UserSessionMenu({
       )
 
     return (
-      <Link
-        key={
-          item.href
-        }
+      <div key={item.href}>
+        <Link
         href={
           item.href
         }
@@ -627,7 +625,49 @@ export function UserSessionMenu({
         {ativo && (
           <ChevronRight className="h-4 w-4 shrink-0 text-blue-100" />
         )}
-      </Link>
+        </Link>
+
+        {item.href === "/financeiro" && (
+          <Link
+            href="/financeiro/registro"
+            onClick={() => setMenuMobileAberto(false)}
+            aria-current={pathname === "/financeiro/registro" ? "page" : undefined}
+            className={[
+              "ml-8 mt-1 flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              pathname === "/financeiro/registro"
+                ? "bg-emerald-600/25 text-emerald-200 ring-1 ring-emerald-400/35"
+                : "text-slate-300 hover:bg-white/10 hover:text-white",
+            ].join(" ")}
+          >
+            <ReceiptText className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">Registro rápido</span>
+            {pathname === "/financeiro/registro" && (
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            )}
+
+          </Link>
+        )}
+
+        {item.href === "/financeiro" && (
+          <Link
+            href="/financeiro/conciliacao"
+            onClick={() => setMenuMobileAberto(false)}
+            aria-current={pathname === "/financeiro/conciliacao" ? "page" : undefined}
+            className={[
+              "ml-8 mt-1 flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              pathname === "/financeiro/conciliacao"
+                ? "bg-emerald-600/25 text-emerald-200 ring-1 ring-emerald-400/35"
+                : "text-slate-300 hover:bg-white/10 hover:text-white",
+            ].join(" ")}
+          >
+            <Landmark className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">Conciliação bancária</span>
+            {pathname === "/financeiro/conciliacao" && (
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            )}
+          </Link>
+        )}
+      </div>
     )
   }
 

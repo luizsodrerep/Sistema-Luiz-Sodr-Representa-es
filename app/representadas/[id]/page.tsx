@@ -322,6 +322,28 @@ interface VendaRepresentada {
   responsavel: UsuarioResumo | null
 }
 
+interface PedidoOficialRepresentada {
+  id: string
+  numeroPedidoExterno: string | null
+  status: string
+  valorTotalDocumento: string | null
+  importadoEm: string
+  dataPedido: string | null
+  clienteId: string | null
+  vendaId: string | null
+  cliente: {
+    id: string
+    razaoSocial: string
+    nomeFantasia: string | null
+  } | null
+}
+
+interface RespostaPedidosOficiaisRepresentada {
+  documentos: PedidoOficialRepresentada[]
+  total: number
+  proximoCursor: string | null
+}
+
 interface MetaRepresentada {
   id: string
   escritorioId: string
@@ -1670,6 +1692,60 @@ export default function RepresentadaPage() {
     setRefreshHistoricoComercial,
   ] =
     useState(0)
+
+  const [pedidosOficiais, setPedidosOficiais] =
+    useState<PedidoOficialRepresentada[]>([])
+  const [totalPedidosOficiais, setTotalPedidosOficiais] = useState(0)
+  const [cursorPedidosOficiais, setCursorPedidosOficiais] = useState<string | null>(null)
+  const [proximoCursorPedidosOficiais, setProximoCursorPedidosOficiais] = useState<string | null>(null)
+  const [historicoCursoresPedidos, setHistoricoCursoresPedidos] = useState<Array<string | null>>([])
+  const [loadingPedidosOficiais, setLoadingPedidosOficiais] = useState(true)
+  const [erroPedidosOficiais, setErroPedidosOficiais] = useState<string | null>(null)
+  const [atualizarPedidosOficiais, setAtualizarPedidosOficiais] = useState(0)
+
+  useEffect(() => {
+    if (!id) {
+      setLoadingPedidosOficiais(false)
+      return
+    }
+    const controller = new AbortController()
+    const carregar = async () => {
+      setLoadingPedidosOficiais(true)
+      setErroPedidosOficiais(null)
+      try {
+        const consulta = new URLSearchParams({ representadaId: id })
+        if (cursorPedidosOficiais) consulta.set("cursor", cursorPedidosOficiais)
+        const resposta = await fetch(`/api/vendas/pedidos-oficiais?${consulta.toString()}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        })
+        const dados = await resposta.json().catch(() => null) as RespostaPedidosOficiaisRepresentada | null
+        if (!resposta.ok) {
+          throw new Error(
+            (dados as { message?: string } | null)?.message ||
+              "Não foi possível consultar os pedidos oficiais desta representada."
+          )
+        }
+        if (!dados || !Array.isArray(dados.documentos) ||
+            typeof dados.total !== "number" ||
+            (dados.proximoCursor !== null && typeof dados.proximoCursor !== "string")) {
+          throw new Error("Resposta inválida da consulta de pedidos oficiais.")
+        }
+        if (controller.signal.aborted) return
+        setPedidosOficiais(dados.documentos)
+        setTotalPedidosOficiais(dados.total)
+        setProximoCursorPedidosOficiais(dados.proximoCursor)
+      } catch (error) {
+        if (controller.signal.aborted) return
+        setPedidosOficiais([])
+        setErroPedidosOficiais(error instanceof Error ? error.message : "Falha na consulta de pedidos oficiais.")
+      } finally {
+        if (!controller.signal.aborted) setLoadingPedidosOficiais(false)
+      }
+    }
+    void carregar()
+    return () => controller.abort()
+  }, [id, cursorPedidosOficiais, atualizarPedidosOficiais])
 
   const [
     paginaOrcamentos,
@@ -4955,6 +5031,99 @@ export default function RepresentadaPage() {
                     )
                   }
                 )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card id="representada-pedidos-oficiais" className="scroll-mt-6 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <FileText className="h-5 w-5" />
+                  Pedidos Oficiais ({totalPedidosOficiais})
+                </CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Consulta comercial para conferência e relatórios. Pedidos ainda não vinculados a uma venda não integram os totais de vendas ou comissões.
+                </p>
+              </div>
+              <Button type="button" variant="outline" size="sm"
+                disabled={loadingPedidosOficiais}
+                onClick={() => setAtualizarPedidosOficiais((n) => n + 1)}>
+                <RefreshCw className={`mr-2 h-4 w-4 ${loadingPedidosOficiais ? "animate-spin" : ""}`} />
+                Atualizar
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {loadingPedidosOficiais ? (
+              <div className="flex items-center gap-2 py-5 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando pedidos oficiais...
+              </div>
+            ) : erroPedidosOficiais ? (
+              <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+                {erroPedidosOficiais}
+              </p>
+            ) : pedidosOficiais.length === 0 ? (
+              <p className="py-5 text-sm text-muted-foreground">Nenhum pedido oficial registrado nesta representada.</p>
+            ) : (
+              <div className="space-y-2">
+                {pedidosOficiais.map((pedido) => (
+                  <div key={pedido.id}
+                    className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 space-y-1">
+                      <p className="font-semibold text-slate-900">
+                        Pedido {pedido.numeroPedidoExterno || "sem número informado"}
+                      </p>
+                      <p className="text-sm">
+                        Cliente: {pedido.cliente?.nomeFantasia || pedido.cliente?.razaoSocial || "A identificar"}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span>Valor: <strong className="text-foreground">
+                          {pedido.valorTotalDocumento !== null && Number.isFinite(Number(pedido.valorTotalDocumento))
+                            ? formatarValor(Number(pedido.valorTotalDocumento)) : "Não informado"}
+                        </strong></span>
+                        <span>Importado: {formatarDataCurta(pedido.importadoEm)}</span>
+                        <span className="font-medium text-slate-700">
+                          {pedido.vendaId ? "Vinculado a venda" : pedido.status === "PendenteRevisao"
+                            ? "Pendente de vinculação à venda" : pedido.status}
+                        </span>
+                      </div>
+                    </div>
+                    {pedido.cliente?.id ? (
+                      <Button type="button" variant="outline" size="sm" className="shrink-0"
+                        onClick={() => router.push(`/clientes/${pedido.cliente!.id}`)}>
+                        <User className="mr-2 h-4 w-4" /> Ver cliente
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-amber-700">Cliente não identificado</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {(historicoCursoresPedidos.length > 0 || Boolean(proximoCursorPedidosOficiais)) && (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+                <span className="text-xs text-muted-foreground">
+                  Página {historicoCursoresPedidos.length + 1} · {totalPedidosOficiais} pedido(s)
+                </span>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm"
+                    disabled={loadingPedidosOficiais || historicoCursoresPedidos.length === 0}
+                    onClick={() => {
+                      const anterior = historicoCursoresPedidos[historicoCursoresPedidos.length - 1] ?? null
+                      setHistoricoCursoresPedidos((atual) => atual.slice(0, -1))
+                      setCursorPedidosOficiais(anterior)
+                    }}>Anterior</Button>
+                  <Button type="button" variant="outline" size="sm"
+                    disabled={loadingPedidosOficiais || !proximoCursorPedidosOficiais}
+                    onClick={() => {
+                      if (!proximoCursorPedidosOficiais) return
+                      setHistoricoCursoresPedidos((atual) => [...atual, cursorPedidosOficiais])
+                      setCursorPedidosOficiais(proximoCursorPedidosOficiais)
+                    }}>Próxima</Button>
+                </div>
               </div>
             )}
           </CardContent>

@@ -75,6 +75,7 @@ import {
   Eye,
   Landmark,
   Loader2,
+  MoreHorizontal,
   PlusCircle,
   RefreshCw,
   Search,
@@ -806,6 +807,10 @@ function formularioTransferenciaInicial():
 }
 
 export default function FinanceiroPage() {
+  const [abaFinanceiro, setAbaFinanceiro] = useState("visao")
+  const [formularioVisivel, setFormularioVisivel] = useState(false)
+  const [movimentoAcoes, setMovimentoAcoes] = useState<MovimentoFinanceiro | null>(null)
+
   const [
     movimentos,
     setMovimentos,
@@ -1469,6 +1474,8 @@ export default function FinanceiroPage() {
   }
 
   function irParaLancamento() {
+    setAbaFinanceiro("lancamentos")
+    setFormularioVisivel(true)
     window.setTimeout(
       () => {
         document
@@ -2671,6 +2678,7 @@ export default function FinanceiroPage() {
       setFormulario(
         formularioInicial()
       )
+      setFormularioVisivel(false)
 
       await carregarFinanceiro()
     } catch (
@@ -3149,6 +3157,32 @@ export default function FinanceiroPage() {
       ]
     )
 
+  // Alertas antecipados: somente saídas pendentes já cadastradas.
+  // As duas faixas não se sobrepõem e não criam movimentos novos.
+  const avisosVencimentos = useMemo(() => {
+    const hoje = new Date(`${hojeInput()}T12:00:00.000Z`).getTime()
+    const milissegundosDia = 24 * 60 * 60 * 1000
+
+    const proximos = contasPagar
+      .filter((movimento) => !ehTransferencia(movimento))
+      .map((movimento) => {
+        const data = chaveDia(movimento.vencimento)
+        if (!data) return null
+        const vencimento = new Date(`${data}T12:00:00.000Z`).getTime()
+        const dias = Math.round((vencimento - hoje) / milissegundosDia)
+        return { movimento, dias }
+      })
+      .filter((item): item is { movimento: MovimentoFinanceiro; dias: number } =>
+        item !== null && item.dias >= 1 && item.dias <= 7
+      )
+      .sort((a, b) => a.dias - b.dias)
+
+    return {
+      ate3Dias: proximos.filter((item) => item.dias <= 3),
+      de4a7Dias: proximos.filter((item) => item.dias >= 4),
+    }
+  }, [contasPagar])
+
   const realizados =
     useMemo(
       () =>
@@ -3350,339 +3384,131 @@ export default function FinanceiroPage() {
       ]
     )
 
-  function tabelaMovimentos(
-    lista:
-      MovimentoFinanceiro[]
-  ) {
-    if (
-      carregando
-    ) {
-      return (
-        <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
+  // Padrão local de apresentação: mesmas medidas nas quatro abas.
+  const painelAba = "mt-0 space-y-3 rounded-xl border bg-background p-3"
+  const cabecalhoAba = "flex min-h-[44px] items-center justify-between gap-2 border-b pb-2"
+  const tituloAba = "text-sm font-semibold leading-5"
+  const subtituloAba = "truncate text-xs text-muted-foreground"
+  const faixaIndicadores = "flex gap-2 overflow-x-auto pb-1"
+  const quadroIndicador = "h-[68px] min-w-[155px] flex-1 rounded-lg border bg-muted/10 px-3 py-2"
+  const rotuloIndicador = "truncate text-xs text-muted-foreground"
+  const valorIndicador = "mt-1 truncate text-base font-bold tabular-nums"
+  const botaoPequeno = "h-7 px-2 text-xs"
 
-          Carregando lançamentos...
+  // A coluna de ações fica sempre visível. As operações continuam usando as rotinas originais.
+  function tabelaMovimentos(lista: MovimentoFinanceiro[]) {
+    if (carregando) {
+      return (
+        <div className="flex min-h-20 items-center justify-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando lançamentos...
         </div>
       )
     }
 
-    if (
-      lista.length ===
-      0
-    ) {
+    if (lista.length === 0) {
       return (
-        <div className="flex min-h-40 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+        <div className="rounded-md border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
           Nenhum lançamento encontrado.
         </div>
       )
     }
 
     return (
-      <div className="max-h-[65vh] overflow-auto rounded-md border">
-        <Table className="min-w-[820px] table-fixed">
-          <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
+      <div className="max-h-[66vh] overflow-auto rounded-md border">
+        <Table className="w-full min-w-[760px] table-fixed text-xs">
+          <TableHeader className="sticky top-0 z-20 bg-background shadow-sm">
             <TableRow>
-              <TableHead className="w-[175px]">
-                Situação / Ações
-              </TableHead>
-
-              <TableHead className="w-[225px]">
-                Descrição
-              </TableHead>
-
-              <TableHead className="w-[105px]">
-                Categoria
-              </TableHead>
-
-              <TableHead className="w-[135px]">
-                Conta
-              </TableHead>
-
-              <TableHead className="w-[115px]">
-                Datas
-              </TableHead>
-
-              <TableHead className="w-[100px] text-right">
-                Valor
-              </TableHead>
+              <TableHead className="h-8 w-[93px] px-2">Situação</TableHead>
+              <TableHead className="h-8 px-2">Descrição / categoria</TableHead>
+              <TableHead className="h-8 w-[128px] px-2">Conta</TableHead>
+              <TableHead className="h-8 w-[94px] px-2">Data / Venc.</TableHead>
+              <TableHead className="h-8 w-[107px] px-2 text-right">Valor</TableHead>
+              <TableHead className="sticky right-0 z-30 h-8 w-[125px] border-l bg-background px-1.5 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
-
           <TableBody>
-            {lista.map(
-              (
-                movimento
-              ) => {
-                const vencido =
-                  movimentoVencido(
-                    movimento
-                  )
+            {lista.map((movimento) => {
+              const vencido = movimentoVencido(movimento)
+              const venceHoje = movimentoHoje(movimento)
+              const excluindo = excluindoId === movimento.id
+              const transferencia = ehTransferencia(movimento)
+              const descricao = descricaoVisivel(movimento)
+              const origem = origemVisivel(movimento)
+              const conta = movimento.contaBancaria
+              const podeCancelar = movimento.status === "Pendente" ||
+                (movimento.status === "Realizado" && movimento.tipo !== "SaldoInicial")
+              const possuiAcoesExtras = podeCancelar || podeExcluirDefinitivamente
 
-                const venceHoje =
-                  movimentoHoje(
-                    movimento
-                  )
-
-                const excluindo =
-                  excluindoId ===
-                  movimento.id
-
-                const transferencia =
-                  ehTransferencia(
-                    movimento
-                  )
-
-                return (
-                  <TableRow
-                    key={
-                      movimento.id
-                    }
-                    className={
-                      vencido
-                        ? "bg-red-50"
-                        : venceHoje
-                          ? "bg-amber-50"
-                          : undefined
-                    }
-                  >
-                    <TableCell className="align-top">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {statusBadge(
-                            movimento.status
-                          )}
-
-                          <span className="text-xs font-medium text-muted-foreground">
-                            {tipoVisivel(
-                              movimento.tipo
-                            )}
-                          </span>
-                        </div>
-
-                        {transferencia && (
-                          <Badge
-                            variant="outline"
-                            className="w-fit text-[11px]"
-                          >
-                            Transferência
-                          </Badge>
-                        )}
-
-                        {vencido && (
-                          <span className="text-xs font-semibold text-red-600">
-                            Vencido
-                          </span>
-                        )}
-
-                        {venceHoje && (
-                          <span className="text-xs font-semibold text-amber-700">
-                            Vence hoje
-                          </span>
-                        )}
-
-                        <div className="mt-1 grid gap-1 border-t pt-2">
-                          {movimento.status ===
-                            "Pendente" && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 w-full justify-center px-2 text-xs"
-                                onClick={() =>
-                                  void executarAcao(
-                                    movimento.id,
-                                    "realizar"
-                                  )
-                                }
-                              >
-                                <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-
-                                {movimento.tipo ===
-                                "Entrada"
-                                  ? "Receber"
-                                  : "Pagar"}
-                              </Button>
-
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-full justify-center px-2 text-xs"
-                                onClick={() =>
-                                  void executarAcao(
-                                    movimento.id,
-                                    "cancelar"
-                                  )
-                                }
-                              >
-                                <XCircle className="mr-1 h-3.5 w-3.5" />
-
-                                Cancelar
-                              </Button>
-                            </>
-                          )}
-
-                          {movimento.status ===
-                            "Realizado" &&
-                            movimento.tipo !==
-                              "SaldoInicial" && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-full justify-center px-2 text-xs"
-                                onClick={() =>
-                                  void executarAcao(
-                                    movimento.id,
-                                    "cancelar"
-                                  )
-                                }
-                              >
-                                <XCircle className="mr-1 h-3.5 w-3.5" />
-
-                                {transferencia
-                                  ? "Cancelar transf."
-                                  : "Cancelar"}
-                              </Button>
-                            )}
-
-                          {podeExcluirDefinitivamente && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="h-8 w-full justify-center px-2 text-xs"
-                              disabled={
-                                excluindo
-                              }
-                              onClick={() =>
-                                void excluirDefinitivamente(
-                                  movimento
-                                )
-                              }
-                            >
-                              {excluindo ? (
-                                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Trash2 className="mr-1 h-3.5 w-3.5" />
-                              )}
-
-                              Excluir
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell className="align-top">
-                      <div className="break-words">
-                        <div className="font-medium">
-                          {descricaoVisivel(
-                            movimento
-                          )}
-                        </div>
-
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {transferencia
-                            ? "Movimentação entre contas próprias"
-                            : `Origem: ${origemVisivel(
-                                movimento
-                              )}`}
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell className="align-top break-words">
-                      {movimento.categoria ||
-                        "-"}
-                    </TableCell>
-
-                    <TableCell className="align-top">
-                      {movimento.contaBancaria ? (
-                        <div className="break-words">
-                          <div className="font-medium">
-                            {
-                              movimento
-                                .contaBancaria
-                                .nome
-                            }
-                          </div>
-
-                          <div className="text-xs text-muted-foreground">
-                            {
-                              movimento
-                                .contaBancaria
-                                .banco
-                            }
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          Sem conta definida
-                        </span>
-                      )}
-                    </TableCell>
-
-                    <TableCell className="align-top">
-                      <div className="space-y-1 text-sm">
-                        <div>
-                          <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
-                            Data
-                          </span>
-
-                          {dataBrasileira(
-                            movimento.data
-                          )}
-                        </div>
-
-                        {movimento.vencimento && (
-                          <div>
-                            <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
-                              Venc.
-                            </span>
-
-                            <span
-                              className={
-                                vencido
-                                  ? "font-semibold text-red-600"
-                                  : venceHoje
-                                    ? "font-semibold text-amber-700"
-                                    : undefined
-                              }
-                            >
-                              {dataBrasileira(
-                                movimento.vencimento
-                              )}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-
-                    <TableCell className="align-top text-right">
-                      <span
-                        className={
-                          movimento.status ===
-                          "Cancelado"
-                            ? "text-muted-foreground line-through"
-                            : movimento.tipo ===
-                                "Entrada"
-                              ? "font-semibold text-green-600"
-                              : movimento.tipo ===
-                                  "Saida"
-                                ? "font-semibold text-red-600"
-                                : movimento.valor <
-                                    0
-                                  ? "font-semibold text-red-600"
-                                  : "font-semibold"
-                        }
-                      >
-                        {moeda(
-                          movimento.valor
-                        )}
+              return (
+                <TableRow
+                  key={movimento.id}
+                  className={`h-[52px] ${vencido ? "bg-red-50/70" : venceHoje ? "bg-amber-50/70" : ""}`}
+                >
+                  <TableCell className="px-2 py-1 align-middle">
+                    <div className="flex flex-col items-start gap-0.5">
+                      {statusBadge(movimento.status)}
+                      <span className={`text-[10px] ${vencido ? "font-semibold text-red-700" : venceHoje ? "font-semibold text-amber-700" : "text-muted-foreground"}`}>
+                        {vencido ? "Vencido" : venceHoje ? "Vence hoje" : transferencia ? "Transferência" : tipoVisivel(movimento.tipo)}
                       </span>
-                    </TableCell>
-                  </TableRow>
-                )
-              }
-            )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="min-w-0 px-2 py-1 align-middle">
+                    <p title={descricao} className="line-clamp-2 break-words font-medium leading-snug">{descricao}</p>
+                    <p title={`${movimento.categoria || "Sem categoria"} • ${origem}`} className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                      {movimento.categoria || "Sem categoria"} • {origem}
+                    </p>
+                  </TableCell>
+                  <TableCell className="px-2 py-1 align-middle">
+                    <p title={conta?.nome || "Conta não definida"} className="truncate text-[11px] font-medium">
+                      {conta?.nome || "A definir"}
+                    </p>
+                    {conta?.banco && <p title={conta.banco} className="truncate text-[10px] text-muted-foreground">{conta.banco}</p>}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap px-2 py-1 align-middle text-[11px]">
+                    <p>{dataBrasileira(movimento.data)}</p>
+                    {movimento.vencimento && (
+                      <p className={vencido ? "font-semibold text-red-700" : venceHoje ? "font-semibold text-amber-700" : "text-muted-foreground"}>
+                        {dataBrasileira(movimento.vencimento)}
+                      </p>
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap px-2 py-1 text-right align-middle">
+                    <span className={`text-xs font-semibold ${movimento.status === "Cancelado" ? "text-muted-foreground line-through" : movimento.tipo === "Entrada" ? "text-green-700" : movimento.tipo === "Saida" || movimento.valor < 0 ? "text-red-700" : ""}`}>
+                      {moeda(movimento.valor)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="sticky right-0 z-10 border-l bg-background px-1.5 py-1 align-middle">
+                    <div className="flex items-center justify-end gap-1">
+                      {movimento.status === "Pendente" && (
+                        <Button
+                          type="button" size="sm" variant="outline"
+                          className="h-7 px-1.5 text-[11px]"
+                          onClick={() => void executarAcao(movimento.id, "realizar")}
+                          title={movimento.tipo === "Entrada" ? "Confirmar recebimento" : "Confirmar pagamento"}
+                        >
+                          <CheckCircle2 className="mr-1 h-3 w-3" />
+                          {movimento.tipo === "Entrada" ? "Receber" : "Pagar"}
+                        </Button>
+                      )}
+                      {possuiAcoesExtras ? (
+                        <Button
+                          type="button" size="sm" variant="outline"
+                          className="h-7 w-7 shrink-0 p-0"
+                          aria-label={`Mais ações: ${descricao}`}
+                          title="Mais ações"
+                          disabled={excluindo}
+                          onClick={() => setMovimentoAcoes(movimento)}
+                        >
+                          {excluindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+                        </Button>
+                      ) : movimento.status !== "Pendente" ? (
+                        <span className="text-[11px] text-muted-foreground">—</span>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
       </div>
@@ -3691,10 +3517,49 @@ export default function FinanceiroPage() {
 
   return (
     <PageLayout title="Financeiro">
-      <NavigationButtons
-        backLabel="Voltar"
-        backHref="/dashboard"
-      />
+
+
+      {/* Menu isolado da tabela para não ser cortado pela rolagem. */}
+      {movimentoAcoes && (
+        <div role="presentation" className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-3" onMouseDown={(evento) => {
+          if (evento.target === evento.currentTarget) setMovimentoAcoes(null)
+        }}>
+          <div role="dialog" aria-modal="true" aria-label="Ações do lançamento" className="w-full max-w-sm rounded-lg border bg-background p-4 shadow-xl">
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold">Ações do lançamento</h2>
+                <p className="mt-1 break-words text-xs text-muted-foreground">{descricaoVisivel(movimentoAcoes)}</p>
+                <p className="mt-1 text-xs font-semibold">{moeda(movimentoAcoes.valor)} · {movimentoAcoes.status}</p>
+              </div>
+              <Button type="button" size="sm" variant="ghost" className="h-7 w-7 shrink-0 p-0" aria-label="Fechar ações" onClick={() => setMovimentoAcoes(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid gap-2">
+              {(movimentoAcoes.status === "Pendente" || (movimentoAcoes.status === "Realizado" && movimentoAcoes.tipo !== "SaldoInicial")) && (
+                <Button type="button" size="sm" variant="outline" className="h-8 justify-start text-xs" onClick={() => {
+                  const id = movimentoAcoes.id
+                  setMovimentoAcoes(null)
+                  void executarAcao(id, "cancelar")
+                }}>
+                  <XCircle className="mr-2 h-3.5 w-3.5" />
+                  {ehTransferencia(movimentoAcoes) ? "Cancelar transferência" : "Cancelar lançamento"}
+                </Button>
+              )}
+              {podeExcluirDefinitivamente && (
+                <Button type="button" size="sm" variant="outline" className="h-8 justify-start text-xs text-red-700" onClick={() => {
+                  const movimento = movimentoAcoes
+                  setMovimentoAcoes(null)
+                  void excluirDefinitivamente(movimento)
+                }}>
+                  <Trash2 className="mr-2 h-3.5 w-3.5" /> Excluir definitivamente
+                </Button>
+              )}
+            </div>
+            <p className="mt-3 text-[11px] text-muted-foreground">Cancelar preserva o histórico. Excluir exige as confirmações de segurança.</p>
+          </div>
+        </div>
+      )}
 
       {confirmacaoInterna && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 p-3 sm:p-4">
@@ -4695,700 +4560,168 @@ export default function FinanceiroPage() {
         </div>
       )}
 
-      <div className="space-y-6">
+
+      <div className="space-y-3">
         {erro && (
           <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {erro}
           </div>
         )}
-
         {mensagem && (
           <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700">
             {mensagem}
           </div>
         )}
 
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <CardTitle>
-                  Posição de caixa hoje
-                </CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <NavigationButtons backLabel="Voltar" backHref="/dashboard" />
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            <a href="/financeiro/importar-comprovante" className="inline-flex h-8 items-center rounded-md border bg-background px-2.5 text-xs font-semibold hover:bg-muted">Importar comprovante</a>
+          <Button type="button" size="sm" className="h-8 px-3 text-xs" onClick={prepararLancamentoNormal}>
+            <PlusCircle className="mr-1 h-3.5 w-3.5" /> Novo lançamento
+          </Button>
+          <Button type="button" size="sm" className="h-8 px-2.5 text-xs" variant="outline" onClick={abrirTransferencia}>
+            <ArrowLeftRight className="mr-1 h-3.5 w-3.5" /> Transferência
+          </Button>
+          <Button type="button" size="sm" className="h-8 px-2.5 text-xs" variant="outline" onClick={abrirCadastroConta}>
+            <Landmark className="mr-1 h-3.5 w-3.5" /> Nova conta
+          </Button>
+                  </div>
+        </div>
 
-                <CardDescription className="mt-1">
-                  Veja o consolidado e a distribuição entre Pessoa
-                  Jurídica e Pessoa Física sem precisar descer até as
-                  contas. Um consolidado positivo pode coexistir com
-                  uma conta individual negativa.
-                </CardDescription>
+        <Tabs value={abaFinanceiro} onValueChange={setAbaFinanceiro} className="space-y-3">
+          <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 p-1">
+            <TabsTrigger value="visao" className="h-8 px-3 text-xs sm:text-sm">Visão geral</TabsTrigger>
+            <TabsTrigger value="lancamentos" className="h-8 px-3 text-xs sm:text-sm">Lançamentos</TabsTrigger>
+            <TabsTrigger value="contas" className="h-8 px-3 text-xs sm:text-sm">Bancos e contas</TabsTrigger>
+            <TabsTrigger value="agenda" className="h-8 px-3 text-xs sm:text-sm">Agenda financeira</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="visao" className={painelAba}>
+            <section aria-label="Resumo financeiro" className="space-y-3">
+              <div className={cabecalhoAba}>
+                <div className="min-w-0">
+                  <h2 className={tituloAba}>Visão geral</h2>
+                  <p className={subtituloAba}>Saldo, compromissos e situação do caixa</p>
+                </div>
+                <Button type="button" size="sm" variant="ghost" className={botaoPequeno} disabled={carregando} onClick={() => void carregarFinanceiro()}>
+                  <RefreshCw className={`mr-1 h-3.5 w-3.5 ${carregando ? "animate-spin" : ""}`} /> Atualizar
+                </Button>
               </div>
-
-              <Wallet className="h-5 w-5 shrink-0 text-muted-foreground" />
-            </div>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-              <div className="rounded-lg border bg-muted/20 p-3">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Consolidado
+              <div className={faixaIndicadores}>
+                <div className={quadroIndicador}>
+                  <p className={rotuloIndicador}>Saldo consolidado</p>
+                  <p className={`${valorIndicador} ${resumo.saldoRealizado < 0 ? "text-red-600" : "text-green-600"}`}>
+                    {moeda(resumo.saldoRealizado)}
+                  </p>
                 </div>
-
-                <div
-                  className={`mt-1 text-xl font-bold ${
-                    resumo.saldoRealizado <
-                    0
-                      ? "text-red-600"
-                      : "text-green-600"
-                  }`}
-                >
-                  {moeda(
-                    resumo.saldoRealizado
-                  )}
+                <div className={quadroIndicador}>
+                  <p className={rotuloIndicador}>Saldo projetado</p>
+                  <p className={`${valorIndicador} ${resumo.saldoProjetado < 0 ? "text-red-600" : "text-blue-600"}`}>
+                    {moeda(resumo.saldoProjetado)}
+                  </p>
                 </div>
-
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Todas as contas e movimentos
+                <div className={quadroIndicador}>
+                  <p className={rotuloIndicador}>A pagar</p>
+                  <p className={`${valorIndicador} text-red-600`}>{moeda(resumo.saidasPendentes)}</p>
                 </div>
-              </div>
-
-              <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
-                <div className="text-xs font-medium uppercase tracking-wide text-blue-700">
-                  Pessoa Jurídica
-                </div>
-
-                <div
-                  className={`mt-1 text-xl font-bold ${
-                    saldoPessoaJuridica <
-                    0
-                      ? "text-red-600"
-                      : "text-green-600"
-                  }`}
-                >
-                  {moeda(
-                    saldoPessoaJuridica
-                  )}
-                </div>
-
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Contas cadastradas como PJ
+                <div className={quadroIndicador}>
+                  <p className={rotuloIndicador}>A receber</p>
+                  <p className={`${valorIndicador} text-green-600`}>{moeda(resumo.entradasPendentes)}</p>
                 </div>
               </div>
-
-              <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3">
-                <div className="text-xs font-medium uppercase tracking-wide text-amber-700">
-                  Pessoa Física
-                </div>
-
-                <div
-                  className={`mt-1 text-xl font-bold ${
-                    saldoPessoaFisica <
-                    0
-                      ? "text-red-600"
-                      : "text-green-600"
-                  }`}
-                >
-                  {moeda(
-                    saldoPessoaFisica
-                  )}
-                </div>
-
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Contas cadastradas como PF
-                </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm">
+                <span>Pessoa jurídica: <strong className={saldoPessoaJuridica < 0 ? "text-red-600" : ""}>{moeda(saldoPessoaJuridica)}</strong></span>
+                <span>Pessoa física: <strong className={saldoPessoaFisica < 0 ? "text-red-600" : ""}>{moeda(saldoPessoaFisica)}</strong></span>
+                <span>Contas com saldo negativo: <strong className={contasNegativas.length > 0 ? "text-red-600" : ""}>{contasNegativas.length}</strong></span>
               </div>
-
-              <div
-                className={`rounded-lg border p-3 ${
-                  necessidadeCobertura >
-                  0
-                    ? "border-red-200 bg-red-50"
-                    : "bg-muted/20"
-                }`}
-              >
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Cobertura necessária
+              {contasNegativas.length > 0 && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span><AlertTriangle className="mr-1 inline h-4 w-4" /> Contas negativas: <strong>{moeda(necessidadeCobertura)}</strong> de cobertura necessária</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setAbaFinanceiro("contas")}>Ver contas</Button>
+                  </div>
                 </div>
+              )}
+              {semConta.quantidade > 0 && (
+                <p className="text-xs text-amber-700">
+                  {semConta.quantidade} lançamento(s) sem conta bancária. Saldo realizado: {moeda(semConta.resumo.saldoRealizado)}.
+                </p>
+              )}
+            </section>
 
-                <div
-                  className={`mt-1 text-xl font-bold ${
-                    necessidadeCobertura >
-                    0
-                      ? "text-red-600"
-                      : "text-green-600"
-                  }`}
-                >
-                  {moeda(
-                    necessidadeCobertura
-                  )}
-                </div>
-
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Soma das contas com saldo negativo
-                </div>
-              </div>
-            </div>
-
-            {contasNegativas.length >
-              0 && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 font-semibold text-red-800">
-                      <AlertTriangle className="h-4 w-4" />
-
-                      Conta(s) que exigem atenção
-                    </div>
-
-                    <p className="mt-1 text-xs text-red-700">
-                      O consolidado não elimina a necessidade de cobrir
-                      uma conta negativa antes de juros, encargos ou
-                      vencimentos.
+            <section aria-label="Vencimentos e lembretes" className="space-y-2">
+              <h2 className="text-sm font-semibold">Vencimentos e lembretes</h2>
+              <div className={faixaIndicadores}>
+                {[
+                  { titulo: "Vencidas", quantidade: vencidas.length },
+                  { titulo: "Hoje", quantidade: hoje.length },
+                  { titulo: "Até 3 dias", quantidade: avisosVencimentos.ate3Dias.length },
+                  { titulo: "De 4 a 7 dias", quantidade: avisosVencimentos.de4a7Dias.length },
+                ].map((item) => (
+                  <div key={item.titulo} className={quadroIndicador}>
+                    <p className={rotuloIndicador}>{item.titulo}</p>
+                    <p className={`${valorIndicador} ${item.titulo === "Vencidas" && item.quantidade > 0 ? "text-red-600" : ""}`}>
+                      {item.quantidade}
                     </p>
                   </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>Hoje: {dataHojeBrasileira()} • {futuras.length} lançamento(s) futuros</span>
+                <Button type="button" size="sm" variant="outline" onClick={() => setAbaFinanceiro("agenda")}>Abrir agenda</Button>
+              </div>
+            </section>
 
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={
-                      abrirTransferencia
-                    }
-                  >
-                    <ArrowLeftRight className="mr-2 h-4 w-4" />
+            <section aria-label="Áreas financeiras" className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-semibold">Áreas financeiras</h2>
+                <span className="text-xs text-muted-foreground">Classificação individual dos lançamentos ainda não implantada</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {["Representações", "Pessoal / Casa", "Uber", "Casa do Quedas", "Investimentos"].map((area) => (
+                  <span key={area} className="rounded-md border bg-background px-3 py-2 text-xs font-medium">{area}</span>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Investimentos: aporte não é despesa. Casa da Praia: somente recebimentos patrimoniais.
+              </p>
+            </section>
+          </TabsContent>
 
-                    Registrar transferência
+          <TabsContent value="lancamentos" className={painelAba}>
+            <div className={cabecalhoAba}>
+              <div className="min-w-0">
+                <h2 className={tituloAba}>Lançamentos</h2>
+                <p className={subtituloAba}>Pesquisar, conferir e registrar movimentações</p>
+              </div>
+              <Button type="button" size="sm" variant="ghost" className={botaoPequeno} disabled={carregando} onClick={() => void carregarFinanceiro()}>
+                <RefreshCw className={`mr-1 h-3.5 w-3.5 ${carregando ? "animate-spin" : ""}`} /> Atualizar
+              </Button>
+            </div>
+            <div className={faixaIndicadores}>
+              {[
+                { titulo: "Total", quantidade: movimentos.length },
+                { titulo: "Realizados", quantidade: realizados.length },
+                { titulo: "Pendentes", quantidade: movimentos.filter((item) => item.status === "Pendente").length },
+                { titulo: "Cancelados", quantidade: movimentos.filter((item) => item.status === "Cancelado").length },
+              ].map((item) => (
+                <div key={item.titulo} className={quadroIndicador}>
+                  <p className={rotuloIndicador}>{item.titulo}</p>
+                  <p className={valorIndicador}>{item.quantidade}</p>
+                </div>
+              ))}
+            </div>
+            {formularioVisivel && (
+              <div className="space-y-2">
+                <div className="flex justify-end">
+                  <Button type="button" variant="outline" disabled={salvando} onClick={() => setFormularioVisivel(false)}>
+                    <X className="mr-2 h-4 w-4" /> Fechar formulário
                   </Button>
                 </div>
 
-                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                  {contasNegativas.map(
-                    (
-                      conta
-                    ) => (
-                      <div
-                        key={
-                          conta.id
-                        }
-                        className="flex items-center justify-between gap-3 rounded-md border border-red-200 bg-background px-3 py-2"
-                      >
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium">
-                            {
-                              conta.nome
-                            }
-                          </div>
-
-                          <div className="text-xs text-muted-foreground">
-                            {
-                              conta.tipoTitular
-                            }
-                            {!conta.ativa
-                              ? " • Inativa"
-                              : ""}
-                          </div>
-                        </div>
-
-                        <div className="shrink-0 text-sm font-bold text-red-600">
-                          {moeda(
-                            conta.resumo
-                              .saldoRealizado
-                          )}
-                        </div>
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-semibold">
-                    Saldos por conta
-                  </h3>
-
-                  <p className="text-xs text-muted-foreground">
-                    Pessoa Jurídica acima e Pessoa Física abaixo. Dentro de cada grupo, contas negativas aparecem primeiro.
-                  </p>
-                </div>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  disabled={
-                    carregando
-                  }
-                  onClick={() =>
-                    void carregarFinanceiro()
-                  }
-                >
-                  <RefreshCw
-                    className={`mr-2 h-4 w-4 ${
-                      carregando
-                        ? "animate-spin"
-                        : ""
-                    }`}
-                  />
-
-                  Atualizar
-                </Button>
-              </div>
-
-              {contasOrdenadasPorSaldo.length ===
-              0 ? (
-                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                  Nenhuma conta financeira cadastrada.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {contasPessoaJuridica.length >
-                    0 && (
-                    <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-3">
-                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                            Pessoa Jurídica
-                          </div>
-
-                          <div className="text-xs text-blue-700/80">
-                            Contas da empresa
-                          </div>
-                        </div>
-
-                        <div
-                          className={`text-sm font-bold ${
-                            saldoPessoaJuridica <
-                            0
-                              ? "text-red-600"
-                              : "text-green-700"
-                          }`}
-                        >
-                          Total PJ:{" "}
-                          {moeda(
-                            saldoPessoaJuridica
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                        {contasPessoaJuridica.map(
-                          (
-                            conta
-                          ) => (
-                            <div
-                              key={
-                                conta.id
-                              }
-                              className={`flex min-w-0 items-center justify-between gap-3 rounded-md border px-3 py-2 ${
-                                conta.resumo
-                                  .saldoRealizado <
-                                0
-                                  ? "border-red-300 bg-red-50"
-                                  : "border-blue-200 bg-white/90"
-                              } ${
-                                !conta.ativa
-                                  ? "opacity-60"
-                                  : ""
-                              }`}
-                            >
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-medium">
-                                  {
-                                    conta.nome
-                                  }
-                                </div>
-
-                                <div className="truncate text-xs text-blue-700/70">
-                                  {
-                                    conta.banco
-                                  }{" "}
-                                  • PJ
-                                </div>
-                              </div>
-
-                              <div
-                                className={`shrink-0 text-sm font-bold ${
-                                  conta.resumo
-                                    .saldoRealizado <
-                                  0
-                                    ? "text-red-600"
-                                    : "text-green-600"
-                                }`}
-                              >
-                                {moeda(
-                                  conta.resumo
-                                    .saldoRealizado
-                                )}
-                              </div>
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {contasPessoaFisica.length >
-                    0 && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
-                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-                            Pessoa Física
-                          </div>
-
-                          <div className="text-xs text-amber-700/80">
-                            Contas pessoais
-                          </div>
-                        </div>
-
-                        <div
-                          className={`text-sm font-bold ${
-                            saldoPessoaFisica <
-                            0
-                              ? "text-red-600"
-                              : "text-green-700"
-                          }`}
-                        >
-                          Total PF:{" "}
-                          {moeda(
-                            saldoPessoaFisica
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                        {contasPessoaFisica.map(
-                          (
-                            conta
-                          ) => (
-                            <div
-                              key={
-                                conta.id
-                              }
-                              className={`flex min-w-0 items-center justify-between gap-3 rounded-md border px-3 py-2 ${
-                                conta.resumo
-                                  .saldoRealizado <
-                                0
-                                  ? "border-red-300 bg-red-50"
-                                  : "border-amber-200 bg-white/90"
-                              } ${
-                                !conta.ativa
-                                  ? "opacity-60"
-                                  : ""
-                              }`}
-                            >
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-medium">
-                                  {
-                                    conta.nome
-                                  }
-                                </div>
-
-                                <div className="truncate text-xs text-amber-700/70">
-                                  {
-                                    conta.banco
-                                  }{" "}
-                                  • PF
-                                </div>
-                              </div>
-
-                              <div
-                                className={`shrink-0 text-sm font-bold ${
-                                  conta.resumo
-                                    .saldoRealizado <
-                                  0
-                                    ? "text-red-600"
-                                    : "text-green-600"
-                                }`}
-                              >
-                                {moeda(
-                                  conta.resumo
-                                    .saldoRealizado
-                                )}
-                              </div>
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {contasSemClassificacao.length >
-                    0 && (
-                    <div className="rounded-lg border bg-muted/20 p-3">
-                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Outras contas
-                      </div>
-
-                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                        {contasSemClassificacao.map(
-                          (
-                            conta
-                          ) => (
-                            <div
-                              key={
-                                conta.id
-                              }
-                              className={`flex min-w-0 items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 ${
-                                !conta.ativa
-                                  ? "opacity-60"
-                                  : ""
-                              }`}
-                            >
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-medium">
-                                  {
-                                    conta.nome
-                                  }
-                                </div>
-
-                                <div className="truncate text-xs text-muted-foreground">
-                                  {
-                                    conta.banco
-                                  }{" "}
-                                  •{" "}
-                                  {
-                                    conta.tipoTitular ||
-                                    "Sem classificação"
-                                  }
-                                </div>
-                              </div>
-
-                              <div
-                                className={`shrink-0 text-sm font-bold ${
-                                  conta.resumo
-                                    .saldoRealizado <
-                                  0
-                                    ? "text-red-600"
-                                    : "text-green-600"
-                                }`}
-                              >
-                                {moeda(
-                                  conta.resumo
-                                    .saldoRealizado
-                                )}
-                              </div>
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {semConta.quantidade >
-              0 && (
-              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                Existem{" "}
-                <strong>
-                  {
-                    semConta.quantidade
-                  }
-                </strong>{" "}
-                lançamento(s) sem conta vinculada. Saldo realizado
-                desses lançamentos:{" "}
-                <strong>
-                  {moeda(
-                    semConta.resumo
-                      .saldoRealizado
-                  )}
-                </strong>
-                .
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-          <div className="rounded-lg border bg-background p-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-muted-foreground">
-                A pagar
-              </span>
-
-              <ArrowUpCircle className="h-4 w-4 text-red-500" />
-            </div>
-
-            <div className="mt-1 text-lg font-bold text-red-600">
-              {moeda(
-                resumo.saidasPendentes
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-lg border bg-background p-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-muted-foreground">
-                A receber
-              </span>
-
-              <ArrowDownCircle className="h-4 w-4 text-green-500" />
-            </div>
-
-            <div className="mt-1 text-lg font-bold text-green-600">
-              {moeda(
-                resumo.entradasPendentes
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-lg border bg-background p-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-muted-foreground">
-                Projetado
-              </span>
-
-              <Clock3 className="h-4 w-4 text-muted-foreground" />
-            </div>
-
-            <div
-              className={`mt-1 text-lg font-bold ${
-                resumo.saldoProjetado <
-                0
-                  ? "text-red-600"
-                  : "text-blue-600"
-              }`}
-            >
-              {moeda(
-                resumo.saldoProjetado
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-lg border bg-background p-3">
-            <div className="text-xs font-medium text-muted-foreground">
-              Vencidas
-            </div>
-
-            <div className="mt-1 text-lg font-bold text-red-600">
-              {
-                vencidas.length
-              }
-            </div>
-
-            <div className="text-xs text-muted-foreground">
-              {moeda(
-                resumo.valorVencido
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-lg border bg-background p-3">
-            <div className="text-xs font-medium text-muted-foreground">
-              Vencem hoje
-            </div>
-
-            <div className="mt-1 text-lg font-bold text-amber-700">
-              {
-                hoje.length
-              }
-            </div>
-
-            <div className="text-xs text-muted-foreground">
-              {
-                dataHojeBrasileira()
-              }
-            </div>
-          </div>
-
-          <div className="rounded-lg border bg-background p-3">
-            <div className="text-xs font-medium text-muted-foreground">
-              Futuros
-            </div>
-
-            <div className="mt-1 text-lg font-bold">
-              {
-                futuras.length
-              }
-            </div>
-
-            <div className="text-xs text-muted-foreground">
-              Após hoje
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 rounded-lg border bg-background p-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h3 className="font-semibold">
-              Ações financeiras
-            </h3>
-
-            <p className="text-sm text-muted-foreground">
-              Use Novo lançamento no dia a dia. Transferências entre
-              contas próprias possuem fluxo separado.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              onClick={
-                prepararLancamentoNormal
-              }
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-
-              Novo lançamento
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={
-                abrirTransferencia
-              }
-            >
-              <ArrowLeftRight className="mr-2 h-4 w-4" />
-
-              Transferência entre contas
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={
-                abrirCadastroConta
-              }
-            >
-              <Landmark className="mr-2 h-4 w-4" />
-
-              Cadastrar nova conta
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              disabled={
-                carregando
-              }
-              onClick={() =>
-                void carregarFinanceiro()
-              }
-            >
-              <RefreshCw
-                className={`mr-2 h-4 w-4 ${
-                  carregando
-                    ? "animate-spin"
-                    : ""
-                }`}
-              />
-
-              Atualizar
-            </Button>
-          </div>
-        </div>
-
-        <Card
-          id="novo-lancamento"
-        >
-          <CardHeader>
+        <Card id="novo-lancamento">
+          <CardHeader className="pb-2">
             <CardTitle>
               Novo lançamento
             </CardTitle>
@@ -5401,7 +4734,7 @@ export default function FinanceiroPage() {
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-3">
             <div className="rounded-md border border-amber-300 bg-amber-50 p-4">
               <div className="flex gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
@@ -6082,455 +5415,15 @@ export default function FinanceiroPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <CardTitle>
-                  Contas financeiras
-                </CardTitle>
-
-                <CardDescription>
-                  Posição individual das contas e acesso ao extrato
-                  financeiro interno registrado no CRM.
-                </CardDescription>
-              </div>
-
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={
-                  abrirCadastroConta
-                }
-              >
-                <Landmark className="mr-2 h-4 w-4" />
-
-                Nova conta
-              </Button>
-            </div>
-          </CardHeader>
-
-          <CardContent className="space-y-5">
-            {contas.length ===
-            0 ? (
-              <div className="rounded-md border border-dashed p-5 text-sm text-muted-foreground">
-                Nenhuma conta financeira cadastrada ainda.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-                {contas.map(
-                  (
-                    conta
-                  ) => {
-                    const possuiSaldoInicial =
-                      contaPossuiSaldoInicial(
-                        conta.id
-                      )
-
-                    return (
-                      <Card
-                        key={
-                          conta.id
-                        }
-                        className={
-                          !conta.ativa
-                            ? "opacity-60"
-                            : undefined
-                        }
-                      >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <CardTitle className="text-base">
-                                {
-                                  conta.nome
-                                }
-                              </CardTitle>
-
-                              <CardDescription>
-                                {
-                                  conta.banco
-                                }
-
-                                {conta.agencia
-                                  ? ` • Ag. ${conta.agencia}`
-                                  : ""}
-
-                                {conta.conta
-                                  ? ` • Cc. ${conta.conta}`
-                                  : ""}
-                              </CardDescription>
-                            </div>
-
-                            <Badge
-                              variant={
-                                conta.ativa
-                                  ? "default"
-                                  : "secondary"
-                              }
-                            >
-                              {conta.ativa
-                                ? "Ativa"
-                                : "Inativa"}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-
-                        <CardContent className="space-y-3">
-                          <div className="grid grid-cols-2 gap-3 text-sm">
-                            <div>
-                              <div className="text-xs text-muted-foreground">
-                                Saldo atual
-                              </div>
-
-                              <div
-                                className={`font-bold ${
-                                  conta.resumo
-                                    .saldoRealizado <
-                                  0
-                                    ? "text-red-600"
-                                    : "text-green-600"
-                                }`}
-                              >
-                                {moeda(
-                                  conta.resumo
-                                    .saldoRealizado
-                                )}
-                              </div>
-                            </div>
-
-                            <div>
-                              <div className="text-xs text-muted-foreground">
-                                Saldo projetado
-                              </div>
-
-                              <div
-                                className={`font-bold ${
-                                  conta.resumo
-                                    .saldoProjetado <
-                                  0
-                                    ? "text-red-600"
-                                    : "text-blue-600"
-                                }`}
-                              >
-                                {moeda(
-                                  conta.resumo
-                                    .saldoProjetado
-                                )}
-                              </div>
-                            </div>
-
-                            <div>
-                              <div className="text-xs text-muted-foreground">
-                                A receber
-                              </div>
-
-                              <div className="font-semibold text-green-600">
-                                {moeda(
-                                  conta.resumo
-                                    .entradasPendentes
-                                )}
-                              </div>
-                            </div>
-
-                            <div>
-                              <div className="text-xs text-muted-foreground">
-                                A pagar
-                              </div>
-
-                              <div className="font-semibold text-red-600">
-                                {moeda(
-                                  conta.resumo
-                                    .saidasPendentes
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {!possuiSaldoInicial && (
-                            <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-                              Saldo inicial ainda não informado. Se o
-                              saldo real desta conta for zero, não é
-                              necessário criar saldo inicial.
-                            </div>
-                          )}
-
-                          {possuiSaldoInicial && (
-                            <div className="text-xs font-medium text-green-700">
-                              Saldo inicial registrado
-                            </div>
-                          )}
-
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                setContaExtrato(
-                                  conta
-                                )
-                              }
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-
-                              Ver extrato
-                            </Button>
-
-                            {conta.ativa &&
-                              !possuiSaldoInicial && (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    prepararSaldoInicial(
-                                      conta.id
-                                    )
-                                  }
-                                >
-                                  <Wallet className="mr-2 h-4 w-4" />
-
-                                  Informar saldo inicial
-                                </Button>
-                              )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  }
-                )}
               </div>
             )}
-
-            {semConta.quantidade >
-              0 && (
-              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                Existem{" "}
-                <strong>
-                  {
-                    semConta.quantidade
-                  }
-                </strong>{" "}
-                lançamento(s) ainda sem conta bancária vinculada. Eles
-                continuam incluídos no consolidado geral.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Tabs
-          defaultValue="vencidas"
-          className="space-y-4"
-        >
-          <TabsList className="flex h-auto flex-wrap">
-            <TabsTrigger value="vencidas">
-              Vencidas (
-              {vencidas.length})
-            </TabsTrigger>
-
-            <TabsTrigger value="hoje">
-              Hoje (
-              {hoje.length})
-            </TabsTrigger>
-
-            <TabsTrigger value="pagar">
-              A pagar (
-              {contasPagar.length})
-            </TabsTrigger>
-
-            <TabsTrigger value="receber">
-              A receber (
-              {contasReceber.length})
-            </TabsTrigger>
-
-            <TabsTrigger value="futuras">
-              Futuras (
-              {futuras.length})
-            </TabsTrigger>
-
-            <TabsTrigger value="realizados">
-              Realizados (
-              {realizados.length})
-            </TabsTrigger>
-
-            <TabsTrigger value="todos">
-              Todos (
-              {movimentos.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="vencidas">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-red-700">
-                  Contas vencidas
-                </CardTitle>
-
-                <CardDescription>
-                  Saídas pendentes cujo vencimento já passou.
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent>
-                {tabelaMovimentos(
-                  vencidas
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="hoje">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Vencimentos de hoje
-                </CardTitle>
-
-                <CardDescription>
-                  Compromissos com vencimento na data atual. Eles não
-                  são considerados atrasados durante o próprio dia.
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent>
-                {tabelaMovimentos(
-                  hoje
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="pagar">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Contas a pagar
-                </CardTitle>
-
-                <CardDescription>
-                  Dívidas, cartões, acordos e demais saídas ainda
-                  pendentes.
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent>
-                {tabelaMovimentos(
-                  contasPagar
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="receber">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Contas a receber
-                </CardTitle>
-
-                <CardDescription>
-                  Entradas previstas ainda não recebidas.
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent>
-                {tabelaMovimentos(
-                  contasReceber
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="futuras">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Compromissos futuros
-                </CardTitle>
-
-                <CardDescription>
-                  Todos os lançamentos pendentes com vencimento após
-                  hoje.
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent>
-                {tabelaMovimentos(
-                  futuras
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="realizados">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Movimentos realizados
-                </CardTitle>
-
-                <CardDescription>
-                  Valores que já afetaram o saldo financeiro atual.
-                  Transferências são apresentadas como movimentos
-                  internos entre contas próprias.
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent>
-                {tabelaMovimentos(
-                  realizados
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="todos">
-            <Card>
-              <CardHeader>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <CardTitle>
-                      Todos os lançamentos
-                    </CardTitle>
-
-                    <CardDescription>
-                      Consulte realizados, pendentes, cancelados e
-                      transferências entre contas.
-                    </CardDescription>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={
-                      carregando
-                    }
-                    onClick={() =>
-                      void carregarFinanceiro()
-                    }
-                  >
-                    <RefreshCw
-                      className={`mr-2 h-4 w-4 ${
-                        carregando
-                          ? "animate-spin"
-                          : ""
-                      }`}
-                    />
-
-                    Atualizar
-                  </Button>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <section aria-label="Consulta de lançamentos" className="space-y-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                   <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-2 h-4 w-4 text-muted-foreground" />
 
                     <Input
-                      className="pl-9"
+                      className="h-8 pl-9 text-xs"
                       value={
                         busca
                       }
@@ -6611,8 +5504,196 @@ export default function FinanceiroPage() {
                 {tabelaMovimentos(
                   movimentosFiltrados
                 )}
-              </CardContent>
-            </Card>
+            </section>
+
+          </TabsContent>
+
+          <TabsContent value="contas" className={painelAba}>
+            <div className={cabecalhoAba}>
+              <div className="min-w-0">
+                <h2 className={tituloAba}>Bancos e contas</h2>
+                <p className={subtituloAba}>Saldos por conta, projeções e extratos</p>
+              </div>
+              <Button type="button" size="sm" variant="ghost" className={botaoPequeno} disabled={carregando} onClick={() => void carregarFinanceiro()}>
+                <RefreshCw className={`mr-1 h-3.5 w-3.5 ${carregando ? "animate-spin" : ""}`} /> Atualizar
+              </Button>
+            </div>
+            <div className={faixaIndicadores}>
+              <div className={quadroIndicador}>
+                <p className={rotuloIndicador} title={`${contasPessoaJuridica.length} conta(s)`}>Pessoa jurídica ({contasPessoaJuridica.length})</p>
+                <p className={`${valorIndicador} ${saldoPessoaJuridica < 0 ? "text-red-600" : ""}`}>{moeda(saldoPessoaJuridica)}</p>
+              </div>
+              <div className={quadroIndicador}>
+                <p className={rotuloIndicador} title={`${contasPessoaFisica.length} conta(s)`}>Pessoa física ({contasPessoaFisica.length})</p>
+                <p className={`${valorIndicador} ${saldoPessoaFisica < 0 ? "text-red-600" : ""}`}>{moeda(saldoPessoaFisica)}</p>
+              </div>
+              <div className={quadroIndicador}>
+                <p className={rotuloIndicador}>Total de contas</p>
+                <p className={valorIndicador}>{contas.length}</p>
+              </div>
+              <div className={quadroIndicador}>
+                <p className={rotuloIndicador}>Saldos negativos</p>
+                <p className={`${valorIndicador} ${contasNegativas.length > 0 ? "text-red-600" : ""}`}>{contasNegativas.length}</p>
+              </div>
+            </div>
+            {contasSemClassificacao.length > 0 && (
+              <p className="text-xs text-muted-foreground">{contasSemClassificacao.length} conta(s) sem classificação PF/PJ.</p>
+            )}
+            <div className="max-h-[66vh] overflow-auto rounded-md border">
+              <Table className="w-full min-w-[760px] table-fixed text-xs">
+                <TableHeader className="sticky top-0 z-20 bg-background shadow-sm">
+                  <TableRow>
+                    <TableHead className="h-8 px-2">Conta / banco</TableHead>
+                    <TableHead className="h-8 w-[60px] px-2">Tipo</TableHead>
+                    <TableHead className="h-8 w-[135px] px-2 text-right">Saldo atual</TableHead>
+                    <TableHead className="h-8 w-[145px] px-2 text-right">Saldo projetado</TableHead>
+                    <TableHead className="h-8 w-[105px] px-2 text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contasOrdenadasPorSaldo.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">Nenhuma conta cadastrada.</TableCell></TableRow>
+                  ) : contasOrdenadasPorSaldo.map((conta) => (
+                    <TableRow key={conta.id} className={`h-[52px] ${!conta.ativa ? "opacity-60" : ""}`}>
+                      <TableCell className="px-2 py-1 align-middle">
+                        <p title={conta.nome} className="truncate text-xs font-medium leading-5">{conta.nome}</p>
+                        <p title={conta.banco} className="truncate text-[10px] text-muted-foreground">
+                          {conta.banco}{!conta.ativa ? " • Inativa" : ""}
+                          {!contaPossuiSaldoInicial(conta.id) ? " • Saldo inicial não informado" : ""}
+                        </p>
+                      </TableCell>
+                      <TableCell className="px-2 py-1 align-middle text-xs">{conta.tipoTitular || "—"}</TableCell>
+                      <TableCell className={`whitespace-nowrap px-2 py-1 text-right align-middle text-xs font-semibold tabular-nums ${conta.resumo.saldoRealizado < 0 ? "text-red-600" : ""}`}>
+                        {moeda(conta.resumo.saldoRealizado)}
+                      </TableCell>
+                      <TableCell className={`whitespace-nowrap px-2 py-1 text-right align-middle text-xs tabular-nums ${conta.resumo.saldoProjetado < 0 ? "text-red-600" : ""}`}>
+                        {moeda(conta.resumo.saldoProjetado)}
+                      </TableCell>
+                      <TableCell className="px-2 py-1 text-right align-middle">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setContaExtrato(conta)}>
+                            <Eye className="mr-1 h-3.5 w-3.5" /> Extrato
+                          </Button>
+                          {conta.ativa && !contaPossuiSaldoInicial(conta.id) && (
+                            <Button type="button" variant="outline" size="sm" className="h-7 w-7 shrink-0 p-0" title="Cadastrar saldo inicial" aria-label={`Cadastrar saldo inicial: ${conta.nome}`} onClick={() => prepararSaldoInicial(conta.id)}>
+                              <PlusCircle className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {semConta.quantidade > 0 && (
+              <p className="text-xs text-amber-700">Há {semConta.quantidade} lançamento(s) sem conta vinculada, incluídos no consolidado.</p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="agenda" className={painelAba}>
+            <div className={cabecalhoAba}>
+              <div className="min-w-0">
+                <h2 className={tituloAba}>Agenda financeira</h2>
+                <p className={subtituloAba}>Vencimentos, pagamentos e recebimentos</p>
+              </div>
+              <Button type="button" size="sm" variant="ghost" className={botaoPequeno} disabled={carregando} onClick={() => void carregarFinanceiro()}>
+                <RefreshCw className={`mr-1 h-3.5 w-3.5 ${carregando ? "animate-spin" : ""}`} /> Atualizar
+              </Button>
+            </div>
+            <div className={faixaIndicadores}>
+              <div className={quadroIndicador}>
+                <p className={rotuloIndicador}>Vencidas</p>
+                <p title={`Valor vencido: ${moeda(resumo.valorVencido)}`} className={`${valorIndicador} ${vencidas.length > 0 ? "text-red-600" : ""}`}>{vencidas.length}</p>
+              </div>
+              <div className={quadroIndicador}>
+                <p className={rotuloIndicador}>Vencem hoje</p>
+                <p className={valorIndicador}>{hoje.length}</p>
+              </div>
+              <div className={quadroIndicador}>
+                <p className={rotuloIndicador}>Até 3 dias</p>
+                <p className={valorIndicador}>{avisosVencimentos.ate3Dias.length}</p>
+              </div>
+              <div className={quadroIndicador}>
+                <p className={rotuloIndicador}>De 4 a 7 dias</p>
+                <p className={valorIndicador}>{avisosVencimentos.de4a7Dias.length}</p>
+              </div>
+            </div>
+            {resumo.valorVencido > 0 && (
+              <p className="text-xs font-medium text-red-700">Valor vencido: {moeda(resumo.valorVencido)}</p>
+            )}
+        {/* Avisos apenas informativos: nenhuma criação ou baixa automática. */}
+        {(avisosVencimentos.ate3Dias.length > 0 || avisosVencimentos.de4a7Dias.length > 0) && (
+        <section aria-labelledby="avisos-vencimento-titulo" className="space-y-2">
+          <div>
+            <h2 id="avisos-vencimento-titulo" className="text-base font-semibold">
+              Alertas antecipados de vencimento
+            </h2>
+
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            {[
+              { titulo: "Próximos 3 dias", itens: avisosVencimentos.ate3Dias },
+              { titulo: "De 4 a 7 dias", itens: avisosVencimentos.de4a7Dias },
+            ].filter((grupo) => grupo.itens.length > 0).map((grupo) => (
+              <div key={grupo.titulo} className="rounded-lg border bg-background p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Clock3 className="h-4 w-4 text-amber-700" />
+                    <h3 className="text-sm font-semibold">{grupo.titulo}</h3>
+                    <Badge variant="outline">{grupo.itens.length}</Badge>
+                  </div>
+                  <span className="text-sm font-semibold">
+                    {moeda(grupo.itens.reduce((total, item) => total + item.movimento.valor, 0))}
+                  </span>
+                </div>
+
+                {grupo.itens.length === 0 ? (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Nenhuma conta a pagar nessa faixa de vencimento.
+                  </p>
+                ) : (
+                  <div className="mt-3 divide-y">
+                    {grupo.itens.slice(0, 8).map(({ movimento, dias }) => (
+                      <div key={movimento.id} className="flex items-start justify-between gap-3 py-2 text-xs">
+                        <div className="min-w-0">
+                          <p className="break-words font-medium">{descricaoVisivel(movimento)}</p>
+                          <p className="mt-0.5 text-muted-foreground">
+                            {dataBrasileira(movimento.vencimento)} • em {dias} {dias === 1 ? "dia" : "dias"}
+                            {" • "}{movimento.contaBancaria?.nome || "Conta a definir"}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-semibold">{moeda(movimento.valor)}</span>
+                      </div>
+                    ))}
+                    {grupo.itens.length > 8 && (
+                      <p className="pt-2 text-xs text-muted-foreground">
+                        Mais {grupo.itens.length - 8} compromisso(s). Consulte a lista "A pagar" nesta agenda.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+        )}
+
+            <Tabs defaultValue="pagar" className="space-y-3">
+              <TabsList className="flex h-auto flex-wrap justify-start gap-1 p-1">
+                <TabsTrigger value="pagar" className="h-8 px-3 text-xs">A pagar ({contasPagar.length})</TabsTrigger>
+                <TabsTrigger value="receber" className="h-8 px-3 text-xs">A receber ({contasReceber.length})</TabsTrigger>
+                <TabsTrigger value="vencidas" className="h-8 px-3 text-xs">Vencidas ({vencidas.length})</TabsTrigger>
+                <TabsTrigger value="hoje" className="h-8 px-3 text-xs">Hoje ({hoje.length})</TabsTrigger>
+                <TabsTrigger value="futuras" className="h-8 px-3 text-xs">Futuras ({futuras.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value="pagar">{tabelaMovimentos(contasPagar)}</TabsContent>
+              <TabsContent value="receber">{tabelaMovimentos(contasReceber)}</TabsContent>
+              <TabsContent value="vencidas">{tabelaMovimentos(vencidas)}</TabsContent>
+              <TabsContent value="hoje">{tabelaMovimentos(hoje)}</TabsContent>
+              <TabsContent value="futuras">{tabelaMovimentos(futuras)}</TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       </div>

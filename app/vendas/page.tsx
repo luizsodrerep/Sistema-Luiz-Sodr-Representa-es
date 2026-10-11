@@ -1694,6 +1694,14 @@ export default function VendasPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                            href="/vendas/importar-pedido/lote"
+                            className="inline-flex h-9 items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 text-sm font-semibold text-emerald-900 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                        >
+                            <FileCheck2 className="h-4 w-4" />
+                            Importar Pedido Oficial
+                        </Link>
+
                         <SpreadsheetHandler
                             moduleType="vendas"
                             data={

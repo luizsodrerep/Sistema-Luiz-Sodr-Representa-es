@@ -6337,3 +6337,124 @@ Na proxima conversa:
 10. atualizar GitHub e Documento Mestre ao final de cada lote relevante.
 
 ------------------------------------------------------------------------
+## 69. PADRÃO VISUAL GLOBAL DO CRM — DECISÃO DE 10/10/2026
+
+Este capítulo registra uma diretriz visual aprovada durante a revisão da ficha
+da Representada Gate 72 e do planejamento Financeiro 360°. Complementa o
+histórico anterior e **não significa que todas as telas já foram alteradas**.
+O padrão será aplicado gradualmente, quando cada tela receber manutenção.
+
+### 69.1 Objetivo
+
+Manter o CRM limpo, profissional, uniforme e fácil de operar no notebook,
+celular e tablet. Priorizar a informação útil e a ação correta, sem multiplicar
+cartões, botões, explicações ou destaques visuais desnecessários.
+
+### 69.2 Hierarquia da página
+
+- **Cabeçalho:** título, identificação do registro e ações principais.
+- **Área central:** conteúdo prioritário, indicadores, registros, tabelas e
+  controles operacionais.
+- **Lateral direita:** informações complementares, como Contato, Endereço,
+  Situação Comercial e observações.
+- A lateral direita **não deve competir visualmente com a área central**.
+- Quando a largura for insuficiente, os blocos devem se adaptar ao dispositivo,
+  sem cortar informações essenciais ou prejudicar a leitura.
+
+### 69.3 Tipografia de referência
+
+| Elemento | Tamanho de referência | Classe Tailwind sugerida |
+| --- | --- | --- |
+| Título principal da página | 24 px | `text-2xl font-semibold` |
+| Título de cartão central | 20–24 px | `text-xl` ou `text-2xl` |
+| Conteúdo principal | 16 px | `text-base` |
+| Título de cartão lateral | 18 px | `text-lg font-semibold` |
+| Conteúdo da lateral direita | 14 px | `text-sm` |
+| Rótulos e metadados auxiliares | 12–14 px | `text-xs` ou `text-sm` |
+| Valores financeiros e dados relevantes | 16 px ou mais | `text-base font-medium` |
+
+Os tamanhos são referências para as próximas alterações, e não autorização
+para substituir indiscriminadamente estilos existentes. Manter contraste,
+acessibilidade, legibilidade e suporte ao zoom. Dados essenciais não devem
+ficar pequenos demais no celular.
+
+### 69.4 Cartões, margens e espaçamentos
+
+- Preferir bordas sutis, fundo neutro e cantos consistentes.
+- Referências: `rounded-xl`, `border`, `p-4` e, quando houver espaço,
+  `md:p-6`; espaçamento interno com `gap-2`, `gap-3` ou `gap-4`.
+- Na lateral direita, reduzir o tamanho dos títulos e dos textos, mantendo
+  alinhamento e respiro adequados.
+- Evitar áreas vazias excessivas, repetição de informações e excesso de cores.
+- Usar destaque visual apenas para estados, alertas e ações relevantes.
+
+### 69.5 Indicadores resumidos — uma única linha
+
+- Quando houver uma sequência curta de quadros-resumo, preferir **uma linha
+  horizontal**, com cartões compactos e alinhados entre si.
+- No notebook, distribuir os cartões no espaço disponível com larguras
+  proporcionais e alturas uniformes.
+- No celular, quando não couberem lado a lado, manter uma linha com rolagem
+  horizontal acessível; não comprimir o texto nem criar quebras arbitrárias.
+- Usar títulos curtos, subtítulos discretos e poucas informações por quadro.
+- Manter ordem previsível e evitar atalhos repetidos para a mesma função.
+- Exemplo **planejado, ainda não implementado**: Financeiro 360° com quatro
+  quadros para Representações, Pessoal / Casa, Uber e Casa do Quedas.
+  Investimentos e o recebimento pendente da Casa da Praia terão controles
+  distintos, sem criar um quadro de despesas recorrentes para imóvel vendido.
+
+### 69.6 Botões e ações
+
+- Mostrar somente ações necessárias e úteis ao processo em questão.
+- Agrupar ações relacionadas em um único local, preferencialmente na mesma
+  linha, com adaptação adequada à tela do celular.
+- Não duplicar botões ou criar painéis separados para repetir a mesma função.
+- Utilizar rótulos diretos: `Abrir PDF`, `Baixar PDF`, `Compartilhar`.
+- Reservar destaque maior à ação prioritária; distinguir ações destrutivas.
+- Garantir alvos de toque confortáveis, navegação por teclado, retorno de
+  carregamento e mensagens de erro claras.
+
+### 69.7 Tabelas, listas e formulários
+
+- Manter títulos de colunas objetivos e dados prioritários em destaque.
+- Alinhar corretamente moeda e quantidades, usando formatos consistentes.
+- Exibir informações secundárias com tipografia e contraste discretos.
+- No celular, permitir rolagem horizontal quando necessário, preservando
+  acesso aos dados e às ações essenciais.
+- Em formulários, usar rótulos legíveis e validações objetivas.
+- Não mostrar dados fictícios como informações operacionais. Diferenciar
+  `Sem dados`, `Não integrado` e resultado real igual a zero.
+
+### 69.8 Implantação progressiva — regra permanente
+
+- Aplicar o padrão **quando uma tela for trabalhada por necessidade real**.
+  Não executar reforma visual massiva neste momento.
+- Preservar funcionalidades, permissões, históricos, dados reais e integrações.
+- Antes de substituir arquivos, conferir a versão **local atual**, que pode ser
+  mais recente do que o código publicado no GitHub.
+- Preferir mudanças localizadas. Evitar alterar estilos globais ou componentes
+  compartilhados sem análise prévia do impacto nas demais telas.
+- Validar TypeScript com `npx tsc --noEmit` e conferir o resultado visual no
+  notebook e no celular após cada atualização pertinente.
+- Não alterar PostgreSQL, Prisma, migrations ou infraestrutura para realizar
+  uma melhoria exclusivamente visual.
+- Reutilizar o padrão de telas aprovadas, sem copiar código cegamente.
+
+### 69.9 Referências de interface aprovadas
+
+- **Representadas:** conteúdo comercial na área central; Contato, Endereço e
+  demais informações auxiliares na lateral direita, em fonte mais compacta.
+- **Clientes / Pedidos Oficiais:** identidade visual original, descrição
+  objetiva e botões reunidos em um único local.
+- **Financeiro 360°:** cartões de resumo compactos, alinhados em uma linha no
+  notebook e com rolagem horizontal no celular quando necessário.
+- **Identidade da empresa:** utilizar somente o logotipo verdadeiro já
+  armazenado no projeto. Não gerar nem substituir marcas sem solicitação.
+
+### 69.10 Estado desta atualização
+
+Esta entrega é **somente documental**. Registra o guia e o padrão para as
+próximas etapas. Não modifica, neste momento, telas, banco, Prisma, saldos,
+vendas, pedidos oficiais ou compartilhamento de documentos.
+
+------------------------------------------------------------------------

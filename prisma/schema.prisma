@@ -12,6 +12,11 @@ datasource db {
 // ======================================================
 
 model Escritorio {
+  importacoesBancarias      ImportacaoExtratoBancario[]
+  movimentosBancarios       MovimentoExtratoBancario[]
+  documentosComerciais      ImportacaoDocumentoComercial[]
+  itensDocumentosComerciais ItemDocumentoComercial[]
+
   id String @id @default(cuid())
 
   nome String
@@ -27,19 +32,27 @@ model Escritorio {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  empresas          EmpresaEscritorio[]
-  usuarios          Usuario[]
-  clientes          Cliente[]
-  representadas     Representada[]
-  vendas            Venda[]
-  interacoes        Interacao[]
-  orcamentos        Orcamento[]
-  contasBancarias   ContaBancaria[]
-  financeiros       Financeiro[]
-  obrigacoes        ObrigacaoOperacional[]
-  auditorias        Auditoria[]
-  tarefas           Tarefa[]
-  catalogos         Catalogo[]
+  empresas           EmpresaEscritorio[]
+  usuarios           Usuario[]
+  clientes           Cliente[]
+  representadas      Representada[]
+  vendas             Venda[]
+  interacoes         Interacao[]
+  orcamentos         Orcamento[]
+  contasBancarias    ContaBancaria[]
+  financeiros        Financeiro[]
+  cartoesCredito     CartaoCredito[]
+  comprasCartao      CartaoCompra[]
+  faturasCartao      CartaoFatura[]
+  parcelasCartao     CartaoParcela[]
+  pagamentosFatura   CartaoPagamentoFatura[]
+  acordosFinanceiros AcordoFinanceiro[]
+  parcelasAcordo     AcordoParcela[]
+  bensFinanceiros    BemFinanceiro[]
+  obrigacoes         ObrigacaoOperacional[]
+  auditorias         Auditoria[]
+  tarefas            Tarefa[]
+  catalogos          Catalogo[]
   atencoesComerciais AtencaoComercialCliente[]
   metasRepresentadas MetaRepresentada[]
 
@@ -103,6 +116,10 @@ model EmpresaEscritorio {
 // ======================================================
 
 model Usuario {
+  extratosImportados   ImportacaoExtratoBancario[]    @relation("ExtratoImportadoPor")
+  documentosImportados ImportacaoDocumentoComercial[] @relation("DocumentoImportadoPor")
+  documentosConferidos ImportacaoDocumentoComercial[] @relation("DocumentoConferidoPor")
+
   id String @id @default(cuid())
 
   escritorioId String
@@ -138,8 +155,8 @@ model Usuario {
   clientesResponsavel   Cliente[]             @relation("ClienteResponsavelPrincipal")
   participacoesClientes ClienteParticipacao[]
 
-  vendasCriadas     Venda[] @relation("VendaCriadaPor")
-  vendasResponsavel Venda[] @relation("VendaResponsavel")
+  vendasCriadas     Venda[]       @relation("VendaCriadaPor")
+  vendasResponsavel Venda[]       @relation("VendaResponsavel")
   vendaEventos      VendaEvento[]
 
   interacoesCriadas     Interacao[] @relation("InteracaoCriadaPor")
@@ -155,9 +172,9 @@ model Usuario {
 
   catalogosCriados Catalogo[] @relation("CatalogoCriadoPor")
 
-  atencoesComerciaisCriadas   AtencaoComercialCliente[] @relation("AtencaoComercialCriadaPor")
+  atencoesComerciaisCriadas    AtencaoComercialCliente[] @relation("AtencaoComercialCriadaPor")
   atencoesComerciaisResolvidas AtencaoComercialCliente[] @relation("AtencaoComercialResolvidaPor")
-  metasRepresentadasCriadas   MetaRepresentada[]         @relation("MetaRepresentadaCriadaPor")
+  metasRepresentadasCriadas    MetaRepresentada[]        @relation("MetaRepresentadaCriadaPor")
 
   permissoes UsuarioPermissao[]
 
@@ -173,6 +190,8 @@ model Usuario {
 // ======================================================
 
 model Cliente {
+  documentosComerciais ImportacaoDocumentoComercial[]
+
   id String @id @default(cuid())
 
   escritorioId String
@@ -227,13 +246,13 @@ model Cliente {
 
   participantes ClienteParticipacao[]
 
-  interacoes          Interacao[]
-  orcamentos          Orcamento[]
-  vendas              Venda[]
-  regrasComerciais    RegraComercialRepresentada[]
-  financeiros         Financeiro[]
-  tarefas             Tarefa[]
-  atencoesComerciais  AtencaoComercialCliente[]
+  interacoes         Interacao[]
+  orcamentos         Orcamento[]
+  vendas             Venda[]
+  regrasComerciais   RegraComercialRepresentada[]
+  financeiros        Financeiro[]
+  tarefas            Tarefa[]
+  atencoesComerciais AtencaoComercialCliente[]
 
   @@index([escritorioId])
   @@index([originadoPorId])
@@ -328,6 +347,8 @@ model ClienteParticipacao {
 // ======================================================
 
 model Representada {
+  documentosComerciais ImportacaoDocumentoComercial[]
+
   id String @id @default(cuid())
 
   escritorioId String
@@ -476,7 +497,7 @@ model Catalogo {
   descricao String?
 
   nomeArquivoOriginal String
-  caminhoArquivo      String @unique
+  caminhoArquivo      String  @unique
   tipoMime            String
   extensao            String?
   tamanhoBytes        Int
@@ -631,6 +652,8 @@ model RegraComercialRepresentada {
 // ======================================================
 
 model Venda {
+  documentosOficiais ImportacaoDocumentoComercial[]
+
   id String @id @default(cuid())
 
   // Identificacao permanente do CRM:
@@ -1085,6 +1108,9 @@ model NFComissao {
 // ======================================================
 
 model ContaBancaria {
+  importacoesExtratos ImportacaoExtratoBancario[]
+  movimentosExtratos  MovimentoExtratoBancario[]
+
   id String @id @default(cuid())
 
   escritorioId String
@@ -1120,6 +1146,7 @@ model ContaBancaria {
   recebimentosRepresentadas RepresentadaContaRecebimento[]
   notasComissao             NFComissao[]
   financeiros               Financeiro[]
+  cartoesPagos              CartaoCredito[]                @relation("CartaoContaPagamento")
 
   @@index([escritorioId])
   @@index([empresaEscritorioId])
@@ -1318,6 +1345,8 @@ model Orcamento {
 // ======================================================
 
 model Financeiro {
+  movimentosBancariosVinculados MovimentoExtratoBancario[]
+
   id String @id @default(cuid())
 
   escritorioId        String
@@ -1372,6 +1401,9 @@ model Financeiro {
   contaBancaria ContaBancaria? @relation(fields: [contaBancariaId], references: [id], onDelete: SetNull)
 
   obrigacao ObrigacaoOperacional? @relation(fields: [obrigacaoId], references: [id], onDelete: SetNull)
+
+  pagamentosFatura CartaoPagamentoFatura[]
+  baixasAcordo     AcordoParcela[]         @relation("AcordoParcelaBaixa")
 
   @@index([escritorioId])
   @@index([empresaEscritorioId])
@@ -1592,4 +1624,365 @@ model Auditoria {
   @@index([entidade])
   @@index([entidadeId])
   @@index([criadoEm])
+}
+
+// ======================================================
+// GESTAO FINANCEIRA PF/PJ - CARTOES E COMPROMISSOS
+// Modelagem aditiva: nao substitui Financeiro nem ContaBancaria.
+// A criacao das tabelas depende de migration revisada e autorizada.
+// Montantes monetarios novos usam Decimal(14,2).
+// ======================================================
+
+model CartaoCredito {
+  id                        String    @id @default(cuid())
+  escritorioId              String
+  nome                      String
+  emissor                   String
+  titularidade              String // PF ou PJ; validacao obrigatoria na API
+  titular                   String?
+  finalCartao               String? // Somente ultimos quatro digitos; NUNCA guardar numero completo ou CVV
+  bandeira                  String?
+  contaPagamentoId          String?
+  diaFechamento             Int? // 1 a 31, validado pela API; nao e garantia do ciclo
+  diaVencimento             Int? // 1 a 31, validado pela API; datas reais nas faturas
+  melhorDiaInformado        Int?
+  limiteTotal               Decimal?  @db.Decimal(14, 2)
+  limiteDisponivelInformado Decimal?  @db.Decimal(14, 2)
+  limiteConsultadoEm        DateTime?
+  ativo                     Boolean   @default(true)
+  observacoes               String?
+  criadoEm                  DateTime  @default(now())
+  atualizadoEm              DateTime  @updatedAt
+
+  escritorio     Escritorio     @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+  contaPagamento ContaBancaria? @relation("CartaoContaPagamento", fields: [contaPagamentoId], references: [id], onDelete: SetNull)
+  compras        CartaoCompra[]
+  faturas        CartaoFatura[]
+
+  @@index([escritorioId, ativo])
+  @@index([contaPagamentoId])
+}
+
+model CartaoCompra {
+  id                String   @id @default(cuid())
+  escritorioId      String
+  cartaoId          String
+  dataCompra        DateTime
+  descricao         String
+  categoria         String?
+  natureza          String // Pessoal, Empresarial, Mista; validar API
+  valorTotal        Decimal  @db.Decimal(14, 2)
+  numeroParcelas    Int
+  estabelecimento   String?
+  referenciaExterna String? // opcional, para auxiliar verificacao de duplicidade
+  status            String   @default("Ativa")
+  observacoes       String?
+  criadoEm          DateTime @default(now())
+  atualizadoEm      DateTime @updatedAt
+
+  escritorio Escritorio      @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+  cartao     CartaoCredito   @relation(fields: [cartaoId], references: [id], onDelete: Restrict)
+  parcelas   CartaoParcela[]
+
+  @@index([escritorioId, dataCompra])
+  @@index([cartaoId, status])
+  @@index([referenciaExterna])
+}
+
+model CartaoFatura {
+  id             String    @id @default(cuid())
+  escritorioId   String
+  cartaoId       String
+  competencia    String // Ex.: 2026-10; referente ao ciclo, nao a compra
+  fechamentoEm   DateTime?
+  vencimentoEm   DateTime
+  valorInformado Decimal?  @db.Decimal(14, 2) // Valor do banco, nao receita/despesa adicional
+  status         String    @default("Aberta")
+  observacoes    String?
+  criadoEm       DateTime  @default(now())
+  atualizadoEm   DateTime  @updatedAt
+
+  escritorio Escritorio              @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+  cartao     CartaoCredito           @relation(fields: [cartaoId], references: [id], onDelete: Restrict)
+  parcelas   CartaoParcela[]
+  pagamentos CartaoPagamentoFatura[]
+
+  @@unique([cartaoId, competencia])
+  @@index([escritorioId, vencimentoEm])
+  @@index([cartaoId, status])
+}
+
+model CartaoParcela {
+  id                 String    @id @default(cuid())
+  escritorioId       String
+  compraId           String
+  faturaId           String? // So vincular apos conferir o ciclo real do emissor
+  numero             Int
+  valor              Decimal   @db.Decimal(14, 2)
+  vencimentoPrevisto DateTime?
+  status             String    @default("Prevista")
+  criadoEm           DateTime  @default(now())
+  atualizadoEm       DateTime  @updatedAt
+
+  escritorio Escritorio    @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+  compra     CartaoCompra  @relation(fields: [compraId], references: [id], onDelete: Restrict)
+  fatura     CartaoFatura? @relation(fields: [faturaId], references: [id], onDelete: SetNull)
+
+  @@unique([compraId, numero])
+  @@index([escritorioId, vencimentoPrevisto])
+  @@index([faturaId])
+  @@index([status])
+}
+
+model CartaoPagamentoFatura {
+  id           String   @id @default(cuid())
+  escritorioId String
+  faturaId     String
+  financeiroId String   @unique // Uma saida realizada existente no Financeiro, sem duplicar caixa
+  valor        Decimal  @db.Decimal(14, 2)
+  pagoEm       DateTime
+  criadoEm     DateTime @default(now())
+
+  escritorio Escritorio   @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+  fatura     CartaoFatura @relation(fields: [faturaId], references: [id], onDelete: Restrict)
+  financeiro Financeiro   @relation(fields: [financeiroId], references: [id], onDelete: Restrict)
+
+  @@index([escritorioId, pagoEm])
+  @@index([faturaId])
+}
+
+// Contratos, acordos verbais, financiamentos, emprestimos e boletos.
+// NAO replicar automatico os compromissos ja existentes no Financeiro.
+model AcordoFinanceiro {
+  id                  String    @id @default(cuid())
+  escritorioId        String
+  bemId               String?
+  nome                String
+  tipo                String // Financiamento, Emprestimo, Acordo, Boleto, Informal, Outro
+  natureza            String // Pessoal ou Empresarial
+  credor              String?
+  documentoReferencia String?
+  formalizacao        String? // Escrita, Verbal, Aplicativo, Outro
+  valorOriginal       Decimal?  @db.Decimal(14, 2)
+  valorNegociado      Decimal?  @db.Decimal(14, 2)
+  descontoNegociado   Decimal?  @db.Decimal(14, 2)
+  dataInicio          DateTime?
+  status              String    @default("Ativo")
+  observacoes         String?
+  criadoEm            DateTime  @default(now())
+  atualizadoEm        DateTime  @updatedAt
+
+  escritorio Escritorio      @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+  bem        BemFinanceiro?  @relation(fields: [bemId], references: [id], onDelete: SetNull)
+  parcelas   AcordoParcela[]
+
+  @@index([escritorioId, status])
+  @@index([bemId])
+  @@index([tipo])
+}
+
+model AcordoParcela {
+  id                String    @id @default(cuid())
+  escritorioId      String
+  acordoId          String
+  numero            Int
+  valorPrevisto     Decimal   @db.Decimal(14, 2)
+  vencimento        DateTime
+  status            String    @default("Pendente")
+  financeiroBaixaId String?   @unique // Liga ao Financeiro ja realizado; nao repetir a saida
+  valorPago         Decimal?  @db.Decimal(14, 2)
+  pagoEm            DateTime?
+  observacoes       String?
+  criadoEm          DateTime  @default(now())
+  atualizadoEm      DateTime  @updatedAt
+
+  escritorio      Escritorio       @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+  acordo          AcordoFinanceiro @relation(fields: [acordoId], references: [id], onDelete: Restrict)
+  financeiroBaixa Financeiro?      @relation("AcordoParcelaBaixa", fields: [financeiroBaixaId], references: [id], onDelete: SetNull)
+
+  @@unique([acordoId, numero])
+  @@index([escritorioId, vencimento])
+  @@index([status])
+}
+
+// Cadastro patrimonial apenas informativo; nao gera saldo de caixa.
+model BemFinanceiro {
+  id              String    @id @default(cuid())
+  escritorioId    String
+  nome            String
+  tipo            String // Imovel, Veiculo, Moto, Equipamento, Outro
+  titularidade    String // PF ou PJ
+  identificacao   String? // Identificacao nao sensivel, se necessaria
+  adquiridoEm     DateTime?
+  valorAquisicao  Decimal?  @db.Decimal(14, 2)
+  valorEstimado   Decimal?  @db.Decimal(14, 2)
+  valorEstimadoEm DateTime?
+  status          String    @default("Ativo")
+  observacoes     String?
+  criadoEm        DateTime  @default(now())
+  atualizadoEm    DateTime  @updatedAt
+
+  escritorio Escritorio         @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+  acordos    AcordoFinanceiro[]
+
+  @@index([escritorioId, status])
+  @@index([tipo])
+}
+
+// ======================================================
+// IMPORTACAO E CONCILIACAO BANCARIA
+// Importar extrato NAO movimenta o caixa do Financeiro.
+// Arquivo original deve ficar em armazenamento privado.
+// ======================================================
+
+model ImportacaoExtratoBancario {
+  id              String  @id @default(cuid())
+  escritorioId    String
+  contaBancariaId String
+  importadoPorId  String?
+
+  nomeArquivo           String
+  formatoArquivo        String // OFX, CSV, PDF ou Outro; validar na API
+  hashArquivo           String // SHA-256 do arquivo original, calculado no servidor
+  caminhoArquivo        String? // Privado; nunca usar /public
+  tamanhoBytes          Int?
+  periodoInicio         DateTime?
+  periodoFim            DateTime?
+  saldoInicialInformado Decimal?  @db.Decimal(14, 2)
+  saldoFinalInformado   Decimal?  @db.Decimal(14, 2)
+  dataSaldoFinal        DateTime?
+  status                String    @default("Importado") // Importado, EmRevisao, Conciliado, Rejeitado
+  avisos                Json?
+  importadoEm           DateTime  @default(now())
+  atualizadoEm          DateTime  @updatedAt
+
+  escritorio    Escritorio                 @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+  contaBancaria ContaBancaria              @relation(fields: [contaBancariaId], references: [id], onDelete: Restrict)
+  importadoPor  Usuario?                   @relation("ExtratoImportadoPor", fields: [importadoPorId], references: [id], onDelete: SetNull)
+  movimentos    MovimentoExtratoBancario[]
+
+  // Reimportacao do MESMO arquivo para a mesma conta nao duplica importacao.
+  @@unique([contaBancariaId, hashArquivo])
+  @@index([escritorioId, importadoEm])
+  @@index([contaBancariaId, periodoInicio, periodoFim])
+  @@index([status])
+}
+
+model MovimentoExtratoBancario {
+  id              String  @id @default(cuid())
+  escritorioId    String
+  importacaoId    String
+  contaBancariaId String
+  financeiroId    String?
+
+  data               DateTime
+  descricao          String
+  tipo               String // Entrada ou Saida (validado pelo leitor)
+  valor              Decimal   @db.Decimal(14, 2) // Valor positivo; direcao em tipo
+  identificadorBanco String? // FITID, E2E ID ou outro identificador real
+  referenciaBanco    String?
+  indiceNoArquivo    Int // Preserva linhas repetidas no mesmo arquivo
+  status             String    @default("NaoConciliado")
+  // NaoConciliado, Candidato, Conciliado, Divergente, Ignorado
+  confianca          Int? // 0 a 100; sugestao nao equivale a conciliacao
+  observacoes        String?
+  conciliadoEm       DateTime?
+  criadoEm           DateTime  @default(now())
+  atualizadoEm       DateTime  @updatedAt
+
+  escritorio    Escritorio                @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+  importacao    ImportacaoExtratoBancario @relation(fields: [importacaoId], references: [id], onDelete: Restrict)
+  contaBancaria ContaBancaria             @relation(fields: [contaBancariaId], references: [id], onDelete: Restrict)
+  financeiro    Financeiro?               @relation(fields: [financeiroId], references: [id], onDelete: SetNull)
+
+  // Impede repeticao de uma linha na mesma importacao.
+  @@unique([importacaoId, indiceNoArquivo])
+  // A mesma transacao pode aparecer em extratos de periodos sobrepostos.
+  // Resolver com verificacao por conta e identificador; nao impor unicidade
+  // para referencias ausentes ou reutilizadas pelo banco.
+  @@index([contaBancariaId, identificadorBanco])
+  @@index([contaBancariaId, data, tipo, valor])
+  @@index([escritorioId, status])
+  @@index([financeiroId])
+}
+
+// ======================================================
+// IMPORTACAO DE DOCUMENTOS OFICIAIS DE PEDIDOS
+// Documento importado nao cria ou confirma Venda sozinho.
+// Os itens e valores extraidos passam por conferência.
+// ======================================================
+
+model ImportacaoDocumentoComercial {
+  id             String  @id @default(cuid())
+  escritorioId   String
+  importadoPorId String?
+  conferidoPorId String?
+  representadaId String?
+  clienteId      String?
+  vendaId        String? // Vínculo com Venda existente, quando identificada
+
+  tipoDocumento       String    @default("PedidoOficial")
+  nomeArquivo         String
+  formatoArquivo      String
+  hashArquivo         String
+  caminhoArquivo      String? // Armazenamento protegido fora de /public
+  tamanhoBytes        Int?
+  numeroPedidoExterno String?
+  referenciaCliente   String?
+  dataPedido          DateTime?
+  dataEntrega         DateTime?
+  condicaoPagamento   String?
+  valorProdutos       Decimal?  @db.Decimal(14, 2)
+  valorDescontos      Decimal?  @db.Decimal(14, 2)
+  valorTotalDocumento Decimal?  @db.Decimal(14, 2)
+  valorTotalConferido Decimal?  @db.Decimal(14, 2)
+  moeda               String    @default("BRL")
+  status              String    @default("PendenteRevisao")
+  // PendenteRevisao, Vinculado, Divergente, Ignorado
+  dadosExtraidos      Json? // Dados brutos e referencias sem descartar informacao
+  divergencias        Json? // Ex.: total no rodape inconsistente
+  observacoes         String?
+  conferidoEm         DateTime?
+  importadoEm         DateTime  @default(now())
+  atualizadoEm        DateTime  @updatedAt
+
+  escritorio   Escritorio               @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+  importadoPor Usuario?                 @relation("DocumentoImportadoPor", fields: [importadoPorId], references: [id], onDelete: SetNull)
+  conferidoPor Usuario?                 @relation("DocumentoConferidoPor", fields: [conferidoPorId], references: [id], onDelete: SetNull)
+  representada Representada?            @relation(fields: [representadaId], references: [id], onDelete: SetNull)
+  cliente      Cliente?                 @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  venda        Venda?                   @relation(fields: [vendaId], references: [id], onDelete: SetNull)
+  itens        ItemDocumentoComercial[]
+
+  // Um PDF repetido nao cria dois documentos na mesma empresa.
+  // Numeros externos se repetem entre representadas, nunca unique global.
+  @@unique([escritorioId, hashArquivo])
+  @@index([escritorioId, importadoEm])
+  @@index([representadaId, numeroPedidoExterno])
+  @@index([clienteId])
+  @@index([vendaId])
+  @@index([status])
+}
+
+model ItemDocumentoComercial {
+  id             String    @id @default(cuid())
+  escritorioId   String
+  documentoId    String
+  numeroLinha    Int
+  codigoProduto  String?
+  descricao      String
+  unidade        String?
+  quantidade     Decimal?  @db.Decimal(16, 4)
+  precoUnitario  Decimal?  @db.Decimal(16, 4)
+  valorTotal     Decimal?  @db.Decimal(14, 2)
+  dataEntrega    DateTime?
+  dadosOriginais Json?
+  criadoEm       DateTime  @default(now())
+
+  escritorio Escritorio                   @relation(fields: [escritorioId], references: [id], onDelete: Restrict)
+  documento  ImportacaoDocumentoComercial @relation(fields: [documentoId], references: [id], onDelete: Restrict)
+
+  @@unique([documentoId, numeroLinha])
+  @@index([escritorioId])
+  @@index([documentoId])
 }
