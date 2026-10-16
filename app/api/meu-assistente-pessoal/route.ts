@@ -286,9 +286,7 @@ function nomeResponsavel(
     | null
 ) {
   return (
-    responsavel?.nome ||
-    criadoPor?.nome ||
-    null
+    responsavel?.nome || null
   )
 }
 
@@ -650,6 +648,22 @@ export async function GET() {
               true,
 
             status: true,
+
+            valorTotal: true,
+
+            // Consulta somente os dados necessários para verificar
+            // se a previsão já foi atendida por faturamentos reais.
+            faturamentos: {
+              orderBy: {
+                dataFaturamento: "desc",
+              },
+              select: {
+                status: true,
+                valorFaturado: true,
+                faturamentoParcial: true,
+                saldoPedido: true,
+              },
+            },
 
             previsaoFaturamento:
               true,
@@ -1143,9 +1157,10 @@ export async function GET() {
       /*
        * PREVISÃO DE FATURAMENTO
        *
-       * Quando existe uma data objetiva,
-       * o Assistente passa a acompanhar
-       * o compromisso operacional.
+       * Um prazo vencido não é prova de falta de faturamento.
+       * Consulta os faturamentos da própria venda, mas não
+       * considera uma NF parcial como conclusão integral.
+       * Nenhum registro comercial é alterado por esta leitura.
        */
       if (
         venda.previsaoFaturamento
@@ -1155,60 +1170,129 @@ export async function GET() {
             venda.previsaoFaturamento
           )
 
-        pendencias.push({
-          id:
-            `venda-faturamento-${venda.id}`,
+        // Usamos centavos para comparar os totais, evitando
+        // resíduos de ponto flutuante dos campos Float existentes.
+        const faturamentosConfirmados =
+          venda.faturamentos.filter(
+            (faturamento) =>
+              faturamento.status.trim().toLowerCase() === "faturado" &&
+              Number.isFinite(faturamento.valorFaturado) &&
+              faturamento.valorFaturado > 0
+          )
 
-          modulo:
-            "vendas",
-
-          entidadeId:
-            venda.id,
-
-          codigo:
-            codigoVenda(
-              venda.numeroSequencial
-            ),
-
-          titulo:
-            situacao ===
-            "atrasado"
-              ? "Previsão de faturamento vencida"
-              : "Previsão de faturamento",
-
-          descricao:
-            "A Venda possui previsão de faturamento registrada e ainda exige acompanhamento operacional.",
-
-          relacionadoA:
-            relacionados.length >
+        const faturadoCentavos =
+          faturamentosConfirmados.reduce(
+            (total, faturamento) =>
+              total + Math.round(faturamento.valorFaturado * 100),
             0
-              ? relacionados.join(
-                  " • "
-                )
-              : null,
+          )
 
-          responsavel,
+        const totalVendaCentavos =
+          venda.valorTotal !== null &&
+          Number.isFinite(venda.valorTotal) &&
+          venda.valorTotal > 0
+            ? Math.round(venda.valorTotal * 100)
+            : null
 
-          dataReferencia:
-            venda.previsaoFaturamento.toISOString(),
+        // Uma indicação explícita de saldo em aberto prevalece
+        // sobre a soma das NFs; havendo divergência, requer revisão.
+        const ultimoConfirmado = faturamentosConfirmados[0]
+        const saldoDeclaradoEmAberto =
+          ultimoConfirmado?.saldoPedido != null &&
+          ultimoConfirmado.saldoPedido > 0.009
 
-          situacaoTemporal:
-            situacao,
+        // Nota mais recente assinalada como parcial, sem saldo
+        // informado: não é evidência suficiente de conclusão.
+        const parcialSemSaldoConfirmado =
+          ultimoConfirmado?.faturamentoParcial === true &&
+          ultimoConfirmado.saldoPedido === null
 
-          prioridade:
-            prioridadePorSituacao(
-              situacao
-            ),
+        const faturamentoIntegralComprovado =
+          totalVendaCentavos !== null &&
+          faturadoCentavos >= totalVendaCentavos &&
+          !saldoDeclaradoEmAberto &&
+          !parcialSemSaldoConfirmado
 
-          status:
-            venda.status,
+        const moeda = (centavos: number) =>
+          (centavos / 100).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          })
 
-          href:
-            `/vendas/${venda.id}`,
+        const saldoCalculado =
+          totalVendaCentavos !== null
+            ? Math.max(0, totalVendaCentavos - faturadoCentavos)
+            : null
 
-          origem:
-            "Venda",
-        })
+        const descricaoFaturamento =
+          faturamentosConfirmados.length > 0
+            ? totalVendaCentavos === null
+              ? `Há ${moeda(faturadoCentavos)} em faturamentos registrados, mas a Venda não possui valor total válido para confirmar sua conclusão.`
+              : saldoDeclaradoEmAberto || parcialSemSaldoConfirmado
+                ? `Faturamentos registrados: ${moeda(faturadoCentavos)}. Existe indicação de faturamento parcial ou saldo pendente; confira a Venda antes de encerrar a cobrança.`
+                : `Faturado: ${moeda(faturadoCentavos)}. Saldo estimado a faturar: ${moeda(saldoCalculado ?? 0)}.`
+            : venda.faturamentos.length > 0
+              ? "Existem registros de faturamento sem confirmação de status Faturado; confira a Venda."
+              : "A Venda possui previsão de faturamento registrada e ainda exige acompanhamento operacional."
+
+        // Apenas a previsão totalmente comprovada deixa de gerar
+        // pendência. Faturamentos parciais e dados inconclusivos
+        // mantêm a responsabilidade e o alerta originais.
+        if (!faturamentoIntegralComprovado) {
+          pendencias.push({
+            id:
+              `venda-faturamento-${venda.id}`,
+
+            modulo:
+              "vendas",
+
+            entidadeId:
+              venda.id,
+
+            codigo:
+              codigoVenda(
+                venda.numeroSequencial
+              ),
+
+            titulo:
+              situacao ===
+              "atrasado"
+                ? "Previsão de faturamento vencida"
+                : "Previsão de faturamento",
+
+            descricao: descricaoFaturamento,
+
+            relacionadoA:
+              relacionados.length >
+              0
+                ? relacionados.join(
+                    " • "
+                  )
+                : null,
+
+            responsavel,
+
+            dataReferencia:
+              venda.previsaoFaturamento.toISOString(),
+
+            situacaoTemporal:
+              situacao,
+
+            prioridade:
+              prioridadePorSituacao(
+                situacao
+              ),
+
+            status:
+              venda.status,
+
+            href:
+              `/vendas/${venda.id}`,
+
+            origem:
+              "Venda",
+          })
+        }
       }
     }
 

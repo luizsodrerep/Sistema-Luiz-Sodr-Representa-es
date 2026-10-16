@@ -6458,3 +6458,61 @@ próximas etapas. Não modifica, neste momento, telas, banco, Prisma, saldos,
 vendas, pedidos oficiais ou compartilhamento de documentos.
 
 ------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------
+## 70. CONSOLIDAÇÃO TÉCNICA E CONTINUIDADE — 16/10/2026
+
+### 70.1 Escopo e grau de confirmação
+
+Este capítulo registra a inspeção de alterações locais em 16/10/2026. Distinguir rigorosamente: **identificado no código**, **verificado por comando**, **observado no Android** e **pendente de teste**. A inspeção de diferenças e a aprovação do TypeScript não equivalem à validação funcional em produção.
+
+O Git estava na branch `main`. Após `git fetch origin`, `git rev-list --left-right --count main...origin/main` retornou `0 0`: históricos local e remoto sincronizados naquele instante, **antes da publicação das alterações descritas aqui**. Não presumir que esse resultado continue válido após novas alterações. O comando `npx tsc --noEmit` terminou sem erros de TypeScript na sessão de 16/10/2026. Não foram executados testes integrados que comprovem funcionamento de todos os fluxos.
+
+### 70.2 Inventário de alterações locais auditadas
+
+Seis arquivos já rastreados estavam modificados: `app/api/financeiro/route.ts`, `app/api/meu-assistente-pessoal/route.ts`, `app/api/tarefas/[id]/route.ts`, `app/financeiro/importar-comprovante/page.tsx`, `app/interacoes/[id]/page.tsx` e `components/alerta-critico-global.tsx`. Cinco arquivos ainda não rastreados: `app/api/central-documentos/route.ts`, `app/central-documentos/page.tsx`, `app/manifest.ts`, `public/branding/logo-lsr-192.png` e `public/branding/logo-lsr-512.png`. Esta lista é um retrato da auditoria, não uma garantia do estado futuro do repositório.
+
+### 70.3 Financeiro — importação de comprovante Pix já pago
+
+A API `app/api/financeiro/route.ts` contém operação `ImportarComprovantePix`, com confirmação explícita, identificação E2E, dados de conta/valor/data/favorecido, verificação de conta ativa no escritório, checagem de duplicidade e transação Prisma com isolamento `Serializable`. Cria uma saída com status `Realizado` **apenas quando a operação é solicitada e aceita**. Não faz baixa automática de despesa pendente e não armazena o arquivo do comprovante nessa operação. O formulário em `app/financeiro/importar-comprovante/page.tsx` extrai e permite revisar campos, procura correspondências e exige confirmação antes de chamar a API. Permanece necessária a validação funcional, dos formatos bancários, da consistência de mensagens e do tratamento de concorrência. Pix de compromisso já registrado deve seguir o procedimento correto de baixa, sem criar saída duplicada.
+
+### 70.4 Assistente Pessoal — previsões de faturamento
+
+A API `app/api/meu-assistente-pessoal/route.ts` passou a consultar dados de faturamentos associados à venda e a considerar faturamento parcial/saldo ao compor pendências de previsão. A presença de data prevista vencida não é, isoladamente, prova de ausência de faturamento. A comparação em centavos e a regra para faturamento integral constam do código inspecionado. A função de responsável passou a usar o responsável atribuído, sem atribuir automaticamente o criador como alternativa; conferir impactos sobre itens sem responsável. Ainda é necessária validação com casos reais e divergências de faturamento.
+
+### 70.5 Tarefas — auditoria operacional
+
+O `PATCH` em `app/api/tarefas/[id]/route.ts` passou a registrar ações operacionais de tarefa e estados anterior/posterior em auditoria dentro da mesma transação da atualização. Identifica escritório e usuário executor, sem transferir explicitamente a responsabilidade. Testar permissões, abrangência, concorrência e conteúdo dos dados auditados. Não confundir auditoria implementada em ações específicas com cobertura universal de todas as alterações possíveis.
+
+### 70.6 Interações e Central de Alertas
+
+`app/interacoes/[id]/page.tsx` passou a reconhecer `#registrar-acompanhamento` para abrir e posicionar o formulário existente de acompanhamento, quando cabível. `components/alerta-critico-global.tsx` foi amplamente reformulado: Central de Alertas com visão de pendências/críticos, filtros por responsável e prazo, preparação de lembrete para cópia (sem envio automático), abertura de registro original, direcionamento para providência na Interação e conclusão confirmada de tarefas da Agenda via API. Há atualização periódica configurada e indicador de Central de Documentos. Verificar comportamento efetivo, permissões, auditoria, atualização das listas e eventual impacto da retirada do antigo silenciamento de alerta por 30 minutos. Não afirmar aprovação funcional apenas pelo diff.
+
+### 70.7 Central Inteligente de Documentos — Etapa 3
+
+`app/central-documentos/page.tsx` implementa triagem de arquivos selecionados, leitura preliminar de PDF textual, OCR de imagem via biblioteca no navegador, prévia de planilhas/textos, classificação sugerida por departamento e botão manual de armazenamento do original. Também consulta uma caixa de documentos listados pelo servidor. A classificação é de sessão, não persistida como departamento definitivo. A caixa ainda não disponibiliza operação de reabrir/baixar/aprovar o original na interface. A fila desta página é estado React local, sem garantia de persistência ao fechar/recarregar antes do envio.
+
+`app/api/central-documentos/route.ts` exige sessão, recebe `multipart/form-data`, limita a 10 arquivos por requisição, 20 MB por arquivo e 40 MB de soma declarada/verificada, aceita um conjunto definido de extensões, faz verificações parciais de assinatura e grava originais e JSON de metadados em `storage/private/central-documentos/<escritorioId>`. Marca registros `PendenteRevisao`, sem gerar automaticamente venda, pedido, despesa, pagamento, baixa, comissão ou movimentação financeira. A GET lista metadados conforme escritório, com filtragem adicional para perfil Preposto. O hash SHA-256 identifica conteúdo, e o identificador da pendência considera usuário; o código não garante ausência de pendências distintas entre usuários para mesmo arquivo. Persistência de arquivo e metadados não é transacional: estudar recuperação de falhas, idempotência sob concorrência e limites de memória/formato antes de afirmar robustez.
+
+A regra `/storage/` foi confirmada na linha 36 do `.gitignore` com `git check-ignore -v`; isso protege arquivos novos sob essa pasta contra adição normal ao Git, mas não substitui controle de acesso no servidor nem comprova que nenhum arquivo privado já estava versionado.
+
+### 70.8 Android/PWA — objetivo e estado observado
+
+Objetivo aprovado: de WhatsApp, bancos, Galeria, Arquivos e outros aplicativos, usar **Compartilhar → CRM Luiz Sodré** e iniciar **transmissão automática autenticada**, sem depender do botão `ENVIAR PENDENTES`; confirmação do servidor precede a remoção/marcação de envio. Aprovação e qualquer lançamento comercial/financeiro são etapas separadas, sempre controladas.
+
+O `app/manifest.ts` configura um Web Share Target `POST multipart/form-data` com campo `files` para `/api/central-documentos?origem=android`, e ícones oficiais de 192×192 e 512×512 pixels. Ambos foram encontrados e suas dimensões e formato PNG foram verificados. A descoberta de `CRM Luiz Sodré` no menu Compartilhar de PDF foi observada em Android; **não** foi comprovado envio automático. O aplicativo exibiu `4 pendente(s)`, `ENVIAR PENDENTES`, `ABRIR CENTRAL`, relato de duas duplicações e tela de login. A origem do código dessa fila não foi localizada nas extensões pesquisadas no projeto nem por `AndroidManifest.xml` nas pastas Desktop, Downloads e Documents. Esses resultados não provam inexistência de código Android em outros locais ou no aparelho.
+
+O CRM mantém acesso privado por Tailscale no endereço `https://gerencia.tailcd5727.ts.net/`; não expor publicamente para contornar autenticação/conectividade. Investigar receptor efetivo de compartilhamento, sessão, fila, transmissão, reenvio, confirmação e duplicidade em cliente e servidor. Não apagar originais ou pendências sem auditoria.
+
+### 70.9 Validação e riscos pendentes
+
+TypeScript: `npx tsc --noEmit` sem erros em 16/10/2026. Git: após `git fetch`, `main...origin/main` igual a `0 0` naquele momento; alterações de trabalho não estavam publicadas. Ícones: dimensões PNG conferidas; identidade visual precisa continuar sendo a oficial já aprovada. Não foi comprovado fluxo ponta a ponta Android → armazenamento servidor → reabertura sem duplicata. Testar autenticação expirada, ausência de Tailscale, compartilhamento de múltiplos arquivos, formatos permitidos, concorrência, isolamento por escritório/perfil, limites de tamanho e falha entre gravação de original e JSON. Não executar operações Prisma, migrations, schema, seed, db push/reset ou mudanças comerciais sem autorização específica.
+
+### 70.10 Solicitação futura — layout do Assistente Pessoal
+
+**Solicitação de Luiz em 16/10/2026:** revisar futuramente o layout do módulo **Meu Assistente Pessoal**. **Status: planejamento, não implementado neste lote.** Seguir o padrão visual global aprovado no capítulo 69, preservar funções, critérios de pendência, acessibilidade, responsabilidades e histórico; especificar mudanças e validar no notebook/celular quando a revisão for priorizada. Não executar reforma visual preventiva nem alterar componente global indiscriminadamente.
+
+### 70.11 Publicação e próximo ponto de continuidade
+
+Este capítulo é um registro de diagnóstico de 16/10/2026. **A existência deste texto no arquivo local não prova que commit/push tenham ocorrido.** Antes de publicar, verificar novamente `git status`, arquivos incluídos, eventuais segredos/dados privados, e a situação remota. Registrar o hash efetivo do novo commit apenas depois de confirmação do GitHub. Preservar todos os módulos, duas STRAWPLAST legítimas, políticas comerciais vigentes e regra de pedido aprovado/enviado à representada **aguardando confirmação da representada**. Prosseguir com um comando PowerShell por vez, sem backups não autorizados e sem presumir que código remoto seja igual ao mais recente no notebook.

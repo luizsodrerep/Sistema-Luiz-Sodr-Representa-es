@@ -235,6 +235,9 @@ export async function PATCH(
       Prisma.TarefaUncheckedUpdateInput =
         {}
 
+    // A auditoria registra a ação executada, sem transferir a responsabilidade.
+    let acaoAuditoria: string | null = null
+
     /*
      * ACAO OPERACIONAL
      *
@@ -276,6 +279,8 @@ export async function PATCH(
           }
         )
       }
+
+      acaoAuditoria = acao
 
       if (
         acao ===
@@ -815,7 +820,13 @@ export async function PATCH(
     }
 
     const tarefaAtualizada =
-      await prisma.tarefa.update({
+      await prisma.$transaction(async (tx) => {
+        // Lê o registro dentro da mesma transação para compor o histórico.
+        const tarefaAntes = await tx.tarefa.findUniqueOrThrow({
+          where: { id: tarefaAtual.id },
+        })
+
+        const atualizada = await tx.tarefa.update({
         where: {
           id:
             tarefaAtual.id,
@@ -867,6 +878,29 @@ export async function PATCH(
             },
           },
         },
+        })
+
+        if (acaoAuditoria) {
+          // Apenas ações operacionais exigem o evento de auditoria.
+          // Sem o evento, a atualização também é revertida.
+          const tarefaDepois = await tx.tarefa.findUniqueOrThrow({
+            where: { id: tarefaAtual.id },
+          })
+
+          await tx.auditoria.create({
+            data: {
+              escritorioId: sessao.escritorioId,
+              usuarioId: sessao.usuarioId,
+              entidade: "Tarefa",
+              entidadeId: tarefaAtual.id,
+              acao: `TAREFA_${acaoAuditoria.toUpperCase()}`,
+              dadosAntes: JSON.parse(JSON.stringify(tarefaAntes)),
+              dadosDepois: JSON.parse(JSON.stringify(tarefaDepois)),
+            },
+          })
+        }
+
+        return atualizada
       })
 
     return NextResponse.json(

@@ -14,6 +14,7 @@ type Movimento = {
   descricao: string | null;
   categoria: string | null;
   contaBancariaId: string | null;
+  origem?: string | null;
 };
 type Conta = { id: string; nome: string; banco: string | null; ativa: boolean; tipoTitular?: string | null };
 type Extracao = {
@@ -97,6 +98,28 @@ function obterIdPix(texto: string): string {
  */
 function obterFavorecido(texto: string): string {
   const linhas = texto.split(/\r?\n/).map((linha) => linha.replace(/\s+/g, " ").trim());
+
+  // Alguns bancos identificam a parte recebedora em "Dados do recebedor" e
+  // colocam "Para" numa linha e a razão social na seguinte, sem bloco "Destino".
+  // Restringimos a busca a esse bloco para não capturar o nome do pagador.
+  const indiceRecebedor = linhas.findIndex((linha) => /^DADOS DO RECEBEDOR\b/i.test(normalizar(linha)));
+  if (indiceRecebedor >= 0) {
+    const blocoRecebedor = linhas.slice(indiceRecebedor + 1, indiceRecebedor + 13);
+    const nomePlausivel = (nome: string): boolean =>
+      nome.length >= 5 && nome.length <= 140 &&
+      /^[\p{L}][\p{L}\p{N}&' .\-/]*$/u.test(nome) &&
+      nome.split(/\s+/).length >= 2 &&
+      !/^(?:CPF|CNPJ|BANCO|AGENCIA|CONTA|CHAVE|INSTITUICAO|DADOS|FORMA DE PAGAMENTO)\b/i.test(normalizar(nome));
+    for (let i = 0; i < blocoRecebedor.length; i++) {
+      const rotulo = /^PARA\b\s*:?\s*(.*)$/i.exec(normalizar(blocoRecebedor[i]));
+      if (!rotulo) continue;
+      const mesmoCampo = blocoRecebedor[i].replace(/^Para\b\s*:?\s*/i, "").trim();
+      const candidato = mesmoCampo || blocoRecebedor[i + 1] || "";
+      if (nomePlausivel(candidato)) return candidato;
+      break;
+    }
+  }
+
   const indiceDestino = linhas.findIndex((linha) => /\bDESTIN[O0]\b|DESTINATARI/i.test(normalizar(linha)));
   if (indiceDestino < 0) return "";
   const indiceOrigem = linhas.findIndex((linha, i) => i > indiceDestino && /^ORIGEM\b/i.test(normalizar(linha)));
@@ -237,17 +260,37 @@ export default function ImportarComprovantePreviaPage() {
   const [pesquisaRealizada, setPesquisaRealizada] = useState(false);
   const [mostrarTexto, setMostrarTexto] = useState(false);
   const [candidatoId, setCandidatoId] = useState("");
+  const [confirmacao, setConfirmacao] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [registroSalvo, setRegistroSalvo] = useState(false);
 
   const candidatos = useMemo(() => registro ? sugerirMatches(movimentos, registro) : [], [movimentos, registro]);
   const sugestoes = useMemo(() => registro ? sugerirHistorico(movimentos, registro) : [], [movimentos, registro]);
   const escolhido = candidatos.find((m) => m.movimento.id === candidatoId);
+  const idPixValido = !!registro && /^E\d{8}20\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Za-z0-9]{15}$/.test(registro.identificador.trim());
+  const valorParaSalvar = registro ? valorNumerico(registro.valor) : null;
+  const dataConfirmada = !!registro && /^\d{4}-\d{2}-\d{2}$/.test(registro.data) &&
+    !Number.isNaN(new Date(`${registro.data}T12:00:00Z`).getTime()) &&
+    new Date(`${registro.data}T12:00:00Z`).toISOString().slice(0, 10) === registro.data;
+  const riscoCorrespondencia = !!registro && candidatos.some(({ movimento }) => {
+    const mesmaConta = movimento.contaBancariaId === registro.contaId;
+    const mesmaData = dataLocal(movimento.data) === registro.data;
+    return mesmaConta && mesmaData;
+  });
+  const idJaImportado = !!registro && movimentos.some((movimento) =>
+    movimento.origem === `COMPROVANTE_PIX:${registro.identificador.trim().toUpperCase()}`);
+  const prontoParaLancar = !!registro && pesquisaRealizada && !consultando && !salvando && !registroSalvo &&
+    idPixValido && dataConfirmada && valorParaSalvar !== null &&
+    !!registro.contaId && contas.some((conta) => conta.id === registro.contaId) &&
+    !!registro.destinatario.trim() && !!registro.descricao.trim() &&
+    !riscoCorrespondencia && !idJaImportado && !escolhido && confirmacao;
   const totalParcelas = Number(registro?.totalParcelas || 0);
   const parcela = Number(registro?.parcela || 0);
   const saldoParcelas = Number.isInteger(parcela) && Number.isInteger(totalParcelas) && parcela > 0 && totalParcelas >= parcela
     ? totalParcelas - parcela : null;
 
   async function consultarFinanceiro() {
-    setConsultando(true); setErro("");
+    setConsultando(true); setErro(""); setPesquisaRealizada(false); setConfirmacao(false);
     try {
       const resposta = await fetch("/api/financeiro", { cache: "no-store", credentials: "same-origin" });
       const dados = await resposta.json().catch(() => ({}));
@@ -314,6 +357,7 @@ export default function ImportarComprovantePreviaPage() {
   async function receberArquivo(arquivo?: File) {
     if (!arquivo) return;
     setErro(""); setAviso(""); setRegistro(null); setCandidatoId(""); setMostrarTexto(false);
+    setConfirmacao(false); setRegistroSalvo(false);
     setPesquisaRealizada(false); setMovimentos([]); setContas([]);
     const extensao = arquivo.name.split(".").pop()?.toLowerCase();
     if (!extensao || !["jpg", "jpeg", "png", "webp", "pdf"].includes(extensao)) {
@@ -354,12 +398,52 @@ export default function ImportarComprovantePreviaPage() {
       };
     });
     setCandidatoId("");
+    setConfirmacao(false);
     setAviso("Sugestão do histórico aplicada para conferência. Confira a finalidade, a conta de origem e, se houver, a parcela. Nada foi salvo no CRM.");
   }
   function alterar(chave: keyof Extracao, valor: string) {
+    setConfirmacao(false);
     setRegistro((atual) => atual ? { ...atual, [chave]: valor } : atual);
     if (chave === "valor" || chave === "data" || chave === "contaId" || chave === "descricao") setCandidatoId("");
   }
+  async function registrarPixConfirmado() {
+    if (!registro || !prontoParaLancar || valorParaSalvar === null) return;
+    setErro(""); setAviso(""); setSalvando(true);
+    try {
+      // O arquivo fica com o usuário: enviamos apenas os campos revisados.
+      const detalheParcela = registro.parcela && registro.totalParcelas
+        ? ` · Parcela ${registro.parcela}/${registro.totalParcelas}` : "";
+      const detalheCompetencia = registro.competencia ? ` · Competência ${registro.competencia}` : "";
+      const descricao = `${registro.descricao.trim()}${detalheParcela}${detalheCompetencia}`;
+      if (descricao.length > 180) throw new Error("Reduza a descrição para até 180 caracteres incluindo parcela e competência.");
+      if (registro.parcela || registro.totalParcelas) {
+        const n = Number(registro.parcela), total = Number(registro.totalParcelas);
+        if (!Number.isInteger(n) || !Number.isInteger(total) || n < 1 || total < n || total > 120) {
+          throw new Error("Informe a parcela e o total corretamente, ou deixe ambos em branco.");
+        }
+      }
+      const resposta = await fetch("/api/financeiro", {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
+        body: JSON.stringify({
+          operacao: "ImportarComprovantePix", identificador: registro.identificador.trim(),
+          data: registro.data, valor: valorParaSalvar, favorecido: registro.destinatario.trim(),
+          descricao, categoria: registro.categoria, contaBancariaId: registro.contaId,
+          confirmacao: true,
+        }),
+      });
+      const dados: { erro?: string; message?: string } = await resposta.json().catch(() => ({}));
+      if (!resposta.ok) throw new Error(dados.erro || "Não foi possível registrar o Pix.");
+      setRegistroSalvo(true);
+      setConfirmacao(false);
+      setAviso("Pix registrado como saída realizada após sua confirmação. Guarde o arquivo original; o CRM armazenou somente os dados financeiros.");
+      await consultarFinanceiro();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao registrar Pix.");
+      setConfirmacao(false);
+      // Exigir nova confirmação após erro, preservando a mensagem do servidor.
+    } finally { setSalvando(false); }
+  }
+
   function escolher(e: ChangeEvent<HTMLInputElement>) { void receberArquivo(e.target.files?.[0]); }
   function soltar(e: DragEvent<HTMLDivElement>) { e.preventDefault(); setArrastando(false); void receberArquivo(e.dataTransfer.files?.[0]); }
   const quantidadeRestante = saldoParcelas !== null ? `${saldoParcelas} de ${totalParcelas}` : "A definir";
@@ -369,13 +453,13 @@ export default function ImportarComprovantePreviaPage() {
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Financeiro 360° · Documentos</p>
           <h1 className="text-lg font-bold">Importar comprovante</h1>
-          <p className="text-xs text-slate-500">Leitura automática, conferência e busca de lançamentos — modo seguro de prévia</p>
+          <p className="text-xs text-slate-500">Leitura local, conferência e registro de Pix somente com sua autorização</p>
         </div>
         <Link href="/financeiro" className={botao}><ArrowLeft className="h-3.5 w-3.5" />Voltar ao Financeiro</Link>
       </div>
       <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-        <span><strong>Modo de prévia:</strong> esta tela não envia nem salva comprovantes, não gera lançamentos e não altera saldos. A confirmação financeira e o arquivo permanente serão integrados em uma etapa posterior.</span>
+        <span><strong>Controle seguro:</strong> a leitura e a conferência não alteram o CRM. Somente o botão de confirmação registra uma saída Pix realizada. O arquivo original não é armazenado: guarde seu comprovante.</span>
       </div>
       <input ref={arquivoRef} className="hidden" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf" onChange={escolher} aria-label="Selecionar comprovante" />
       <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); arquivoRef.current?.click(); } }}
@@ -414,7 +498,7 @@ export default function ImportarComprovantePreviaPage() {
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <label className="sm:col-span-2"><span className={rotulo}>Finalidade / descrição (não consta necessariamente do Pix)</span><input className={campo} value={registro.descricao} onChange={(e) => alterar("descricao", e.target.value)} placeholder="Ex.: Casa do Quedas - compra da casa" /></label>
-            <label><span className={rotulo}>Categoria</span><select className={campo} value={registro.categoria} onChange={(e) => alterar("categoria", e.target.value)}><option>Moradia</option><option>Condomínio</option><option>Dívidas e acordos</option><option>Impostos e taxas</option><option>Outros gastos</option></select></label>
+            <label><span className={rotulo}>Categoria</span><select className={campo} value={registro.categoria} onChange={(e) => alterar("categoria", e.target.value)}><option>Alimentação</option><option>Mercado</option><option>Combustível</option><option>Farmácia e saúde</option><option>Veículo e manutenção</option><option>Trabalho e viagens</option><option>Moradia</option><option>Condomínio</option><option>Dívidas e acordos</option><option>Impostos e taxas</option><option>Outros gastos</option></select></label>
             <label><span className={rotulo}>Competência</span><input className={campo} type="month" value={registro.competencia} onChange={(e) => alterar("competencia", e.target.value)} /></label>
             <label><span className={rotulo}>Nº da parcela</span><input className={campo} type="number" min="1" max="120" placeholder="Ex.: 17" value={registro.parcela} onChange={(e) => alterar("parcela", e.target.value)} /></label>
             <label><span className={rotulo}>Total de parcelas</span><input className={campo} type="number" min="1" max="120" placeholder="Ex.: 25" value={registro.totalParcelas} onChange={(e) => alterar("totalParcelas", e.target.value)} /></label>
@@ -428,7 +512,26 @@ export default function ImportarComprovantePreviaPage() {
           {pesquisaRealizada && candidatos.length === 0 && <p className="rounded-md bg-slate-50 p-2 text-xs text-slate-600">Não encontramos saídas com o mesmo valor na lista retornada pela API. Isso não comprova inexistência de registro; confira seu histórico antes de lançar.</p>}
           {candidatos.length > 0 && <div className="overflow-auto"><table className="w-full table-fixed text-xs"><thead><tr className="border-b bg-slate-50 text-left"><th className="w-8 p-2"></th><th className="p-2">Lançamento</th><th className="w-28 p-2">Valor</th><th className="w-24 p-2">Situação</th><th className="w-28 p-2">Data</th></tr></thead><tbody>{candidatos.map(({ movimento, motivos }) => <tr key={movimento.id} className="h-[42px] border-b last:border-0"><td className="p-2"><input type="radio" name="candidato" checked={candidatoId === movimento.id} onChange={() => setCandidatoId(movimento.id)} aria-label={`Selecionar ${movimento.descricao || movimento.id}`} /></td><td className="p-2"><div className="truncate font-semibold">{movimento.descricao || "Sem descrição"}</div><div className="truncate text-[10px] text-slate-500">{motivos.join(" · ")}</div></td><td className="p-2 tabular-nums">{formatarMoeda(movimento.valor)}</td><td className="p-2">{movimento.status}</td><td className="p-2">{dataLocal(movimento.data).split("-").reverse().join("/")}</td></tr>)}</tbody></table></div>}
           {escolhido && <p className="rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">Selecionado para futura associação: <strong>{escolhido.movimento.descricao || escolhido.movimento.id}</strong>. Nenhuma alteração foi feita. {escolhido.movimento.status === "Realizado" ? "Já realizado: verificar possível duplicidade." : "Pendente: na próxima etapa será possível confirmar a baixa."}</p>}
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900"><strong>Atenção:</strong> nesta prévia ainda não existe registro persistente do ID Pix. Proteção definitiva contra importação duplicada, armazenamento do arquivo e confirmação financeira exigem uma API própria.</div>
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900"><strong>Atenção:</strong> correspondências de valor, dia e conta precisam ser conferidas manualmente. A API bloqueia reuso do ID Pix e operações suspeitas. O comprovante original não é armazenado.</div>
+        </section>
+        <section className="space-y-3 rounded-xl border border-blue-200 bg-white p-3">
+          <h2 className="text-sm font-semibold">3. Conferir e registrar pagamento Pix</h2>
+          <p className="text-xs text-slate-600">Somente Pix já pago. Compra no cartão deve ser registrada no módulo Cartões; compromisso pendente deve ser baixado no Financeiro, sem criar uma segunda saída.</p>
+          {registroSalvo ? (
+            <div role="status" className="rounded-md bg-emerald-50 p-3 text-xs font-semibold text-emerald-900">Pix registrado. Para registrar outra compra, importe outro comprovante. Guarde o arquivo original.</div>
+          ) : <>
+            {!pesquisaRealizada && <p className="text-xs text-red-800">Não foi possível validar os lançamentos existentes. Atualize a consulta antes de registrar.</p>}
+            {!idPixValido && <p className="text-xs text-amber-800">Para registrar automaticamente, informe e confira o ID Pix E2E completo de 32 caracteres. Sem ele, utilize o registro manual após conferir duplicidades.</p>}
+            {(riscoCorrespondencia || idJaImportado || !!escolhido) && <p role="alert" className="rounded-md bg-amber-50 p-2 text-xs text-amber-900">Encontramos possível lançamento anterior ou foi selecionada uma correspondência. O registro automático está bloqueado: confira o financeiro para não duplicar ou pagar duas vezes.</p>}
+            <label className="flex items-start gap-2 rounded-md bg-slate-50 p-3 text-xs">
+              <input type="checkbox" className="mt-0.5" checked={confirmacao} onChange={(e) => setConfirmacao(e.target.checked)} disabled={salvando || registroSalvo}/>
+              <span>Conferi o comprovante original, a conta, o valor, a data, o favorecido e o ID Pix. Confirmo que já foi pago, não está cadastrado no CRM e autorizo registrar a saída financeira realizada.</span>
+            </label>
+            <button type="button" disabled={!prontoParaLancar} onClick={() => void registrarPixConfirmado()}
+              className="w-full rounded-md bg-blue-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-blue-900 disabled:cursor-not-allowed disabled:bg-slate-300">
+              {salvando ? "Registrando..." : "Confirmar e registrar Pix realizado"}
+            </button>
+          </>}
         </section>
         <section className="rounded-xl border bg-white p-3"><button type="button" onClick={() => setMostrarTexto((v) => !v)} className={botao}>{mostrarTexto ? "Ocultar" : "Mostrar"} texto reconhecido</button>{mostrarTexto && <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-md bg-slate-50 p-2 text-[11px]">{registro.texto}</pre>}</section>
       </>}

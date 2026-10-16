@@ -2,6 +2,8 @@ import {
   randomUUID,
 } from "crypto"
 
+import { Prisma } from "@prisma/client"
+
 import {
   podeExecutarAcao,
 } from "@/lib/auth/permissions"
@@ -782,6 +784,106 @@ export async function POST(
 
     const body =
       await request.json()
+
+    /*
+     * IMPORTAÇÃO DE UM PIX JÁ PAGO: grava APENAS os dados financeiros
+     * confirmados. O PDF ou a imagem não é armazenado nesta etapa.
+     * Não liquida uma despesa pendente automaticamente.
+     */
+    if (body?.operacao === "ImportarComprovantePix") {
+      const identificador = typeof body.identificador === "string"
+        ? body.identificador.trim().toUpperCase() : ""
+      const descricao = textoObrigatorio(body.descricao)
+      const categoria = textoObrigatorio(body.categoria)
+      const favorecido = textoObrigatorio(body.favorecido)
+      const contaId = textoObrigatorio(body.contaBancariaId)
+      const dataTexto = typeof body.data === "string" ? body.data : ""
+      const data = /^\d{4}-\d{2}-\d{2}$/.test(dataTexto) ? dataValida(dataTexto) : null
+      const valor = numeroFinito(body.valor)
+      const centavos = valor === null ? NaN : Math.round(valor * 100)
+      const valorNormalizado = centavos / 100
+      const nomeCompleto = `${descricao || ""} · Favorecido: ${favorecido || ""}`
+
+      if (!/^E\d{8}20\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{15}$/.test(identificador) ||
+          !descricao || descricao.length > 180 || !categoria || categoria.length > 120 ||
+          !favorecido || favorecido.length > 120 || !contaId ||
+          !data || data.toISOString().slice(0, 10) !== dataTexto ||
+          !Number.isSafeInteger(centavos) || centavos <= 0 ||
+          Math.abs((valor ?? 0) - valorNormalizado) > 0.00000001 ||
+          nomeCompleto.length > 320 || body.confirmacao !== true) {
+        return NextResponse.json({ erro: "Confirme ID Pix completo, conta, favorecido, finalidade, data, valor e autorização explícita antes do lançamento." }, { status: 400 })
+      }
+
+      const conta = await prisma.contaBancaria.findFirst({
+        where: { id: contaId, escritorioId: sessao.escritorioId, ativa: true },
+        select: { id: true },
+      })
+      if (!conta) {
+        return NextResponse.json({ erro: "A conta bancária selecionada é inválida ou está inativa." }, { status: 400 })
+      }
+
+      const origem = `COMPROVANTE_PIX:${identificador}`
+      const inicioDia = new Date(`${dataTexto}T00:00:00.000Z`)
+      const proximoDia = new Date(inicioDia.getTime() + 86400000)
+
+      try {
+        const criado = await prisma.$transaction(async (tx) => {
+          // Bloqueia reutilização de E2E mesmo quando a operação original foi cancelada.
+          const importacaoAnterior = await tx.financeiro.findFirst({
+            where: { escritorioId: sessao.escritorioId, origem },
+            select: { id: true },
+          })
+          if (importacaoAnterior) throw new Error("PIX_DUPLICADO")
+
+          // Bloqueio conservador: mesmo dia, mesma conta e mesmo valor exige revisão.
+          // Pode ser outro Pix legítimo: nesse caso, conferir antes do registro manual.
+          const possivelLancamento = await tx.financeiro.findFirst({
+            where: {
+              escritorioId: sessao.escritorioId,
+              contaBancariaId: contaId,
+              tipo: "Saida",
+              status: { not: "Cancelado" },
+              valor: valorNormalizado,
+              data: { gte: inicioDia, lt: proximoDia },
+            },
+            select: { id: true },
+          })
+          if (possivelLancamento) throw new Error("PIX_CORRESPONDENCIA")
+
+          return tx.financeiro.create({
+            data: {
+              escritorioId: sessao.escritorioId,
+              data,
+              tipo: "Saida",
+              categoria,
+              descricao: nomeCompleto,
+              origem,
+              origemExterna: true,
+              valor: valorNormalizado,
+              status: "Realizado",
+              vencimento: null,
+              contaBancariaId: contaId,
+            },
+            select: { id: true },
+          })
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+        return NextResponse.json({
+          message: "Saída Pix registrada com os dados confirmados. Arquivo original não armazenado.",
+          movimentoId: criado.id,
+        }, { status: 201 })
+      } catch (erro) {
+        if (erro instanceof Error && erro.message === "PIX_DUPLICADO") {
+          return NextResponse.json({ erro: "Este ID Pix já foi importado no CRM. Não registre novamente." }, { status: 409 })
+        }
+        if (erro instanceof Error && erro.message === "PIX_CORRESPONDENCIA") {
+          return NextResponse.json({ erro: "Já existe uma saída do mesmo valor, data e conta. Confira o registro existente ou dê baixa no compromisso, sem duplicá-lo." }, { status: 409 })
+        }
+        if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2034") {
+          return NextResponse.json({ erro: "Outro lançamento foi processado ao mesmo tempo. Atualize a lista antes de tentar novamente." }, { status: 409 })
+        }
+        throw erro
+      }
+    }
 
     /*
      * TRANSFERÊNCIA ENTRE CONTAS

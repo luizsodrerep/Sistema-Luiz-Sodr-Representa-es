@@ -3,6 +3,7 @@
 import {
   use,
   useEffect,
+  useRef,
   useState,
 } from "react"
 import Link from "next/link"
@@ -458,6 +459,8 @@ export default function InteracaoDetalhesPage({
   const { id } =
     use(params)
 
+  const aberturaPeloRobo = useRef<string | null>(null)
+
   const [
     interacao,
     setInteracao,
@@ -704,6 +707,40 @@ export default function InteracaoDetalhesPage({
   useEffect(() => {
     carregarHistorico()
   }, [id])
+
+  // Link direto da Central de Alertas: abre o acompanhamento sem duplicar o formulário.
+  useEffect(() => {
+    if (
+      !interacao ||
+      interacao.id !== id ||
+      interacao.statusFollowUp === "Finalizado" ||
+      window.location.hash !== "#registrar-acompanhamento" ||
+      aberturaPeloRobo.current === id
+    ) {
+      return
+    }
+
+    aberturaPeloRobo.current = id
+    setAcompanhamentoAberto(true)
+  }, [id, interacao])
+
+  useEffect(() => {
+    if (
+      !acompanhamentoAberto ||
+      window.location.hash !== "#registrar-acompanhamento"
+    ) {
+      return
+    }
+
+    const quadro = window.requestAnimationFrame(() => {
+      document.getElementById("registrar-acompanhamento")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      })
+    })
+
+    return () => window.cancelAnimationFrame(quadro)
+  }, [acompanhamentoAberto])
 
   useEffect(() => {
     async function carregarOrcamentos() {
@@ -1201,7 +1238,7 @@ export default function InteracaoDetalhesPage({
 
       {!finalizada &&
         acompanhamentoAberto && (
-          <Card className="mb-4 border-blue-200">
+          <Card id="registrar-acompanhamento" className="mb-4 scroll-mt-24 border-blue-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-blue-600" />
